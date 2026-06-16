@@ -40,12 +40,12 @@ export default function ProfilePage() {
 
             <div className="px-4 -mt-12 relative z-10 text-center sm:text-left sm:flex sm:items-end sm:gap-6 sm:px-6">
                 <div className="relative inline-block">
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 p-[3px] shadow-lg mx-auto">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 p-[3px]  mx-auto">
                         <div className="w-full h-full bg-white rounded-full p-[3px]">
                             <img src={userProfile.avatar} alt={userProfile.name} className="w-full h-full object-cover rounded-full" />
                         </div>
                     </div>
-                    <span className="absolute bottom-1 right-1 bg-blue-600 text-white p-1.5 rounded-full ring-4 ring-white shadow-md cursor-pointer">
+                    <span className="absolute bottom-1 right-1 bg-blue-600 text-white p-1.5 rounded-full ring-4 ring-white  cursor-pointer">
                         <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 4c-.46 3.8-3.14 6.94-6.94 7.74V22h-2v-2.26c-3.8-.46-6.94-3.14-7.74-6.94H1V10h2.26c.46-3.8 3.14-6.94 6.94-7.74V0h2v2.26c3.8.46 6.94 3.14 7.74 6.94H23v2h-2.06z" /></svg>
                     </span>
                 </div>
@@ -64,7 +64,7 @@ export default function ProfilePage() {
                 </p>
             </div>
 
-            <div className="mx-4 mt-5 bg-white border border-slate-100 rounded-2xl p-4 shadow-sm grid grid-cols-4 gap-2 text-center">
+            <div className="mx-4 mt-5 bg-white border border-slate-100 rounded-2xl p-4  grid grid-cols-4 gap-2 text-center">
                 {userProfile.stats.map((stat, idx) => (
                     <div key={idx} className="flex flex-col items-center justify-center">
                         <span className={`text-base font-black tracking-tight ${stat.isEarnings ? 'text-[#A33B00]' : 'text-slate-900'}`}>
@@ -115,19 +115,17 @@ export default function ProfilePage() {
                 {activeTab === 'posts' && (
                     <div className="grid grid-cols-3 gap-2 auto-rows-[110px] sm:auto-rows-[160px]">
                         {profilePosts.map((post) => {
-                            // Agar oddiy rasm bo'lsa
                             if (post.type === "image") {
                                 return (
-                                    <div key={post.id} className={`relative rounded-xl overflow-hidden bg-slate-100 group cursor-pointer border border-slate-200/20 shadow-sm ${post.gridClass}`}>
+                                    <div key={post.id} className={`relative rounded-xl overflow-hidden bg-slate-100 group cursor-pointer border border-slate-200/20  ${post.gridClass}`}>
                                         <img src={post.src} alt="Grid post" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                                     </div>
                                 )
                             }
 
-                            // Agar Promoted Masterclass banner bo'lsa (image_08bd05.png dagi maxsus reklama kartasi)
                             if (post.type === "promoted") {
                                 return (
-                                    <div key={post.id} className={`bg-[#FDF2EC] border border-orange-100 rounded-xl p-3 flex items-center justify-between shadow-sm overflow-hidden border-l-4 border-l-[#A33B00] ${post.gridClass}`}>
+                                    <div key={post.id} className={`bg-[#FDF2EC] border border-orange-100 rounded-xl p-3 flex items-center justify-between  overflow-hidden border-l-4 border-l-[#A33B00] ${post.gridClass}`}>
                                         <div className="flex-1 pr-2">
                                             <span className="bg-[#A33B00]/10 text-[#A33B00] font-black text-[8px] tracking-wider px-1.5 py-0.5 rounded uppercase">
                                                 PROMOTED

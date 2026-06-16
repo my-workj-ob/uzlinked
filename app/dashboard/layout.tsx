@@ -30,7 +30,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     { id: 3, user: "Jasur Shukurov", action: "izohingizga javob berdi", time: "Iyul 15", unread: false },
   ]
 
-  // Soxta xabarlar ro'yxati
+
   const messages = [
     { id: 1, user: "Anvar Sanaev", text: "Ertaga ko'rishamizmi? Loyihani...", time: "12:40", unread: true },
     { id: 2, user: "Zilola Ergasheva", text: "Yuborgan faylingiz ochilmadi.", time: "Kecha", unread: false },
@@ -47,7 +47,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     <div className="h-svh w-full bg-[#F7F9FB] text-slate-800 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white">
 
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/95 backdrop-blur-md border-b border-slate-100/80 md:hidden select-none">
-        <Link href="/dashboard" className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+        <Link href="/dashboard" className="text-2xl font-bold tracking-tight bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
           VibeGrid
         </Link>
 
@@ -57,7 +57,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             <button
               onClick={() => {
                 setIsMsgOpen(!isMsgOpen);
-                setIsNotifOpen(false); // Notification ochiq bo'lsa yopadi
+                setIsNotifOpen(false); 
               }}
               className={`p-2 rounded-full active:scale-90 transition-all duration-150 ${isMsgOpen ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'}`}
             >
@@ -70,7 +70,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             {isMsgOpen && (
               <>
                 <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsMsgOpen(false)} />
-                <div className="absolute right-[-50px] top-12 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden transform origin-top-right transition-all p-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute -right-22 top-13 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden transform origin-top-right transition-all p-2 animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-3 py-2 font-bold text-sm text-slate-800 border-b border-slate-50 flex justify-between items-center">
                     <span>Xabarlar</span>
                     <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">Yangi</span>
@@ -110,7 +110,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             {isNotifOpen && (
               <>
                 <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsNotifOpen(false)} />
-                <div className="absolute right-[-10px] top-12 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden transform origin-top-right transition-all p-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute -right-11 top-13 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden transform origin-top-right transition-all p-2 animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-3 py-2 font-bold text-sm text-slate-800 border-b border-slate-50">
                     Bildirishnomalar
                   </div>
