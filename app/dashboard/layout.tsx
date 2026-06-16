@@ -22,7 +22,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     <div className="min-h-screen bg-[#F7F9FB] text-slate-800 font-sans antialiased selection:bg-blue-500 selection:text-white">
       
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/90 backdrop-blur-md border-b border-slate-100/80 md:hidden">
-        <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+        <span className="text-2xl font-bold tracking-tight bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
           VibeGrid
         </span>
         <div className="flex items-center gap-3">
@@ -42,10 +42,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      <div className="flex max-w-[1440px] mx-auto min-h-screen">
+      <div className="flex max-w-dvw mx-auto min-h-screen">
         
-        <aside className="fixed bottom-0 top-0 left-[calc((100vw-1440px)/2)] hidden w-64 p-6 bg-white border-r border-slate-100 md:block z-30">
-          <div className="mb-10 text-2xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+        <aside className="fixed bottom-0 top-0 left-[calc((100vw-1440px)/2)] hidden  p-6 bg-white border-r border-slate-100 md:block z-30">
+          <div className="mb-10 text-2xl font-black tracking-tight bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             VibeGrid
           </div>
           
@@ -77,7 +77,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           </nav>
           
           <div className="absolute bottom-6 left-6 right-6">
-            <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-md shadow-blue-500/10">
+            <div className="p-4 bg-linear-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-md shadow-blue-500/10">
               <h4 className="font-bold text-sm mb-0.5">Premiumga o'ting</h4>
               <p className="text-[11px] text-blue-100 mb-3 leading-relaxed">Cheksiz video va darsliklar yuklash imkoniyati.</p>
               <button className="w-full py-2 bg-white text-blue-600 font-bold text-xs rounded-xl shadow-sm hover:bg-blue-50 active:scale-95 transition-all">
@@ -87,8 +87,8 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           </div>
         </aside>
 
-        <main className="flex-1 min-h-screen pt-20 pb-24 md:pt-6 md:pb-6 md:ml-64 transition-all duration-300">
-          <div className="w-full max-w-xl mx-auto px-4 md:px-0">
+        <main className="flex-1 min-h-screen pt-20 pb-24 md:pt-6 md:pb-6  transition-all duration-300">
+          <div className="w-full max-w-2xl mx-auto px-4 md:px-0">
             {children}
           </div>
         </main>

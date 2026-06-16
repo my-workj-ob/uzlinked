@@ -12,8 +12,8 @@ export const Stories = () => {
   return (
     <div className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl overflow-x-auto no-scrollbar shadow-sm">
       
-      <div className="flex flex-col items-center flex-shrink-0 cursor-pointer group">
-        <div className="relative w-16 h-16 rounded-full p-[2px] border border-dashed border-slate-300 group-hover:border-blue-500 transition-colors">
+      <div className="flex flex-col items-center shrink-0 cursor-pointer group">
+        <div className="relative w-16 h-16 rounded-full p-0.5 border border-dashed border-slate-300 group-hover:border-blue-500 transition-colors">
           <img 
             src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop" 
             className="w-full h-full object-cover rounded-full" 
@@ -27,9 +27,9 @@ export const Stories = () => {
       </div>
 
       {mockStories.map((story) => (
-        <div key={story.id} className="flex flex-col items-center flex-shrink-0 cursor-pointer active:scale-95 transition-transform">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 p-[2.5px]">
-            <div className="w-full h-full bg-white rounded-full p-[2px]">
+        <div key={story.id} className="flex flex-col items-center shrink-0 cursor-pointer active:scale-95 transition-transform">
+          <div className="w-16 h-16 rounded-full bg-linear-to-tr from-amber-500 via-rose-500 to-indigo-600 p-[2.5px]">
+            <div className="w-full h-full bg-white rounded-full p-0.5">
               <img 
                 src={story.avatar} 
                 className="w-full h-full object-cover rounded-full" 
@@ -37,7 +37,7 @@ export const Stories = () => {
               />
             </div>
           </div>
-          <span className="text-xs text-slate-600 mt-1.5 font-medium truncate max-w-[70px]">
+          <span className="text-xs text-slate-600 mt-1.5 font-medium truncate max-w-17.5">
             {story.name}
           </span>
         </div>
