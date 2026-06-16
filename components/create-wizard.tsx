@@ -14,12 +14,59 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
     const [marketTitle, setMarketTitle] = useState('')
     const [marketPrice, setMarketPrice] = useState('')
     const [marketCategory, setMarketCategory] = useState('digital')
+    
+    // Rasm uchun state-lar
     const [imagePreview, setImagePreview] = useState<string | null>(null)
+    const [selectedFile, setSelectedFile] = useState<File | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
+    // Rasm tanlanganda uni xotiraga olish
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
-            setImagePreview(URL.createObjectURL(file))
+            setSelectedFile(file) // Haqiqiy faylni serverga yuborish uchun saqlaymiz
+            setImagePreview(URL.createObjectURL(file)) // UI da ko'rsatish uchun
+        }
+    }
+
+    // Postni serverga yuborish funksiyasi
+    const handlePostSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!postText.trim() || isSubmitting) return
+
+        setIsSubmitting(true)
+
+        try {
+            const formData = new FormData()
+            formData.append('content', postText)
+            
+            if (selectedFile) {
+                formData.append('image', selectedFile)
+            }
+
+            const response = await fetch('/api/posts', {
+                method: 'POST',
+                body: formData,
+            })
+
+            if (!response.ok) {
+                const errData = await response.json()
+                throw new Error(errData.error || 'Post yuklashda xatolik')
+            }
+
+            // Muvaffaqiyatli yuklangach, inputlarni tozalash va modalni yopish
+            setPostText('')
+            setImagePreview(null)
+            setSelectedFile(null)
+            onClose()
+
+            // Agar feed sahifasida bo'lsangiz, yangi post chiqishi uchun sahifani yangilaymiz
+            window.location.reload()
+
+        } catch (error: any) {
+            alert(`Xatolik: ${error.message}`)
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
@@ -57,9 +104,9 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
             )}
 
             {step === 'post' && (
-                <form onSubmit={(e) => { e.preventDefault(); onClose(); }} className="space-y-4 animate-in slide-in-from-right-4 duration-200">
+                <form onSubmit={handlePostSubmit} className="space-y-4 animate-in slide-in-from-right-4 duration-200">
                     <div className="flex items-center gap-2 text-slate-600 mb-2">
-                        <button type="button" onClick={() => setStep('menu')} className="p-1 hover:bg-slate-50 rounded-lg">
+                        <button type="button" disabled={isSubmitting} onClick={() => setStep('menu')} className="p-1 hover:bg-slate-50 rounded-lg disabled:opacity-50">
                             <HiArrowLeft className="w-4 h-4" />
                         </button>
                         <span className="text-xs font-bold">Post yaratish</span>
@@ -74,29 +121,31 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                                 <span className="text-[11px] text-slate-500 font-medium">Rasm yuklash (Ixtiyoriy)</span>
                             </>
                         )}
-                        <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                        <input type="file" accept="image/*" disabled={isSubmitting} onChange={handleImageChange} className="hidden" />
                     </label>
 
                     <textarea
                         placeholder="Nimalar haqida o'ylayapsiz?..."
                         rows={4}
                         value={postText}
+                        disabled={isSubmitting}
                         onChange={(e) => setPostText(e.target.value)}
-                        className="w-full bg-slate-50/50 text-xs font-medium p-3 rounded-xl border border-slate-100 focus:border-blue-500/30 outline-none resize-none transition-all"
+                        className="w-full bg-slate-50/50 text-xs font-medium p-3 rounded-xl border border-slate-100 focus:border-blue-500/30 outline-none resize-none transition-all disabled:opacity-60"
                     />
 
                     <button
                         type="submit"
-                        disabled={!postText.trim()}
-                        className="w-full py-3 bg-blue-600 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold text-xs rounded-xl transition-all active:scale-[0.99]"
+                        disabled={!postText.trim() || isSubmitting}
+                        className="w-full py-3 bg-blue-600 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold text-xs rounded-xl transition-all active:scale-[0.99] flex items-center justify-center"
                     >
-                        Ulashish
+                        {isSubmitting ? "Yuklanmoqda..." : "Ulashish"}
                     </button>
                 </form>
             )}
 
             {step === 'market' && (
                 <form onSubmit={(e) => { e.preventDefault(); onClose(); }} className="space-y-3 animate-in slide-in-from-right-4 duration-200">
+                    {/* Market formi o'zgarishsiz qoladi */}
                     <div className="flex items-center gap-2 text-slate-600 mb-2">
                         <button type="button" onClick={() => setStep('menu')} className="p-1 hover:bg-slate-50 rounded-lg">
                             <HiArrowLeft className="w-4 h-4" />

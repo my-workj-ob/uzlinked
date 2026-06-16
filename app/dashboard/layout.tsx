@@ -131,7 +131,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           </div>
 
           <Link href="/dashboard/profile" className="w-8 h-8 ml-1 overflow-hidden rounded-full ring-2 ring-slate-100 cursor-pointer active:scale-95 transition-transform block">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop" alt="Avatar" className="object-cover w-full h-full" />
+            <img src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150" alt="Avatar" className="object-cover w-full h-full" />
           </Link>
         </div>
       </header>
@@ -185,8 +185,8 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           </div>
         </aside>
 
-        <main className="flex-1 min-w-0 h-full pt-16 pb-16 md:py-8 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="w-full max-w-2xl mx-auto px-4 md:px-6">
+        <main className="flex-1 min-w-0 h-full pt-16 pb-16 md:py-8 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none">
+          <div className="w-full max-w-2xl mx-auto px-2 md:px-6">
             {children}
           </div>
         </main>

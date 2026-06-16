@@ -1,10 +1,14 @@
-import Image from "next/image";
-import Link from "next/link";
+import { createClient } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
+import DashboardClient from "@/components/dashboard-client";
 
-export default function Home() {
-  return (
-    <div className="">
-      <Link href="/dashboard">dashboard</Link>
-    </div>
-  );
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  return <DashboardClient userEmail={user.email!} />;
 }
