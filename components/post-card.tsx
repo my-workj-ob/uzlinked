@@ -1,13 +1,13 @@
 import React, { useState } from 'react'
 import { FiHeart, FiMessageSquare, FiSend } from 'react-icons/fi'
 import { FaHeart } from 'react-icons/fa'
-import { HiEllipsisHorizontal, HiMiniCircleStack } from 'react-icons/hi2'
+import { HiEllipsisHorizontal } from 'react-icons/hi2'
 
 export const PostCard = () => {
   const [liked, setLiked] = useState(false)
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden mt-4">
+    <div className="bg-white border border-slate-100 rounded-2xl  overflow-hidden mt-4">
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
           <img 
@@ -26,7 +26,7 @@ export const PostCard = () => {
       </div>
 
       <div className="px-4">
-        <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-slate-100">
+        <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-slate-100">
           <img 
             src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&auto=format&fit=crop" 
             alt="Office" 
