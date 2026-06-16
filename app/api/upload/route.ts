@@ -6,9 +6,9 @@ export async function POST(request: Request) {
         const endpointInput = process.env.BLACKBAZE_BUCKET_ENDPOINT || ''
         const rawEndpoint = endpointInput.startsWith('http') ? endpointInput : `https://${endpointInput}`
         
-        const bucketName = process.env.BLACKBAZE_BUCKET_NAME || 'uzlinked'
-        const region = process.env.BLACKBAZE_BUCKET_REGION || 'us-east-005'
-        const keyId = process.env.BLACKBAZE_APPLICATION_ID
+        const bucketName = process.env.BLACKBAZE_BUCKET_NAME 
+        const region = process.env.BLACKBAZE_BUCKET_REGION || ''
+        const keyId = process.env.BLACKBAZE_APPLICATION_ID || ''
         const appKey = process.env.BLACKBAZE_APPLICATION_KEY
 
         if (!keyId || !appKey) {

@@ -19,12 +19,12 @@ export async function GET(request: Request) {
                 accessKeyId: process.env.BLACKBAZE_APPLICATION_ID!,
                 secretAccessKey: process.env.BLACKBAZE_APPLICATION_KEY!,
             },
-            region: process.env.BLACKBAZE_BUCKET_REGION || 'us-east-005',
+            region: process.env.BLACKBAZE_BUCKET_REGION || '',
             forcePathStyle: true,
         })
 
         const command = new GetObjectCommand({
-            Bucket: process.env.BLACKBAZE_BUCKET_NAME || 'uzlinked',
+            Bucket: process.env.BLACKBAZE_BUCKET_NAME || '',
             Key: key,
         })
 
