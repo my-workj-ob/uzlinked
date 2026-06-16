@@ -2,11 +2,11 @@
 
 
 import React, { useState } from 'react'
-import { 
-  HiHome, HiOutlineHome, 
-  HiRss, HiOutlineRss, 
-  HiBuildingStorefront, HiOutlineBuildingStorefront, 
-  HiChatBubbleLeftRight, HiOutlineChatBubbleLeftRight, 
+import {
+  HiHome, HiOutlineHome,
+  HiRss, HiOutlineRss,
+  HiBuildingStorefront, HiOutlineBuildingStorefront,
+  HiChatBubbleLeftRight, HiOutlineChatBubbleLeftRight,
   HiCog6Tooth, HiOutlineCog6Tooth,
   HiPlus, HiOutlineBell, HiOutlineEnvelope
 } from 'react-icons/hi2'
@@ -20,7 +20,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-[#F7F9FB] text-slate-800 font-sans antialiased selection:bg-blue-500 selection:text-white">
-      
+
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/90 backdrop-blur-md border-b border-slate-100/80 md:hidden">
         <span className="text-2xl font-bold tracking-tight bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
           VibeGrid
@@ -30,25 +30,25 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             <HiOutlineEnvelope className="w-6 h-6" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white"></span>
           </button>
-          
+
           <button className="relative p-2 text-slate-700 hover:bg-slate-50 rounded-full active:scale-90 transition-all duration-150">
             <HiOutlineBell className="w-6 h-6" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white"></span>
           </button>
-          
+
           <div className="w-8 h-8 ml-1 overflow-hidden rounded-full ring-2 ring-slate-100 cursor-pointer active:scale-95 transition-transform">
             <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop" alt="Avatar" className="object-cover w-full h-full" />
           </div>
         </div>
       </header>
 
-      <div className="flex max-w-dvw mx-auto min-h-screen">
-        
+      <div className="flex max-w-350 mx-auto min-h-screen">
+
         <aside className="fixed bottom-0 top-0 left-[calc((100vw-1440px)/2)] hidden  p-6 bg-white border-r border-slate-100 md:block z-30">
           <div className="mb-10 text-2xl font-black tracking-tight bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             VibeGrid
           </div>
-          
+
           <nav className="flex flex-col gap-1.5">
             {[
               { id: 'home', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
@@ -63,11 +63,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id as any)}
-                  className={`flex items-center gap-4 px-4 py-3.5 rounded-xl font-medium transition-all duration-200 active:scale-[0.98] text-left ${
-                    isActive 
-                      ? 'text-blue-600 bg-blue-50/70 font-semibold shadow-sm shadow-blue-500/5' 
+                  className={`flex items-center gap-4 px-4 py-3.5 rounded-xl font-medium transition-all duration-200 active:scale-[0.98] text-left ${isActive
+                      ? 'text-blue-600 bg-blue-50/70 font-semibold shadow-sm shadow-blue-500/5'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
+                    }`}
                 >
                   <Icon className={`w-6 h-6 ${isActive ? 'text-blue-600' : 'text-slate-500'}`} />
                   <span className="text-sm">{item.label}</span>
@@ -75,7 +74,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
               )
             })}
           </nav>
-          
+
           <div className="absolute bottom-6 left-6 right-6">
             <div className="p-4 bg-linear-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-md shadow-blue-500/10">
               <h4 className="font-bold text-sm mb-0.5">Premiumga o'ting</h4>
