@@ -35,6 +35,32 @@ interface PostCardProps {
   onUpdatePost?: (id: string | number, newContent: string) => void
 }
 
+function formatTime(timeStr: string) {
+  if (!timeStr) return ''
+  try {
+    const date = new Date(timeStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Hozirgina'
+    if (diffMins < 60) return `${diffMins} daqiqa oldin`
+    if (diffHours < 24) return `${diffHours} soat oldin`
+    if (diffDays === 1) return 'Kecha'
+    if (diffDays < 7) return `${diffDays} kun oldin`
+
+    return date.toLocaleDateString('uz-UZ', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+  } catch {
+    return timeStr
+  }
+}
+
 export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) => {
   const [liked, setLiked] = useState(post.likedByMe || false)
   const [likesCount, setLikesCount] = useState(Number(post.likes) || 0)
@@ -83,12 +109,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
 
   // Like bosish/o'chirish logikasi
   const handleLikeToggle = async () => {
-    // Qiymatlarni aniq hisoblab olamiz
     const nextLiked = !liked
     const previousLiked = liked
     const previousCount = likesCount
 
-    // UI'ni darhol yangilaymiz (Foydalanuvchiga tez ko'rinishi uchun)
     setLiked(nextLiked)
     setLikesCount(prev => nextLiked ? prev + 1 : prev - 1)
 
@@ -96,7 +120,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
       const res = await fetch('/api/posts/like', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: post.id }) // post.id UUID bo'lishi shart!
+        body: JSON.stringify({ postId: post.id })
       })
 
       if (!res.ok) {
@@ -105,12 +129,12 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
         throw new Error("Serverda xato")
       }
     } catch (err) {
-      // Agar serverda xato bo'lsa, eski holatga qaytaramiz
       console.error("Like bosishda xatolik:", err)
       setLiked(previousLiked)
       setLikesCount(previousCount)
     }
   }
+
   // Kommentariya qo'shish logikasi
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -148,7 +172,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
   }
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden mt-4 relative transition-all ">
+    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden mt-4 relative transition-all">
 
       <div className="flex items-center justify-between p-4 relative">
         <div className="flex items-center gap-3">
@@ -160,7 +184,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
                 <span className="bg-blue-50 text-blue-600 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
               )}
             </div>
-            <span className="text-[11px] text-slate-400 font-medium">{post.time} • {post.location}</span>
+            <span className="text-[11px] text-slate-400 font-medium">{formatTime(post.time)} • {post.location}</span>
           </div>
         </div>
 
@@ -170,7 +194,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-100 rounded-xl shadow-xl z-40 p-1.5 animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-100 rounded-xl z-40 p-1.5 animate-in fade-in zoom-in-95 duration-100">
               {post.isOwner ? (
                 <>
                   <button onClick={() => { setIsEditing(true); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left">
@@ -235,7 +259,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
             comments.map((comment) => (
               <div key={comment.id} className="flex items-start gap-2.5 text-xs">
                 <img src={comment.avatar} className="w-6 h-6 object-cover rounded-full bg-slate-200 mt-0.5" alt="" />
-                <div className="bg-white border border-slate-100 rounded-xl px-3 py-2 shadow-2xs max-w-[85%]">
+                <div className="bg-white border border-slate-100 rounded-xl px-3 py-2 max-w-[85%]">
                   <span className="font-bold text-slate-900 block text-[11px] mb-0.5">{comment.user}</span>
                   <p className="text-slate-700 leading-tight">{comment.text}</p>
                 </div>
@@ -261,7 +285,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
       {isEditing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsEditing(false)} />
-          <form onSubmit={handleSaveEdit} className="bg-white border border-slate-100 w-full max-w-md rounded-2xl p-5 relative z-10 shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+          <form onSubmit={handleSaveEdit} className="bg-white border border-slate-100 w-full max-w-md rounded-2xl p-5 relative z-10 flex flex-col animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <FiEdit3 className="w-4 h-4 text-blue-600" />
@@ -272,7 +296,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
             <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={4} className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-blue-500 focus:bg-white transition-all resize-none mb-4" maxLength={500} />
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
               <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Bekor qilish</button>
-              <button type="submit" disabled={!editContent.trim() || editContent === post.content} className={`px-4 py-2 text-xs font-bold text-white rounded-xl transition-all shadow-md ${editContent.trim() && editContent !== post.content ? 'bg-blue-600 hover:bg-blue-700 active:scale-95' : 'bg-slate-300 cursor-not-allowed shadow-none'}`}>Saqlash</button>
+              <button type="submit" disabled={!editContent.trim() || editContent === post.content} className={`px-4 py-2 text-xs font-bold text-white rounded-xl transition-all ${editContent.trim() && editContent !== post.content ? 'bg-blue-600 hover:bg-blue-700 active:scale-95' : 'bg-slate-300 cursor-not-allowed'}`}>Saqlash</button>
             </div>
           </form>
         </div>

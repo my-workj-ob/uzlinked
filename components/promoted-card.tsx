@@ -3,7 +3,7 @@ import { HiBuildingStorefront } from 'react-icons/hi2'
 
 export const PromotedCard = () => {
   return (
-    <div className="relative bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden mt-4 border-l-4 border-l-[#A33B00]">
+    <div className="relative bg-white border border-slate-100 rounded-2xl overflow-hidden mt-4 border-l-4 border-l-[#A33B00]">
       
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
@@ -28,7 +28,7 @@ export const PromotedCard = () => {
             alt="Laptop Kit" 
             className="w-full h-full object-cover"
           />
-          <span className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md text-slate-800 font-bold text-xs px-2.5 py-1 rounded-lg shadow-sm border border-slate-200/50">
+          <span className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-md text-slate-800 font-bold text-xs px-2.5 py-1 rounded-lg border border-slate-200/50">
             $49.00
           </span>
         </div>
@@ -42,7 +42,7 @@ export const PromotedCard = () => {
           Sizning raqamli ijodingiz uchun eng yaxshi uskunalar to'plami. Bugun 20% chegirma bilan xarid qiling!
         </p>
 
-        <button className="w-full py-3 bg-[#A33B00] hover:bg-[#8F3300] text-white font-bold text-xs rounded-xl shadow-md shadow-orange-900/10 active:scale-[0.99] transition-all">
+        <button className="w-full py-3 bg-[#A33B00] hover:bg-[#8F3300] text-white font-bold text-xs rounded-xl active:scale-[0.99] transition-all">
           Hozir xarid qilish
         </button>
       </div>

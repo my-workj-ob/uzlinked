@@ -69,7 +69,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextU
         <HiChevronRight className="w-6 h-6" />
       </button>
 
-      <div className="relative w-full h-full md:h-[92vh] md:max-w-[420px] md:rounded-2xl overflow-hidden bg-neutral-900 shadow-2xl flex flex-col justify-center">
+      <div className="relative w-full h-full md:h-[92vh] md:max-w-[420px] md:rounded-2xl overflow-hidden bg-neutral-900 flex flex-col justify-center">
         
         <div className="absolute top-3 left-3 right-3 z-30 flex gap-1.5 px-1">
           {user.stories.map((_, idx) => (

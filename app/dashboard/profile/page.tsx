@@ -105,13 +105,13 @@ function EditProfileModal({ profile, onClose, onUpdateSuccess }: EditProfileModa
 
     return (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-[2rem] w-full max-w-sm shadow-2xl border border-slate-100 relative">
+            <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-[2rem] w-full max-w-sm border border-slate-200 relative">
                 <h3 className="text-xl font-black text-slate-900 mb-4 text-center">Profilni tahrirlash</h3>
                 
                 <div className="flex flex-col items-center mb-6 relative">
                     <div 
                         onClick={() => fileInputRef.current?.click()} 
-                        className="w-20 h-20 rounded-full bg-slate-100 relative cursor-pointer group overflow-hidden border-2 border-blue-600 shadow-md"
+                        className="w-20 h-20 rounded-full bg-slate-100 relative cursor-pointer group overflow-hidden border-2 border-blue-600"
                     >
                         <img 
                             src={avatarPreview || 'https://ui-avatars.com/api/?name=' + formData.nickname} 
@@ -166,7 +166,7 @@ function EditProfileModal({ profile, onClose, onUpdateSuccess }: EditProfileModa
                     <button type="button" onClick={onClose} className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm rounded-xl transition-all active:scale-95">
                         Bekor qilish
                     </button>
-                    <button type="submit" disabled={loading} className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-70">
+                    <button type="submit" disabled={loading} className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all active:scale-95 disabled:opacity-70">
                         {loading ? "Saqlanmoqda..." : "Saqlash"}
                     </button>
                 </div>
@@ -180,22 +180,90 @@ export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState('posts')
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(true)
+    
+    // Dynamic content states
+    const [stats, setStats] = useState([
+        { label: "Followers", count: 0 },
+        { label: "Following", count: 0 },
+        { label: "Posts", count: 0 },
+        { label: "Reels", count: 0 }
+    ])
+    const [posts, setPosts] = useState<any[]>([])
+    const [reels, setReels] = useState<any[]>([])
+    const [listings, setListings] = useState<any[]>([])
+
     const supabase = createClient()
     const router = useRouter()
 
-    useEffect(() => {
-        async function fetchProfile() {
+    const fetchProfileData = async () => {
+        try {
             const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-                const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-                setProfile(data)
-            }
+            if (!user) return
+
+            // 1. Profil ma'lumotlarini olish
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single()
+
+            setProfile(profileData)
+
+            // 2. Obunachilar (followers) sonini olish
+            const { count: followersCount } = await supabase
+                .from('follows')
+                .select('*', { count: 'exact', head: true })
+                .eq('following_id', user.id)
+
+            // 3. Obunalar (following) sonini olish
+            const { count: followingCount } = await supabase
+                .from('follows')
+                .select('*', { count: 'exact', head: true })
+                .eq('follower_id', user.id)
+
+            // 4. Postlarni olish
+            const { data: postsData } = await supabase
+                .from('posts')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+
+            // 5. Reellarni olish
+            const { data: reelsData } = await supabase
+                .from('reels')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+
+            // 6. E'lonlarni (listings) olish
+            const { data: listingsData } = await supabase
+                .from('listings')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+
+            setPosts(postsData || [])
+            setReels(reelsData || [])
+            setListings(listingsData || [])
+
+            setStats([
+                { label: "Followers", count: followersCount || 0 },
+                { label: "Following", count: followingCount || 0 },
+                { label: "Posts", count: (postsData || []).length },
+                { label: "Reels", count: (reelsData || []).length }
+            ])
+        } catch (error) {
+            console.error('Xatolik:', error)
+        } finally {
             setLoading(false)
         }
-        fetchProfile()
+    }
+
+    useEffect(() => {
+        fetchProfileData()
     }, [])
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium">Yuklanmoqda...</div>
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium text-xs">Yuklanmoqda...</div>
 
     return (
         <div className="pb-20">
@@ -205,7 +273,8 @@ export default function ProfilePage() {
                     onClose={() => setIsEditing(false)} 
                     onUpdateSuccess={(newData) => {
                         setProfile(newData)
-                        router.refresh() // Next.js keshini yangilash
+                        router.refresh()
+                        fetchProfileData()
                     }}
                 />
             )}
@@ -243,10 +312,10 @@ export default function ProfilePage() {
                 </p>
             </div>
 
-            <div className="mx-4 mt-5 bg-white border border-slate-100 rounded-2xl p-4 grid grid-cols-4 gap-2 text-center shadow-sm">
-                {MOCK_STATS.map((stat, idx) => (
+            <div className="mx-4 mt-5 bg-white border border-slate-100 rounded-2xl p-4 grid grid-cols-4 gap-2 text-center">
+                {stats.map((stat, idx) => (
                     <div key={idx} className="flex flex-col items-center justify-center">
-                        <span className={`text-base font-black tracking-tight ${stat.isEarnings ? 'text-[#A33B00]' : 'text-slate-900'}`}>
+                        <span className="text-base font-black tracking-tight text-slate-900">
                             {stat.count}
                         </span>
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
@@ -257,7 +326,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="mx-4 mt-4 flex gap-2">
-                <button onClick={() => setIsEditing(true)} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/10 active:scale-[0.99] transition-all">
+                <button onClick={() => setIsEditing(true)} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl active:scale-[0.99] transition-all">
                     Edit Profile
                 </button>
                 <button className="px-4 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl active:scale-[0.99] transition-all flex items-center justify-center">
@@ -270,14 +339,16 @@ export default function ProfilePage() {
                     {[
                         { id: 'posts', label: 'Posts', Icon: HiMiniSquares2X2 },
                         { id: 'reels', label: 'Reels', Icon: BsFilm },
-                        { id: 'subscriptions', label: 'Subscriptions', Icon: BsStar },
+                        { id: 'market', label: 'E\'lonlar (Soon)', Icon: BsStar, disabled: true },
                     ].map((tab) => {
                         const isSelected = activeTab === tab.id
                         return (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
+                                disabled={tab.disabled}
+                                onClick={() => !tab.disabled && setActiveTab(tab.id)}
                                 className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-3 text-xs font-bold transition-all border-b-2 ${
+                                    tab.disabled ? 'opacity-50 cursor-not-allowed text-slate-350 border-transparent' :
                                     isSelected ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'
                                 }`}
                             >
@@ -291,43 +362,87 @@ export default function ProfilePage() {
 
             <div className="p-4 max-w-md mx-auto sm:max-w-none">
                 {activeTab === 'posts' && (
-                    <div className="grid grid-cols-3 gap-2 auto-rows-[110px] sm:auto-rows-[160px]">
-                        {profilePosts.map((post) => {
-                            if (post.type === "image") {
-                                return (
-                                    <div key={post.id} className={`relative rounded-xl overflow-hidden bg-slate-100 group cursor-pointer border border-slate-200/20 ${post.gridClass}`}>
-                                        <img src={post.src} alt="Grid post" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                    </div>
-                                )
-                            }
-                            if (post.type === "promoted") {
-                                return (
-                                    <div key={post.id} className={`bg-[#FDF2EC] border border-orange-100 rounded-xl p-3 flex items-center justify-between overflow-hidden border-l-4 border-l-[#A33B00] ${post.gridClass}`}>
-                                        <div className="flex-1 pr-2">
-                                            <span className="bg-[#A33B00]/10 text-[#A33B00] font-black text-[8px] tracking-wider px-1.5 py-0.5 rounded uppercase">PROMOTED</span>
-                                            <h4 className="font-black text-xs text-slate-900 mt-1 leading-tight">Creative Masterclass</h4>
-                                            <p className="text-[10px] text-slate-500 font-medium mt-0.5 line-clamp-2">Unlock your full potential.</p>
-                                            <button className="mt-2 px-3 py-1 bg-[#A33B00] text-white text-[10px] font-black rounded-lg hover:bg-[#8F3300]">Enroll</button>
+                    posts.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2 auto-rows-[110px] sm:auto-rows-[160px]">
+                            {posts.map((post) => (
+                                <div key={post.id} className="relative rounded-xl overflow-hidden bg-slate-100 group cursor-pointer border border-slate-200/20 col-span-1 row-span-1">
+                                    {post.image_key ? (
+                                        <img 
+                                            src={`/api/images?key=${post.image_key}`} 
+                                            alt="Grid post" 
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center p-3 bg-gradient-to-br from-slate-50 to-blue-50">
+                                            <p className="text-[10px] text-slate-600 font-bold text-center line-clamp-3 leading-snug">{post.content}</p>
                                         </div>
-                                        <div className="w-24 h-20 bg-white rounded-lg overflow-hidden border border-orange-50 flex-shrink-0">
-                                            <img src="https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=200&auto=format&fit=crop" alt="Masterclass" className="w-full h-full object-cover" />
-                                        </div>
-                                    </div>
-                                )
-                            }
-                            return null
-                        })}
-                    </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 text-slate-400 text-xs font-medium bg-white rounded-2xl border border-dashed border-slate-200">
+                            Hozircha postlar yo'q
+                        </div>
+                    )
                 )}
+
                 {activeTab === 'reels' && (
-                    <div className="text-center py-12 text-slate-400 text-xs font-medium bg-white rounded-2xl border border-dashed border-slate-200">
-                        Hozircha Reels yuklanmagan
-                    </div>
+                    reels.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2 auto-rows-[160px] sm:auto-rows-[240px]">
+                            {reels.map((reel) => (
+                                <div key={reel.id} className="relative rounded-xl overflow-hidden bg-black group cursor-pointer col-span-1 row-span-1">
+                                    <video 
+                                        src={`/api/videos?key=${reel.video_key}`} 
+                                        className="w-full h-full object-cover"
+                                        muted
+                                        playsInline
+                                    />
+                                    <div className="absolute inset-0 bg-black/20 flex flex-col justify-end p-2">
+                                        <p className="text-white text-[10px] font-bold truncate">{reel.title || 'Reel'}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 text-slate-400 text-xs font-medium bg-white rounded-2xl border border-dashed border-slate-200">
+                            Hozircha Reels yuklanmagan
+                        </div>
+                    )
                 )}
-                {activeTab === 'subscriptions' && (
-                    <div className="text-center py-12 text-slate-400 text-xs font-medium bg-white rounded-2xl border border-dashed border-slate-200">
-                        Eksklyuziv obunalar mavjud emas
-                    </div>
+
+                {activeTab === 'market' && (
+                    listings.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {listings.map((item) => (
+                                <div key={item.id} className="bg-white border border-slate-100 rounded-xl overflow-hidden flex flex-col">
+                                    <div className="aspect-4/3 w-full bg-slate-50 relative">
+                                        {item.image_key ? (
+                                            <img 
+                                                src={`/api/images?key=${item.image_key}`} 
+                                                alt={item.title} 
+                                                className="w-full h-full object-cover" 
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                                                <span className="text-[10px] text-slate-400 font-bold">Rasm yo'q</span>
+                                            </div>
+                                        )}
+                                        <span className="absolute top-2 left-2 bg-white/95 backdrop-blur-md text-slate-800 text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-100/10">
+                                            {item.price}
+                                        </span>
+                                    </div>
+                                    <div className="p-2.5 flex-1 flex flex-col justify-between">
+                                        <h4 className="font-bold text-[10px] text-slate-800 leading-tight line-clamp-2">{item.title}</h4>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 text-slate-400 text-xs font-medium bg-white rounded-2xl border border-dashed border-slate-200">
+                            Eksklyuziv e'lonlar mavjud emas
+                        </div>
+                    )
                 )}
             </div>
         </div>
