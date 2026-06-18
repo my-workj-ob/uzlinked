@@ -104,8 +104,8 @@ export function useVideoCompressor() {
 
             await ffmpeg.exec(args)
 
-            const data = await ffmpeg.readFile(outputName)
-            const blob = new Blob([data], { type: 'video/mp4' })
+            const data = await ffmpeg.readFile(outputName) 
+            const blob = new Blob([data] as any, { type: 'video/mp4' })
 
             const compressedFile = new File(
                 [blob],
