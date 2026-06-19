@@ -1,10 +1,10 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy, FiAlertTriangle, FiUser } from 'react-icons/fi'
 import { FaHeart } from 'react-icons/fa'
 import { HiEllipsisHorizontal, HiXMark } from 'react-icons/hi2'
-import { get } from 'lodash'
 
 export interface CommentType {
   id: string | number
@@ -17,6 +17,7 @@ export interface CommentType {
 
 export interface PostType {
   id: string | number
+  authorId: string // profilga o'tish uchun shart
   author: string
   avatar: string
   time: string
@@ -62,6 +63,8 @@ function formatTime(timeStr: string) {
 }
 
 export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) => {
+  const router = useRouter()
+
   const [liked, setLiked] = useState(post.likedByMe || false)
   const [likesCount, setLikesCount] = useState(Number(post.likes) || 0)
   const [showComments, setShowComments] = useState(false)
@@ -171,15 +174,32 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
     setShowMenu(false)
   }
 
+  // Profilga o'tish — agar o'zining posti bo'lsa, shaxsiy profilga,
+  // aks holda boshqa userning dinamik profil sahifasiga
+  const goToProfile = () => {
+    if (post.isOwner) {
+      router.push('/dashboard/profile')
+    } else {
+      router.push(`/dashboard/profile/${post.authorId}`)
+    }
+  }
+
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden mt-4 relative transition-all">
+    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden relative transition-all">
 
       <div className="flex items-center justify-between p-4 relative">
-        <div className="flex items-center gap-3">
-          <img src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`} className="w-10 h-10 object-cover rounded-full bg-slate-100" alt="" />
+        <div
+          onClick={goToProfile}
+          className="flex items-center gap-3 cursor-pointer group"
+        >
+          <img
+            src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
+            className="w-10 h-10 object-cover rounded-full bg-slate-100 group-hover:opacity-85 transition-opacity"
+            alt=""
+          />
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="font-bold text-sm text-slate-900 leading-none">{post.author}</h4>
+              <h4 className="font-bold text-sm text-slate-900 leading-none group-hover:text-blue-600 transition-colors">{post.author}</h4>
               {post.isOwner && (
                 <span className="bg-blue-50 text-blue-600 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
               )}
@@ -206,7 +226,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
                 </>
               ) : (
                 <>
-                  <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left"><FiUser className="w-4 h-4 text-slate-400" /> Profilni ko'rish</button>
+                  <button onClick={() => { goToProfile(); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left"><FiUser className="w-4 h-4 text-slate-400" /> Profilni ko'rish</button>
                   <button onClick={handleCopyLink} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left"><FiCopy className="w-4 h-4 text-slate-400" /> Havolani nusxalash</button>
                   <div className="h-px bg-slate-100 my-1" />
                   <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-left"><FiAlertTriangle className="w-4 h-4" /> Shikoyat qilish</button>
@@ -246,7 +266,12 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
       </div>
 
       <div className="px-4 pb-4 text-xs text-slate-600 leading-relaxed border-b border-slate-50">
-        <span className="font-bold text-slate-900 mr-1">{post.author}</span> {post.content}
+        <span
+          onClick={goToProfile}
+          className="font-bold text-slate-900 mr-1 cursor-pointer hover:text-blue-600 transition-colors"
+        >
+          {post.author}
+        </span> {post.content}
       </div>
 
       {showComments && (

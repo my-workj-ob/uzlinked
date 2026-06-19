@@ -260,10 +260,9 @@ function ReelCard({
     }
 
     return (
-        <div className="relative w-full h-full bg-slate-950 snap-start snap-always flex-shrink-0 overflow-hidden flex items-center justify-center">
-            {/* Silliq o'tish effekti: No-active videolarni kichraytirish va xiralashtirish */}
+        <div className="relative w-full h-full bg-slate-950 snap-start snap-always shrink-0 overflow-hidden flex items-center justify-center">
             <div className={`relative w-full h-full transition-all duration-700 ease-out transform ${
-                isActive ? 'scale-100 opacity-100 blur-0' : 'scale-95 opacity-40 blur-[4px]'
+                isActive ? 'scale-100 opacity-100 blur-0' : 'scale-95 opacity-40 blur-xs'
             }`}>
                 <video
                     ref={videoRef}
@@ -276,7 +275,6 @@ function ReelCard({
                 />
             </div>
 
-            {/* Play/Pause Markaziy Indikator */}
             {showPlayIcon && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
                     <div className="w-20 h-20 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center animate-ping-once border border-white/20">
@@ -289,21 +287,17 @@ function ReelCard({
                 </div>
             )}
 
-            {/* Premium Progress Bar */}
             <div className="absolute bottom-0 left-0 right-0 z-30 h-1 bg-white/10 backdrop-blur-sm">
                 <div
-                    className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-100 ease-linear shadow-[0_0_8px_rgba(99,102,241,0.8)]"
+                    className="h-full bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-100 ease-linear shadow-[0_0_8px_rgba(99,102,241,0.8)]"
                     style={{ width: `${progress}%` }}
                 />
             </div>
 
-            {/* Gradient Overlays */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-black/40 pointer-events-none z-10" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/10 to-black/40 pointer-events-none z-10" />
 
-            {/* AI Subtitr Overlay */}
             <CaptionOverlay captions={reel.captions} currentTime={currentTime} visible={captionsOn} />
 
-            {/* O'ng Yon Panel — Glassmorphism Interaktiv Tugmalar */}
             <div className="absolute right-4 bottom-24 z-20 flex flex-col items-center gap-4.5">
                 <button 
                     onClick={handleLike} 
@@ -354,7 +348,6 @@ function ReelCard({
                 </button>
             </div>
 
-            {/* Pastki Panel — Muallif, Tavsif va AI Xulosa */}
             <div className={`absolute bottom-6 left-4 right-20 z-20 transition-all duration-500 delay-100 ${
                 isActive ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
             }`}>
@@ -414,7 +407,7 @@ function VibeFilterBar({
                         <button
                             key={tag}
                             onClick={() => onSelect(tag)}
-                            className={`flex-shrink-0 text-[12px] font-black px-4 py-2 rounded-full transition-all duration-300 transform active:scale-95 ${isActive
+                            className={`shrink-0 text-[12px] font-black px-4 py-2 rounded-full transition-all duration-300 transform active:scale-95 ${isActive
                                 ? 'bg-white text-slate-900 shadow-[0_4px_14px_rgba(255,255,255,0.3)] scale-105'
                                 : 'bg-black/30 text-white border border-white/10 backdrop-blur-md hover:bg-black/40'
                                 }`}
@@ -428,8 +421,8 @@ function VibeFilterBar({
                     <button
                         key={tag}
                         onClick={() => onSelect(tag)}
-                        className={`flex-shrink-0 inline-flex items-center gap-1.5 text-[12px] font-black px-4 py-2 rounded-full transition-all duration-300 transform active:scale-95 ${isActive
-                            ? `bg-gradient-to-r ${cfg.color} text-white shadow-lg scale-105 border border-white/20`
+                        className={`shrink-0 inline-flex items-center gap-1.5 text-[12px] font-black px-4 py-2 rounded-full transition-all duration-300 transform active:scale-95 ${isActive
+                            ? `bg-linear-to-r ${cfg.color} text-white shadow-lg scale-105 border border-white/20`
                             : 'bg-black/30 text-white border border-white/10 backdrop-blur-md hover:bg-black/40'
                             }`}
                     >
@@ -531,7 +524,6 @@ export default function ReelsPage() {
 
     return (
         <div className="relative -mx-2 md:-mx-6 select-none">
-            {/* Animatsiyalar uchun Maxsus CSS Styllari */}
             <style>{`
                 @keyframes ping-once {
                     0% { transform: scale(0.6); opacity: 0; }
@@ -560,7 +552,6 @@ export default function ReelsPage() {
                 .animate-heart-pop { animation: heart-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
             `}</style>
 
-            {/* Asosiy Video Konteyneri */}
             <div
                 ref={containerRef}
                 className="h-[calc(100svh-8rem)] md:h-[calc(100svh-4rem)] overflow-y-scroll snap-y snap-mandatory scroll-smooth rounded-3xl overflow-hidden relative shadow-2xl bg-black"
@@ -597,8 +588,7 @@ export default function ReelsPage() {
                 )}
             </div>
 
-            {/* Yuqori Chap Indikator ("Reels 1/5") */}
-            <div className="absolute top-4 left-4 z-40 flex items-center gap-2 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-lg">
+            <div className="absolute top-4 left-4 z-40 flex items-center gap-2 bg-black/20 backdrop-blur-md px-3 rounded-full border border-white/10 shadow-lg">
                 <BsFilm className="w-4 h-4 text-white animate-pulse" />
                 <span className="text-white font-black text-xs tracking-wide">Reels</span>
                 <span className="bg-white/20 text-white/90 text-[10px] font-black px-2 py-0.5 rounded-full">
@@ -606,7 +596,6 @@ export default function ReelsPage() {
                 </span>
             </div>
 
-            {/* Vibe Filter paneli */}
             <VibeFilterBar activeFilter={vibeFilter} onSelect={setVibeFilter} />
         </div>
     )

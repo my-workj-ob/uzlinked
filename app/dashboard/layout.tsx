@@ -278,7 +278,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-1 min-w-0 h-full pt-20 pb-24 md:py-8 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none">
+        <main className="flex-1 min-w-0 h-full pt-16 pb-24 md:py-8 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none">
           <div className="w-full max-w-2xl mx-auto px-4 md:px-6">
             {children}
           </div>

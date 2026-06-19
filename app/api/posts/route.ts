@@ -96,6 +96,7 @@ export async function GET() {
 
             return {
                 id: post.id,
+                authorId: post.user_id, // Profilga o'tish uchun shart — postni yozgan userning UUID'si
                 author: profile?.nickname || 'Noma\'lum',
                 avatar: profile?.avatar_url ? `${profile.avatar_url}` : '/default-avatar.png',
                 time: post.created_at,
