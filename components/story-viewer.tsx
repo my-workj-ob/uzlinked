@@ -118,7 +118,16 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextU
   if (!currentStory) return null
 
   return (
-    <div className="fixed inset-0 z-70 bg-black/95 md:bg-neutral-950 flex items-center justify-center select-none">
+    <div
+      onMouseDown={(e) => e.stopPropagation()}
+      onMouseUp={(e) => e.stopPropagation()}
+      onMouseMove={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-70 bg-black/95 md:bg-neutral-950 flex items-center justify-center select-none"
+    >
       <button onClick={handlePrev} className="hidden md:flex absolute left-8 z-30 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all">
         <HiChevronLeft className="w-6 h-6" />
       </button>
@@ -145,8 +154,8 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextU
         <div className="absolute top-6 left-4 right-4 z-30 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img src={user.avatar} alt={user.name} className="w-9 h-9 object-cover rounded-full ring-2 ring-white/50" />
-            <span className="font-semibold text-sm text-white drop-shadow-md">{user.name}</span>
-            <span className="text-xs text-white/60 drop-shadow-md">bugun</span>
+            <span className="font-semibold text-sm text-white">{user.name}</span>
+            <span className="text-xs text-white/60">bugun</span>
           </div>
           <button onClick={onClose} className="p-1.5 text-white/80 hover:text-white transition-colors">
             <HiXMark className="w-6 h-6" />

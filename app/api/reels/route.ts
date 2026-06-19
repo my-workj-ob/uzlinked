@@ -25,29 +25,99 @@ async function getSupabaseClient() {
     )
 }
 
-export async function GET() {
+function extractHashtags(text: string): string[] {
+    if (!text) return []
+    const matches = text.match(/#[\wʼ'’]+/g) || []
+    return [...new Set(matches.map(t => t.slice(1).toLowerCase()))]
+}
+
+// GET /api/reels?mode=foryou|following&filter=<vibeTag>
+export async function GET(request: Request) {
     try {
         const supabase = await getSupabaseClient()
         const { data: { session } } = await supabase.auth.getSession()
         const currentUserId = session?.user?.id
 
-        const { data: reels, error } = await supabase
+        const { searchParams } = new URL(request.url)
+        const mode = searchParams.get('mode') || 'foryou' // 'foryou' | 'following'
+
+        let reelIds: string[] | null = null
+
+        if (mode === 'foryou') {
+            // Algoritmik ranking — SQL funksiyasi get_ranked_reels orqali
+            const { data: ranked, error: rankError } = await supabase.rpc('get_ranked_reels', {
+                p_user_id: currentUserId || null,
+                p_limit: 50,
+                p_offset: 0,
+            })
+            if (!rankError && ranked) {
+                reelIds = ranked.map((r: any) => r.reel_id)
+            }
+        } else if (mode === 'following' && currentUserId) {
+            const { data: following } = await supabase
+                .from('follows')
+                .select('following_id')
+                .eq('follower_id', currentUserId)
+            const followingIds = (following || []).map((f: any) => f.following_id)
+            if (followingIds.length === 0) {
+                return NextResponse.json([])
+            }
+            const { data: followedReels } = await supabase
+                .from('reels')
+                .select('id')
+                .in('user_id', followingIds)
+                .order('created_at', { ascending: false })
+            reelIds = (followedReels || []).map((r: any) => r.id)
+        }
+
+        let query = supabase
             .from('reels')
             .select(`
                 *,
                 profiles (nickname, avatar_url, username),
                 reel_likes (user_id)
             `)
-            .order('created_at', { ascending: false })
+            .eq('moderation_status', 'active')
 
+        if (reelIds) {
+            if (reelIds.length === 0) return NextResponse.json([])
+            query = query.in('id', reelIds)
+        } else {
+            query = query.order('created_at', { ascending: false })
+        }
+
+        const { data: reels, error } = await query
         if (error) throw error
 
-        const formattedReels = reels.map((reel: any) => {
+        // Reel statistikasi (comments/saves/shares soni) bitta so'rovda
+        const { data: stats } = await supabase
+            .from('reel_stats')
+            .select('*')
+            .in('reel_id', reels.map((r: any) => r.id))
+
+        const statsMap = new Map((stats || []).map((s: any) => [s.reel_id, s]))
+
+        // Foydalanuvchining saqlagan reellari
+        let savedReelIds: string[] = []
+        if (currentUserId) {
+            const { data: saves } = await supabase
+                .from('reel_saves')
+                .select('reel_id')
+                .eq('user_id', currentUserId)
+                .in('reel_id', reels.map((r: any) => r.id))
+            savedReelIds = (saves || []).map((s: any) => s.reel_id)
+        }
+
+        // Agar foryou bo'lsa, score tartibini saqlab qolamiz
+        const orderMap = reelIds ? new Map(reelIds.map((id, i) => [id, i])) : null
+
+        let formattedReels = reels.map((reel: any) => {
             const totalLikes = reel.reel_likes ? reel.reel_likes.length : 0
             const isLikedByMe = reel.reel_likes
                 ? reel.reel_likes.some((l: any) => l.user_id === currentUserId)
                 : false
             const profile = Array.isArray(reel.profiles) ? reel.profiles[0] : reel.profiles
+            const stat = statsMap.get(reel.id)
 
             let videoUrl = ''
             if (reel.video_key) {
@@ -78,11 +148,21 @@ export async function GET() {
                 avatar: profile?.avatar_url || '/default-avatar.png',
                 likes: totalLikes,
                 isLikedByMe,
+                commentsCount: stat?.comments_count || 0,
+                sharesCount: stat?.shares_count || 0,
+                savesCount: stat?.saves_count || 0,
                 views: reel.views_count || 0,
                 isOwner: reel.user_id === currentUserId,
+                isSavedByMe: savedReelIds.includes(reel.id),
                 createdAt: reel.created_at,
             }
         })
+
+        if (orderMap) {
+            formattedReels = formattedReels.sort(
+                (a: any, b: any) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999)
+            )
+        }
 
         return NextResponse.json(formattedReels)
     } catch (error: any) {
@@ -109,7 +189,7 @@ export async function POST(request: Request) {
             .from('reels')
             .insert({
                 user_id: session.user.id,
-                video_key: videoKey, 
+                video_key: videoKey,
                 title: title || '',
                 description: description || '',
             })
@@ -117,6 +197,14 @@ export async function POST(request: Request) {
             .single()
 
         if (dbError) throw dbError
+
+        // Description va title'dan hashtag'larni ajratib, alohida jadvalga yozamiz (qidiruv uchun)
+        const tags = extractHashtags(`${title || ''} ${description || ''}`)
+        if (tags.length > 0) {
+            await supabase.from('reel_hashtags').insert(
+                tags.map(tag => ({ reel_id: newReel.id, tag }))
+            )
+        }
 
         return NextResponse.json({ success: true, reel: newReel }, { status: 201 })
     } catch (error: any) {

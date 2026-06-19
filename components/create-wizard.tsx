@@ -379,7 +379,7 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                             <button
                                 type="submit"
                                 disabled={!postText.trim() || isSubmitting}
-                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] flex items-center justify-center gap-2 shadow-sm"
+                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] flex items-center justify-center gap-2 border border-transparent dark:border-white/5"
                             >
                                 {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
                                 {isSubmitting ? "Yuklanmoqda..." : "Ulashish"}
@@ -462,7 +462,7 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                             <button
                                 type="submit"
                                 disabled={!selectedVideo || isSubmitting}
-                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] flex items-center justify-center gap-2 shadow-sm"
+                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] flex items-center justify-center gap-2 border border-transparent dark:border-white/5"
                             >
                                 {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
                                 {isSubmitting
@@ -543,7 +543,7 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                             <button
                                 type="submit"
                                 disabled={!marketTitle || !marketPrice || !imagePreview || isSubmitting}
-                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] mt-2 flex items-center justify-center gap-2 shadow-sm"
+                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] mt-2 flex items-center justify-center gap-2 border border-transparent dark:border-white/5"
                             >
                                 {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
                                 {isSubmitting ? "Yuklanmoqda..." : "E'lonni joylashtirish"}

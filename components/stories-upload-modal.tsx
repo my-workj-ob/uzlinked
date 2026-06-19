@@ -149,17 +149,17 @@ export const StoryUploadModal = ({ onClose, onUploaded }: StoryUploadModalProps)
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.18 }}
-                className="w-full max-w-sm bg-white rounded-3xl overflow-hidden p-4"
+                className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl overflow-hidden p-4 border border-slate-150 dark:border-white/5"
             >
-                <div className="flex items-center justify-between pb-3 border-b border-slate-50">
-                    <span className="text-sm font-black text-slate-900">Story qo'shish</span>
-                    <button onClick={onClose} disabled={isSubmitting} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg active:scale-90 transition-all disabled:opacity-50">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-50 dark:border-white/5">
+                    <span className="text-sm font-black text-slate-900 dark:text-slate-100">Story qo'shish</span>
+                    <button onClick={onClose} disabled={isSubmitting} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg active:scale-90 transition-all disabled:opacity-50 cursor-pointer">
                         <HiXMark className="w-5 h-5" />
                     </button>
                 </div>
 
                 <div className="relative mt-4">
-                    <label className="relative aspect-[9/16] max-h-80 w-full bg-slate-50/80 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden hover:bg-slate-100/70 transition-all group">
+                    <label className="relative aspect-[9/16] max-h-80 w-full bg-slate-50/80 dark:bg-slate-950 border border-dashed border-slate-200 dark:border-white/5 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden hover:bg-slate-100/70 dark:hover:bg-slate-900/50 transition-all group">
                         {preview ? (
                             mediaType === 'video' ? (
                                 <video src={preview} controls className="w-full h-full object-contain bg-black" />
@@ -169,15 +169,15 @@ export const StoryUploadModal = ({ onClose, onUploaded }: StoryUploadModalProps)
                         ) : (
                             <>
                                 <div className="flex gap-2 mb-2">
-                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:scale-110 transition-transform">
+                                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:scale-110 transition-transform">
                                         <HiOutlineCamera className="w-5 h-5" />
                                     </div>
-                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:scale-110 transition-transform">
+                                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:scale-110 transition-transform">
                                         <HiOutlineVideoCamera className="w-5 h-5" />
                                     </div>
                                 </div>
-                                <span className="text-xs text-slate-500 font-semibold">Rasm yoki video tanlang</span>
-                                <span className="text-[10px] text-slate-400 mt-0.5 font-medium">24 soat davomida ko'rinadi</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">Rasm yoki video tanlang</span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-medium">24 soat davomida ko'rinadi</span>
                             </>
                         )}
                         <input
@@ -189,21 +189,21 @@ export const StoryUploadModal = ({ onClose, onUploaded }: StoryUploadModalProps)
                         />
                     </label>
                     {preview && (
-                        <button type="button" onClick={removeMedia} disabled={isSubmitting} className="absolute top-2 right-2 w-7 h-7 bg-slate-900/60 hover:bg-slate-900/80 text-white rounded-full flex items-center justify-center active:scale-90 transition-all">
+                        <button type="button" onClick={removeMedia} disabled={isSubmitting} className="absolute top-2 right-2 w-7 h-7 bg-slate-900/60 hover:bg-slate-900/80 text-white rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer">
                             <HiXMark className="w-4 h-4" />
                         </button>
                     )}
 
                     {compressionProgress !== null && (
                         <div className="w-full mt-2.5">
-                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                                 <motion.div
                                     className="h-full bg-blue-600 rounded-full"
                                     animate={{ width: `${compressionProgress}%` }}
                                     transition={{ ease: 'linear', duration: 0.2 }}
                                 />
                             </div>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1 text-center">Video siqilmoqda: {compressionProgress}%</p>
+                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 text-center">Video siqilmoqda: {compressionProgress}%</p>
                         </div>
                     )}
                 </div>
@@ -212,7 +212,7 @@ export const StoryUploadModal = ({ onClose, onUploaded }: StoryUploadModalProps)
                     type="button"
                     onClick={handleSubmit}
                     disabled={!selectedFile || isSubmitting}
-                    className="w-full mt-4 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] flex items-center justify-center gap-2 shadow-sm"
+                    className="w-full mt-4 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 dark:disabled:text-slate-600 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer border border-transparent dark:border-white/5"
                 >
                     {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
                     {isSubmitting

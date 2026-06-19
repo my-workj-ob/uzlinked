@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy, FiAlertTriangle, FiUser } from 'react-icons/fi'
 import { FaHeart } from 'react-icons/fa'
@@ -65,6 +66,9 @@ function formatTime(timeStr: string) {
 export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) => {
   const router = useRouter()
 
+  // Hydration uchun mounted state
+  const [mounted, setMounted] = useState(false)
+
   const [liked, setLiked] = useState(post.likedByMe || false)
   const [likesCount, setLikesCount] = useState(Number(post.likes) || 0)
   const [showComments, setShowComments] = useState(false)
@@ -78,7 +82,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
   const [commentText, setCommentText] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Tashqariga bosilganda menyuni yopish
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -89,10 +96,16 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  // Kommentariyalar bo'limi ochilganda bazadan yuklash
   useEffect(() => {
-    loadComments()
-  }, [])
+    if (showComments) {
+      loadComments()
+      // Orqa fonni qotirib qo'yish
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => { document.body.style.overflow = 'unset' }
+  }, [showComments])
 
   const loadComments = async () => {
     try {
@@ -110,7 +123,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
     }
   }
 
-  // Like bosish/o'chirish logikasi
   const handleLikeToggle = async () => {
     const nextLiked = !liked
     const previousLiked = liked
@@ -126,19 +138,13 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
         body: JSON.stringify({ postId: post.id })
       })
 
-      if (!res.ok) {
-        const errorData = await res.json()
-        console.error("Server xatoligi:", errorData)
-        throw new Error("Serverda xato")
-      }
+      if (!res.ok) throw new Error("Serverda xato")
     } catch (err) {
-      console.error("Like bosishda xatolik:", err)
       setLiked(previousLiked)
       setLikesCount(previousCount)
     }
   }
 
-  // Kommentariya qo'shish logikasi
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!commentText.trim()) return
@@ -174,8 +180,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
     setShowMenu(false)
   }
 
-  // Profilga o'tish — agar o'zining posti bo'lsa, shaxsiy profilga,
-  // aks holda boshqa userning dinamik profil sahifasiga
   const goToProfile = () => {
     if (post.isOwner) {
       router.push('/dashboard/profile')
@@ -184,149 +188,204 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
     }
   }
 
+  const lastTapRef = useRef<number>(0)
+  const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false)
+
+  const handleImageClick = () => {
+    const now = Date.now()
+    if (now - lastTapRef.current < 300) {
+      setShowDoubleTapHeart(true)
+      setTimeout(() => setShowDoubleTapHeart(false), 1000)
+      if (!liked) handleLikeToggle()
+      lastTapRef.current = 0
+    } else {
+      lastTapRef.current = now
+    }
+  }
+
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden relative transition-all">
-
-      <div className="flex items-center justify-between p-4 relative">
-        <div
-          onClick={goToProfile}
-          className="flex items-center gap-3 cursor-pointer group"
-        >
-          <img
-            src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
-            className="w-10 h-10 object-cover rounded-full bg-slate-100 group-hover:opacity-85 transition-opacity"
-            alt=""
-          />
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-bold text-sm text-slate-900 leading-none group-hover:text-blue-600 transition-colors">{post.author}</h4>
-              {post.isOwner && (
-                <span className="bg-blue-50 text-blue-600 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
-              )}
-            </div>
-            <span className="text-[11px] text-slate-400 font-medium">{formatTime(post.time)} • {post.location}</span>
-          </div>
-        </div>
-
-        <div className="relative" ref={menuRef}>
-          <button onClick={() => setShowMenu(!showMenu)} className={`p-1 rounded-full transition-colors ${showMenu ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-700'}`}>
-            <HiEllipsisHorizontal className="w-6 h-6" />
-          </button>
-
-          {showMenu && (
-            <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-100 rounded-xl z-40 p-1.5 animate-in fade-in zoom-in-95 duration-100">
-              {post.isOwner ? (
-                <>
-                  <button onClick={() => { setIsEditing(true); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left">
-                    <FiEdit3 className="w-4 h-4 text-slate-400" /> Tahrirlash
-                  </button>
-                  <button onClick={() => { if (onDeletePost) onDeletePost(post.id); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors text-left">
-                    <FiTrash2 className="w-4 h-4" /> Postni o'chirish
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => { goToProfile(); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left"><FiUser className="w-4 h-4 text-slate-400" /> Profilni ko'rish</button>
-                  <button onClick={handleCopyLink} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left"><FiCopy className="w-4 h-4 text-slate-400" /> Havolani nusxalash</button>
-                  <div className="h-px bg-slate-100 my-1" />
-                  <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-50 rounded-lg transition-colors text-left"><FiAlertTriangle className="w-4 h-4" /> Shikoyat qilish</button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {post.image && (
-        <div className="px-4">
-          <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-slate-100">
-            <img src={post.image} alt="Post content" className="w-full h-full object-cover" />
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-4">
-          <button onClick={handleLikeToggle} className="flex items-center gap-1.5 text-slate-700 hover:text-rose-500 transition active:scale-90">
-            {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
-            <span className="text-xs font-semibold text-slate-600">{likesCount}</span>
-          </button>
-
-          <button onClick={() => setShowComments(!showComments)} className={`flex items-center gap-1.5 transition active:scale-90 ${showComments ? 'text-blue-600' : 'text-slate-700 hover:text-blue-500'}`}>
-            <FiMessageSquare className="w-5 h-5" />
-            <span className="text-xs font-semibold text-slate-600">{commentsCount}</span>
-          </button>
-
-          <button className="text-slate-700 hover:text-indigo-500 transition"><FiSend className="w-5 h-5" /></button>
-        </div>
-
-        <button className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95">
-          <div className="w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-white font-extrabold text-[9px]">$</div> Tip
-        </button>
-      </div>
-
-      <div className="px-4 pb-4 text-xs text-slate-600 leading-relaxed border-b border-slate-50">
-        <span
-          onClick={goToProfile}
-          className="font-bold text-slate-900 mr-1 cursor-pointer hover:text-blue-600 transition-colors"
-        >
-          {post.author}
-        </span> {post.content}
-      </div>
-
-      {showComments && (
-        <div className="bg-slate-50/70 p-4 space-y-3 border-t border-slate-100 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-3 duration-200">
-          {loadingComments ? (
-            <p className="text-[11px] text-slate-400 text-center py-2 font-medium">Izohlar yuklanmoqda...</p>
-          ) : comments.length === 0 ? (
-            <p className="text-[11px] text-slate-400 text-center py-2 font-medium">Birinchi bo'lib izoh qoldiring 💬</p>
-          ) : (
-            comments.map((comment) => (
-              <div key={comment.id} className="flex items-start gap-2.5 text-xs">
-                <img src={comment.avatar} className="w-6 h-6 object-cover rounded-full bg-slate-200 mt-0.5" alt="" />
-                <div className="bg-white border border-slate-100 rounded-xl px-3 py-2 max-w-[85%]">
-                  <span className="font-bold text-slate-900 block text-[11px] mb-0.5">{comment.user}</span>
-                  <p className="text-slate-700 leading-tight">{comment.text}</p>
-                </div>
-              </div>
-            ))
-          )}
-
-          <form onSubmit={handleAddComment} className="flex items-center gap-2 pt-2 border-t border-slate-200/60 sticky bottom-0 bg-slate-50/90">
-            <input
-              type="text"
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Fikr bildiring..."
-              className="w-full text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-blue-500 transition-all"
+    <>
+      <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden relative transition-all duration-300 ${showMenu ? 'z-50' : 'z-10'}`}>
+        <div className="flex items-center justify-between p-4 relative">
+          <div
+            onClick={goToProfile}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <img
+              src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
+              className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 group-hover:opacity-85 transition-opacity"
+              alt=""
             />
-            <button type="submit" disabled={!commentText.trim()} className="p-2 bg-blue-600 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl transition active:scale-95">
-              <FiSend className="w-3.5 h-3.5" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-none group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{post.author}</h4>
+                {post.isOwner && (
+                  <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
+                )}
+              </div>
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{formatTime(post.time)} • {post.location}</span>
+            </div>
+          </div>
+
+          <div className="relative" ref={menuRef}>
+            <button onClick={() => setShowMenu(!showMenu)} className={`p-1 rounded-full transition-colors ${showMenu ? 'bg-slate-100 dark:bg-slate-850 text-slate-700 dark:text-slate-300' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+              <HiEllipsisHorizontal className="w-6 h-6" />
             </button>
-          </form>
+
+            {showMenu && (
+              <div className="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-xl z-[9999] p-1.5 animate-in fade-in zoom-in-95 duration-100 shadow-xl">
+                {post.isOwner ? (
+                  <>
+                    <button onClick={() => { setIsEditing(true); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left">
+                      <FiEdit3 className="w-4 h-4 text-slate-400" /> Tahrirlash
+                    </button>
+                    <button onClick={() => { if (onDeletePost) onDeletePost(post.id); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-950/20 rounded-lg transition-colors text-left">
+                      <FiTrash2 className="w-4 h-4" /> Postni o'chirish
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => { goToProfile(); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"><FiUser className="w-4 h-4 text-slate-400" /> Profilni ko'rish</button>
+                    <button onClick={handleCopyLink} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"><FiCopy className="w-4 h-4 text-slate-400" /> Havolani nusxalash</button>
+                    <div className="h-px bg-slate-100 dark:bg-white/5 my-1" />
+                    <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-950/20 rounded-lg transition-colors text-left"><FiAlertTriangle className="w-4 h-4" /> Shikoyat qilish</button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
+
+        {post.image && (
+          <div className="px-4">
+            <div onClick={handleImageClick} className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 cursor-pointer select-none">
+              <img src={post.image} alt="Post content" className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02]" />
+              {showDoubleTapHeart && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 animate-double-tap-heart">
+                  <FaHeart className="w-20 h-20 text-rose-500" />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-4">
+            <button onClick={handleLikeToggle} className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition active:scale-90">
+              {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{likesCount}</span>
+            </button>
+
+            <button onClick={() => setShowComments(true)} className={`flex items-center gap-1.5 transition active:scale-90 ${showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400'}`}>
+              <FiMessageSquare className="w-5 h-5" />
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{commentsCount}</span>
+            </button>
+
+            <button className="text-slate-700 dark:text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition"><FiSend className="w-5 h-5" /></button>
+          </div>
+
+          <button className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 border border-amber-200/30">
+            <div className="w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-white font-extrabold text-[9px]">$</div> Tip
+          </button>
+        </div>
+
+        <div className="px-4 pb-4 text-xs text-slate-600 dark:text-slate-450 leading-relaxed border-b border-slate-50 dark:border-white/5">
+          <span
+            onClick={goToProfile}
+            className="font-bold text-slate-900 dark:text-slate-100 mr-1 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            {post.author}
+          </span> {post.content}
+        </div>
+
+        <div
+          onClick={() => setShowComments(true)}
+          className="p-3 bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-50 dark:border-white/5 flex items-center justify-between cursor-pointer text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350 transition-colors"
+        >
+          <span>Fikr bildiring...</span>
+          <FiSend className="w-3.5 h-3.5 text-slate-350 dark:text-slate-600" />
+        </div>
+      </div>
+
+      {/* PORTALS UCHUN KODLAR: DOMning eng tepasida (body ichida) chiqadi */}
+      {mounted && showComments && createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-end justify-center">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300 animate-fade-in"
+            onClick={() => setShowComments(false)}
+          />
+
+          <div className="relative z-[1000000] bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 w-full md:max-w-[450px] rounded-t-[28px] max-h-[70vh] flex flex-col animate-drawer-slide-up select-none">
+            <div className="absolute top-2.5 left-0 right-0 flex justify-center cursor-pointer py-1" onClick={() => setShowComments(false)}>
+              <div className="w-10 h-1 bg-slate-200 dark:bg-slate-800 rounded-full" />
+            </div>
+
+            <div className="flex items-center justify-between px-4 pt-6 pb-3 border-b border-slate-100 dark:border-white/5">
+              <span className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">Izohlar ({commentsCount})</span>
+              <button onClick={() => setShowComments(false)} className="p-1.5 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors">
+                <HiXMark className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none">
+              {loadingComments ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400">
+                  <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Birinchi bo'lib izoh qoldiring 💬</p>
+                </div>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="flex items-start gap-2.5 text-xs animate-comment-slide-in">
+                    <img src={comment.avatar} className="w-8 h-8 object-cover rounded-full bg-slate-200 dark:bg-slate-800 mt-0.5" alt="" />
+                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-white/5 rounded-2xl px-3.5 py-2 max-w-[85%]">
+                      <span className="font-bold text-slate-950 dark:text-slate-100 block text-[11px] mb-0.5">{comment.user}</span>
+                      <p className="text-slate-700 dark:text-slate-300 leading-tight">{comment.text}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <form onSubmit={handleAddComment} className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 flex items-center gap-2 pb-[calc(1.2rem+env(safe-area-inset-bottom))]">
+              <input
+                type="text"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Fikr bildiring..."
+                className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/5 rounded-2xl px-4 py-2.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
+              />
+              <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 dark:disabled:text-slate-650 rounded-2xl transition active:scale-95">
+                <FiSend className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+        </div>,
+        document.body
       )}
 
-      {isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsEditing(false)} />
-          <form onSubmit={handleSaveEdit} className="bg-white border border-slate-100 w-full max-w-md rounded-2xl p-5 relative z-10 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+      {mounted && isEditing && createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000000]" onClick={() => setIsEditing(false)} />
+          <form onSubmit={handleSaveEdit} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 w-full max-w-md rounded-2xl p-5 relative z-[1000001] flex flex-col animate-in fade-in zoom-in-95 duration-200 shadow-2xl">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-white/5">
               <div className="flex items-center gap-2">
                 <FiEdit3 className="w-4 h-4 text-blue-600" />
-                <h3 className="font-black text-sm text-slate-900 tracking-tight">Postni tahrirlash</h3>
+                <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight">Postni tahrirlash</h3>
               </div>
-              <button type="button" onClick={() => setIsEditing(false)} className="p-1 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600"><HiXMark className="w-5 h-5" /></button>
+              <button type="button" onClick={() => setIsEditing(false)} className="p-1 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg text-slate-400 dark:text-slate-500"><HiXMark className="w-5 h-5" /></button>
             </div>
-            <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={4} className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-blue-500 focus:bg-white transition-all resize-none mb-4" maxLength={500} />
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Bekor qilish</button>
-              <button type="submit" disabled={!editContent.trim() || editContent === post.content} className={`px-4 py-2 text-xs font-bold text-white rounded-xl transition-all ${editContent.trim() && editContent !== post.content ? 'bg-blue-600 hover:bg-blue-700 active:scale-95' : 'bg-slate-300 cursor-not-allowed'}`}>Saqlash</button>
+            <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={4} className="w-full text-xs text-slate-700 dark:text-slate-350 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/5 rounded-xl p-3 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all resize-none mb-4" maxLength={500} />
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-white/5">
+              <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-xl">Bekor qilish</button>
+              <button type="submit" disabled={!editContent.trim() || editContent === post.content} className={`px-4 py-2 text-xs font-bold text-white rounded-xl transition-all ${editContent.trim() && editContent !== post.content ? 'bg-blue-600 hover:bg-blue-700 active:scale-95' : 'bg-slate-350 dark:bg-slate-800 dark:text-slate-650 cursor-not-allowed'}`}>Saqlash</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
-
-    </div>
+    </>
   )
 }

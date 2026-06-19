@@ -52,17 +52,27 @@ export const Stories = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-3 py-3 overflow-x-auto -mx-2 px-2 md:mx-0 md:px-0">
+      <div className="flex items-center gap-3 py-3 overflow-x-auto -mx-2 px-2 md:mx-0 md:px-0 scrollbar-none">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full bg-slate-100 animate-pulse shrink-0" />
+          <div key={i} className="w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full bg-slate-100 dark:bg-slate-900 animate-pulse shrink-0" />
         ))}
       </div>
     )
   }
 
+  // Deterministic Vibe Match calculation based on user ID hash
+  const getVibeMatch = (userId: string): number => {
+    if (!userId) return 85
+    let sum = 0
+    for (let i = 0; i < userId.length; i++) {
+      sum += userId.charCodeAt(i)
+    }
+    return 75 + (sum % 25)
+  }
+
   return (
     <div className="relative">
-      <div className="flex items-center gap-3 py-3 overflow-x-auto -mx-2 px-2 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="flex items-center gap-3.5 py-2.5 overflow-x-auto -mx-2 px-2 md:mx-0 md:px-0 scrollbar-none">
 
         {/* Mening storym */}
         {myProfile && (
@@ -73,10 +83,10 @@ export const Stories = () => {
             <div
               className={`relative w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full p-0.5 transition-colors duration-200 ${myStoryGroup && myStoryGroup.stories.length > 0
                   ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-violet-600'
-                  : 'border-2 border-dashed border-slate-200 group-hover:border-blue-400'
+                  : 'border-2 border-dashed border-slate-200 dark:border-slate-800 group-hover:border-blue-400'
                 }`}
             >
-              <div className="w-full h-full bg-white rounded-full p-[2px]">
+              <div className="w-full h-full bg-white dark:bg-slate-950 rounded-full p-[2px]">
                 <img
                   src={myProfile.avatar_url || '/default-avatar.png'}
                   className="w-full h-full object-cover rounded-full"
@@ -88,36 +98,58 @@ export const Stories = () => {
                   e.stopPropagation()
                   setShowUpload(true)
                 }}
-                className="absolute -bottom-0.5 -right-0.5 bg-blue-600 text-white p-[3px] rounded-full ring-[2.5px] ring-white hover:bg-blue-700 transition-colors"
+                className="absolute -bottom-0.5 -right-0.5 bg-blue-600 text-white p-[3px] rounded-full ring-[2.5px] ring-white dark:ring-slate-950 hover:bg-blue-700 transition-colors"
               >
                 <HiPlus className="w-2.5 h-2.5" />
               </span>
             </div>
-            <span className="text-[10px] text-slate-500 mt-1.5 font-semibold">Siz</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5 font-semibold">Siz</span>
           </div>
         )}
 
         {/* Boshqa foydalanuvchilar story'lari */}
-        {otherStoryGroups.map((group, index) => (
-          <div
-            key={group.user_id}
-            onClick={() => setActiveUserIndex(index)}
-            className="flex flex-col items-center shrink-0 cursor-pointer active:scale-95 transition-transform duration-150 group"
-          >
-            <div className="w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-violet-600 p-[2.5px]">
-              <div className="w-full h-full bg-white rounded-full p-[2px]">
-                <img
-                  src={group.avatar_url || '/default-avatar.png'}
-                  className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-200"
-                  alt={group.username}
-                />
+        {otherStoryGroups.map((group, index) => {
+          const vibeScore = getVibeMatch(group.user_id)
+          let ringClass = "bg-gradient-to-tr from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800"
+          let badgeBg = "bg-slate-600"
+          if (vibeScore >= 93) {
+            ringClass = "bg-gradient-to-tr from-amber-400 via-rose-500 to-red-600"
+            badgeBg = "bg-gradient-to-r from-rose-500 to-red-600"
+          } else if (vibeScore >= 85) {
+            ringClass = "bg-gradient-to-tr from-blue-400 via-indigo-500 to-purple-600"
+            badgeBg = "bg-gradient-to-r from-blue-500 to-indigo-600"
+          } else {
+            ringClass = "bg-gradient-to-tr from-teal-400 via-emerald-500 to-green-600"
+            badgeBg = "bg-gradient-to-r from-teal-500 to-emerald-600"
+          }
+
+          return (
+            <div
+              key={group.user_id}
+              onClick={() => setActiveUserIndex(index)}
+              className="flex flex-col items-center shrink-0 cursor-pointer active:scale-95 transition-transform duration-150 group animate-in fade-in zoom-in-95 duration-200"
+            >
+              <div className="relative">
+                <div className={`w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full ${ringClass} p-[2.5px] relative`}>
+                  <div className="w-full h-full bg-white dark:bg-slate-950 rounded-full p-[2px]">
+                    <img
+                      src={group.avatar_url || '/default-avatar.png'}
+                      className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-200"
+                      alt={group.username}
+                    />
+                  </div>
+                </div>
+                {/* Vibe Match Badge (No shadows!) */}
+                <span className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 ${badgeBg} text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border border-white dark:border-slate-950 transition-colors z-10 whitespace-nowrap`}>
+                  {vibeScore}% vibe
+                </span>
               </div>
+              <span className="text-[10px] text-slate-600 dark:text-slate-400 mt-2.5 font-semibold truncate max-w-[64px] text-center">
+                {group.username}
+              </span>
             </div>
-            <span className="text-[10px] text-slate-600 mt-1.5 font-semibold truncate max-w-[64px] text-center">
-              {group.username}
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Mening story'larimni ko'rish */}

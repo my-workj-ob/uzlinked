@@ -108,7 +108,7 @@ export default function ExplorePage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Foydalanuvchilar va postlarni qidirish..."
-                        className="w-full h-12 pl-12 pr-4 bg-white border border-slate-200/80 rounded-2xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/5 transition-all duration-200"
+                        className="w-full h-12 pl-12 pr-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/5 rounded-2xl text-sm font-medium text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-4 focus:ring-blue-500/5 dark:focus:ring-blue-500/10 transition-all duration-200"
                     />
                 </div>
 
@@ -127,7 +127,7 @@ export default function ExplorePage() {
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap active:scale-95 transition-all duration-150 ${
                                     isSelected
                                         ? 'bg-blue-600 text-white'
-                                        : 'bg-white text-slate-600 border border-slate-200/60 hover:bg-slate-50'
+                                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                                 }`}
                             >
                                 <tab.Icon className="w-4 h-4" />
@@ -147,22 +147,22 @@ export default function ExplorePage() {
                 {/* Ijodkorlar ro'yxati */}
                 {!loading && profiles.length > 0 && (
                     <div className="space-y-3">
-                        <h3 className="font-black text-sm text-slate-900 tracking-tight pl-1">
+                        <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight pl-1">
                             {searchQuery ? `"${searchQuery}" natijalar` : 'Tavsiya etilgan ijodkorlar'}
                         </h3>
                         <div className="space-y-2">
                             {profiles.map((profile) => (
                                 <div
                                     key={profile.id}
-                                    className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-3 group hover:border-slate-200 transition-all"
+                                    className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-4 flex items-center gap-3 group hover:border-slate-200 dark:hover:border-white/10 transition-all"
                                 >
                                     <img
                                         src={profile.avatar.startsWith('http') ? profile.avatar : profile.avatar}
                                         alt={profile.nickname}
-                                        className="w-12 h-12 rounded-full object-cover bg-slate-100 ring-2 ring-slate-50"
+                                        className="w-12 h-12 rounded-full object-cover bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-50 dark:ring-slate-950"
                                     />
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="font-bold text-sm text-slate-900 truncate">{profile.nickname}</h4>
+                                        <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{profile.nickname}</h4>
                                         <p className="text-xs text-blue-600 font-semibold">@{profile.username || 'user'}</p>
                                         <div className="flex items-center gap-3 mt-1">
                                             <span className="text-[10px] text-slate-400 font-bold">{profile.followers} followers</span>
@@ -175,7 +175,7 @@ export default function ExplorePage() {
                                             disabled={followLoading === profile.id}
                                             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95 disabled:opacity-60 ${
                                                 profile.isFollowing
-                                                    ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700'
                                                     : 'bg-blue-600 text-white hover:bg-blue-700'
                                             }`}
                                         >
@@ -195,7 +195,7 @@ export default function ExplorePage() {
                 {/* Post rasmlar gridi */}
                 {!loading && posts.length > 0 && (
                     <div className="space-y-3">
-                        <h3 className="font-black text-sm text-slate-900 tracking-tight pl-1">
+                        <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight pl-1">
                             {searchQuery ? `"${searchQuery}" natijalar` : 'Siz uchun tavsiyalar'}
                         </h3>
 
@@ -203,7 +203,7 @@ export default function ExplorePage() {
                             {posts.map((item, index) => (
                                 <div
                                     key={item.id}
-                                    className={`relative rounded-2xl overflow-hidden group bg-slate-100 cursor-pointer border border-slate-200/10 ${sizePatterns[index % sizePatterns.length]}`}
+                                    className={`relative rounded-2xl overflow-hidden group bg-slate-100 dark:bg-slate-900 cursor-pointer border border-slate-200/10 dark:border-white/5 ${sizePatterns[index % sizePatterns.length]}`}
                                 >
                                     {item.image ? (
                                         <img
@@ -212,8 +212,8 @@ export default function ExplorePage() {
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                                         />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center p-3 bg-gradient-to-br from-blue-50 to-indigo-50">
-                                            <p className="text-xs text-slate-600 font-medium line-clamp-3 text-center">{item.content}</p>
+                                        <div className="w-full h-full flex items-center justify-center p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-950 dark:to-indigo-950/20">
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium line-clamp-3 text-center">{item.content}</p>
                                         </div>
                                     )}
 
@@ -234,9 +234,9 @@ export default function ExplorePage() {
 
                 {/* Bo'sh holat */}
                 {!loading && posts.length === 0 && profiles.length === 0 && (
-                    <div className="py-16 bg-white border border-slate-100 rounded-2xl flex flex-col items-center justify-center text-center p-6">
-                        <FiEye className="w-8 h-8 text-slate-200 mb-3" />
-                        <p className="text-xs font-bold text-slate-400">
+                    <div className="py-16 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl flex flex-col items-center justify-center text-center p-6">
+                        <FiEye className="w-8 h-8 text-slate-200 dark:text-slate-700 mb-3" />
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500">
                             {searchQuery ? `"${searchQuery}" bo'yicha hech narsa topilmadi` : 'Hozircha kontentlar yo\'q'}
                         </p>
                     </div>

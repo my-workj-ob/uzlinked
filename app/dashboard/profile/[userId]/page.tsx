@@ -162,50 +162,50 @@ export default function UserProfilePage() {
     }
 
     return (
-        <div className="flex flex-col gap-4 pb-10">
+        <div className="flex flex-col gap-4 pb-10 text-slate-800 dark:text-slate-200">
             <div className="flex items-center gap-3 pt-2">
                 <button
                     onClick={() => router.back()}
-                    className="p-2 -ml-2 hover:bg-slate-100 rounded-xl active:scale-90 transition-all"
+                    className="p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-xl active:scale-90 transition-all text-slate-700 dark:text-slate-300"
                 >
-                    <HiArrowLeft className="w-5 h-5 text-slate-700" />
+                    <HiArrowLeft className="w-5 h-5" />
                 </button>
-                <span className="text-sm font-black text-slate-900">Profil</span>
+                <span className="text-sm font-black text-slate-900 dark:text-slate-100">Profil</span>
             </div>
 
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col items-center text-center gap-3">
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-5 flex flex-col items-center text-center gap-3">
                 <img
                     src={profile.avatar_url || '/default-avatar.png'}
                     alt={profile.username}
-                    className="w-20 h-20 object-cover rounded-full bg-slate-100 ring-4 ring-slate-50"
+                    className="w-20 h-20 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-4 ring-slate-50 dark:ring-slate-950"
                 />
                 <div>
-                    <h2 className="text-base font-black text-slate-900">{profile.nickname || profile.username}</h2>
-                    <p className="text-xs text-slate-400 font-semibold">@{profile.username}</p>
+                    <h2 className="text-base font-black text-slate-900 dark:text-slate-100">{profile.nickname || profile.username}</h2>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">@{profile.username}</p>
                 </div>
 
                 <div className="flex items-center gap-5 text-center">
                     <div>
-                        <p className="text-sm font-black text-slate-900">{followersCount}</p>
-                        <p className="text-[10px] text-slate-400 font-semibold">Obunachilar</p>
+                        <p className="text-sm font-black text-slate-900 dark:text-slate-100">{followersCount}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Obunachilar</p>
                     </div>
-                    <div className="w-px h-6 bg-slate-100" />
+                    <div className="w-px h-6 bg-slate-100 dark:bg-white/10" />
                     <div>
-                        <p className="text-sm font-black text-slate-900">{followingCount}</p>
-                        <p className="text-[10px] text-slate-400 font-semibold">Obunalar</p>
+                        <p className="text-sm font-black text-slate-900 dark:text-slate-100">{followingCount}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Obunalar</p>
                     </div>
                 </div>
 
                 {profile.bio && (
-                    <p className="text-xs text-slate-600 leading-relaxed max-w-xs">{profile.bio}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-xs">{profile.bio}</p>
                 )}
 
                 <button
                     onClick={handleFollowToggle}
                     disabled={followLoading}
-                    className={`w-full max-w-[220px] py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-60 ${
+                    className={`w-full max-w-[220px] py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer ${
                         isFollowing
-                            ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700'
                             : 'bg-blue-600 text-white hover:bg-blue-700'
                     }`}
                 >
@@ -215,8 +215,8 @@ export default function UserProfilePage() {
 
             <div className="flex flex-col gap-4">
                 {posts.length === 0 ? (
-                    <div className="w-full py-16 bg-slate-50/50 border border-dashed border-slate-100 rounded-2xl text-center">
-                        <p className="text-xs text-slate-400 font-bold">Hozircha postlar yo'q 🏜️</p>
+                    <div className="w-full py-16 bg-slate-50/50 dark:bg-slate-900/20 border border-dashed border-slate-100 dark:border-white/5 rounded-2xl text-center">
+                        <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">Hozircha postlar yo'q 🏜️</p>
                     </div>
                 ) : (
                     posts.map((post) => (
