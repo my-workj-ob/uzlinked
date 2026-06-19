@@ -210,7 +210,7 @@ export function useSettings() {
   return useQuery<SettingsData>({
     queryKey: ['settings'],
     queryFn: async () => {
-      const res = await fetch('/api/profile/settings')
+      const res = await fetch(`/api/profile/settings?t=${Date.now()}`, { cache: 'no-store' })
       if (!res.ok) {
         const errData = await res.json()
         throw new Error(errData.error || 'Sozlamalarni yuklashda xatolik yuz berdi')
