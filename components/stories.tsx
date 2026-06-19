@@ -3,17 +3,26 @@
 import React, { useState } from 'react'
 import { HiPlus } from 'react-icons/hi2'
 import { StoryViewer } from './story-viewer'
-import { STORIES_DATA } from '@/data/stories'
+import { useStories } from '@/hooks/use-stories'
+import { StoryUploadModal } from './stories-upload-modal'
 
 export const Stories = () => {
+  const { otherStoryGroups, myStoryGroup, myProfile, isLoading, refetch } = useStories()
   const [activeUserIndex, setActiveUserIndex] = useState<number | null>(null)
-
-  // "isMe" bo'lmagan story'larni ajratish
-  const storyUsers = STORIES_DATA.filter(u => !u.isMe && u.stories.length > 0)
-  const myStory = STORIES_DATA.find(u => u.isMe)
+  const [viewingMine, setViewingMine] = useState(false)
+  const [showUpload, setShowUpload] = useState(false)
 
   const handleNextUser = () => {
-    if (activeUserIndex !== null && activeUserIndex < storyUsers.length - 1) {
+    if (viewingMine) {
+      setViewingMine(false)
+      if (otherStoryGroups.length > 0) {
+        setActiveUserIndex(0)
+      } else {
+        setActiveUserIndex(null)
+      }
+      return
+    }
+    if (activeUserIndex !== null && activeUserIndex < otherStoryGroups.length - 1) {
       setActiveUserIndex(activeUserIndex + 1)
     } else {
       setActiveUserIndex(null)
@@ -21,6 +30,11 @@ export const Stories = () => {
   }
 
   const handlePrevUser = () => {
+    if (viewingMine) {
+      setViewingMine(false)
+      setActiveUserIndex(null)
+      return
+    }
     if (activeUserIndex !== null && activeUserIndex > 0) {
       setActiveUserIndex(activeUserIndex - 1)
     } else {
@@ -28,20 +42,54 @@ export const Stories = () => {
     }
   }
 
+  const handleMyAvatarClick = () => {
+    if (myStoryGroup && myStoryGroup.stories.length > 0) {
+      setViewingMine(true)
+    } else {
+      setShowUpload(true)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-3 py-3 overflow-x-auto -mx-2 px-2 md:mx-0 md:px-0">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full bg-slate-100 animate-pulse shrink-0" />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="relative">
       <div className="flex items-center gap-3 py-3 overflow-x-auto -mx-2 px-2 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
         {/* Mening storym */}
-        {myStory && (
-          <div className="flex flex-col items-center shrink-0 cursor-pointer group">
-            <div className="relative w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full p-0.5 border-2 border-dashed border-slate-200 group-hover:border-blue-400 transition-colors duration-200">
-              <img
-                src={myStory.avatar}
-                className="w-full h-full object-cover rounded-full"
-                alt="Siz"
-              />
-              <span className="absolute -bottom-0.5 -right-0.5 bg-blue-600 text-white p-[3px] rounded-full ring-[2.5px] ring-white group-hover:bg-blue-700 transition-colors">
+        {myProfile && (
+          <div
+            onClick={handleMyAvatarClick}
+            className="flex flex-col items-center shrink-0 cursor-pointer group active:scale-95 transition-transform duration-150"
+          >
+            <div
+              className={`relative w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full p-0.5 transition-colors duration-200 ${myStoryGroup && myStoryGroup.stories.length > 0
+                  ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-violet-600'
+                  : 'border-2 border-dashed border-slate-200 group-hover:border-blue-400'
+                }`}
+            >
+              <div className="w-full h-full bg-white rounded-full p-[2px]">
+                <img
+                  src={myProfile.avatar_url || '/default-avatar.png'}
+                  className="w-full h-full object-cover rounded-full"
+                  alt="Siz"
+                />
+              </div>
+              <span
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowUpload(true)
+                }}
+                className="absolute -bottom-0.5 -right-0.5 bg-blue-600 text-white p-[3px] rounded-full ring-[2.5px] ring-white hover:bg-blue-700 transition-colors"
+              >
                 <HiPlus className="w-2.5 h-2.5" />
               </span>
             </div>
@@ -50,40 +98,66 @@ export const Stories = () => {
         )}
 
         {/* Boshqa foydalanuvchilar story'lari */}
-        {storyUsers.map((story, index) => (
+        {otherStoryGroups.map((group, index) => (
           <div
-            key={story.id}
+            key={group.user_id}
             onClick={() => setActiveUserIndex(index)}
             className="flex flex-col items-center shrink-0 cursor-pointer active:scale-95 transition-transform duration-150 group"
           >
             <div className="w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-violet-600 p-[2.5px]">
               <div className="w-full h-full bg-white rounded-full p-[2px]">
                 <img
-                  src={story.avatar}
+                  src={group.avatar_url || '/default-avatar.png'}
                   className="w-full h-full object-cover rounded-full group-hover:scale-105 transition-transform duration-200"
-                  alt={story.username}
+                  alt={group.username}
                 />
               </div>
             </div>
             <span className="text-[10px] text-slate-600 mt-1.5 font-semibold truncate max-w-[64px] text-center">
-              {story.username}
+              {group.username}
             </span>
           </div>
         ))}
       </div>
 
-      {/* Story Viewer */}
-      {activeUserIndex !== null && storyUsers[activeUserIndex] && (
+      {/* Mening story'larimni ko'rish */}
+      {viewingMine && myStoryGroup && (
         <StoryViewer
           user={{
-            id: storyUsers[activeUserIndex].id,
-            name: storyUsers[activeUserIndex].username,
-            avatar: storyUsers[activeUserIndex].avatar,
-            stories: storyUsers[activeUserIndex].stories,
+            id: myStoryGroup.user_id,
+            name: 'Siz',
+            avatar: myStoryGroup.avatar_url || '/default-avatar.png',
+            stories: myStoryGroup.stories.map(s => ({ url: s.media_url, type: s.media_type })),
+          }}
+          onClose={() => setViewingMine(false)}
+          onNextUser={handleNextUser}
+          onPrevUser={handlePrevUser}
+        />
+      )}
+
+      {/* Boshqalarning story'larini ko'rish */}
+      {!viewingMine && activeUserIndex !== null && otherStoryGroups[activeUserIndex] && (
+        <StoryViewer
+          user={{
+            id: otherStoryGroups[activeUserIndex].user_id,
+            name: otherStoryGroups[activeUserIndex].nickname || otherStoryGroups[activeUserIndex].username,
+            avatar: otherStoryGroups[activeUserIndex].avatar_url || '/default-avatar.png',
+            stories: otherStoryGroups[activeUserIndex].stories.map(s => ({ url: s.media_url, type: s.media_type })),
           }}
           onClose={() => setActiveUserIndex(null)}
           onNextUser={handleNextUser}
           onPrevUser={handlePrevUser}
+        />
+      )}
+
+      {/* Story yuklash modali */}
+      {showUpload && (
+        <StoryUploadModal
+          onClose={() => setShowUpload(false)}
+          onUploaded={() => {
+            setShowUpload(false)
+            refetch()
+          }}
         />
       )}
     </div>

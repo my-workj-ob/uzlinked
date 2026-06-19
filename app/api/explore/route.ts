@@ -90,11 +90,11 @@ export async function GET(request: Request) {
         const { data: posts, error } = await supabase
             .from('posts')
             .select(`
-                id, image_key, content, created_at,
+                id, image_url, content, created_at,
                 profiles (nickname, avatar_url),
                 likes (user_id)
             `)
-            .not('image_key', 'is', null)
+            .not('image_url', 'is', null)
             .order('created_at', { ascending: false })
             .limit(30)
 
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
             const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles
             return {
                 id: post.id,
-                image: post.image_key ? `/api/images?key=${post.image_key}` : null,
+                image: post.image_url,
                 content: post.content,
                 author: profile?.nickname || 'Noma\'lum',
                 avatar: profile?.avatar_url || '/default-avatar.png',

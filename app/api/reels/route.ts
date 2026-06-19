@@ -3,7 +3,6 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { UTApi } from 'uploadthing/server'
 
-// UploadThing Backend SDK-ni ishga tushiramiz (.env ichidagi UPLOADTHING_TOKEN-ni avtomatik oladi)
 const utapi = new UTApi()
 
 async function getSupabaseClient() {
@@ -19,14 +18,13 @@ async function getSupabaseClient() {
                         cookiesToSet.forEach(({ name, value, options }) =>
                             cookieStore.set(name, value, options)
                         )
-                    } catch {}
+                    } catch { }
                 },
             },
         }
     )
 }
 
-// GET — Barcha reellarni olish
 export async function GET() {
     try {
         const supabase = await getSupabaseClient()
@@ -51,21 +49,17 @@ export async function GET() {
                 : false
             const profile = Array.isArray(reel.profiles) ? reel.profiles[0] : reel.profiles
 
-            // Eskidan qolgan Backblaze videolari va yangi UploadThing manzillarini moslashtirish
             let videoUrl = ''
             if (reel.video_key) {
                 if (reel.video_key.startsWith('http')) {
                     videoUrl = reel.video_key
                 } else if (reel.video_key.includes('/')) {
-                    // Agar kalitda '/' bo'lsa (masalan: videos/123.mp4), demak bu eski Backblaze fayli
                     videoUrl = `/api/videos?key=${reel.video_key}`
                 } else {
-                    // Agar toza unikal kalit bo'lsa, demak yangi UploadThing CDN manzili
                     videoUrl = `https://utfs.io/f/${reel.video_key}`
                 }
             }
 
-            // Huddi shu mantiq rasm muqovalari (Thumbnail) uchun ham amal qiladi
             let thumbnailUrl = null
             if (reel.thumbnail_key) {
                 thumbnailUrl = reel.thumbnail_key.includes('/')
@@ -96,52 +90,41 @@ export async function GET() {
     }
 }
 
-// POST — Yangi reel yuklash
 export async function POST(request: Request) {
     try {
         const supabase = await getSupabaseClient()
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
 
-        const formData = await request.formData()
-        const videoFile = formData.get('video') as File | null
-        const title = formData.get('title') as string || ''
-        const description = formData.get('description') as string || ''
-
-        if (!videoFile || videoFile.size === 0) {
-            return NextResponse.json({ error: 'Video fayl tanlanmagan' }, { status: 400 })
+        if (!session) {
+            return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
         }
 
-        // Frontend-dan kelgan faylni to'g'ridan-to'g'ri UploadThing serveriga yuboramiz
-        const response = await utapi.uploadFiles(videoFile)
-        
-        if (response.error) {
-            throw new Error(`UploadThing xatoligi: ${response.error.message}`)
+        const body = await request.json()
+        const { title, description, videoKey } = body
+        if (!videoKey) {
+            return NextResponse.json({ error: 'videoKey bo\'lishi shart!' }, { status: 400 })
         }
 
-        // Yuklangan faylning unikal kalitini (key) olamiz
-        const videoKey = response.data.key
-
-        // Supabase bazasiga yangi qator qo'shamiz
         const { data: newReel, error: dbError } = await supabase
             .from('reels')
             .insert({
                 user_id: session.user.id,
-                video_key: videoKey,
-                title,
-                description,
+                video_key: videoKey, 
+                title: title || '',
+                description: description || '',
             })
             .select()
             .single()
 
         if (dbError) throw dbError
+
         return NextResponse.json({ success: true, reel: newReel }, { status: 201 })
     } catch (error: any) {
+        console.error("Reel POST Error:", error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }
 
-// DELETE — Reelni o'chirish
 export async function DELETE(request: Request) {
     try {
         const supabase = await getSupabaseClient()
@@ -164,7 +147,6 @@ export async function DELETE(request: Request) {
 
         if (reel.video_key) {
             try {
-                // Agar kalit ichida '/' bo'lmasa, demak bu yangi UploadThing fayli va uni bulutdan o'chiramiz
                 if (!reel.video_key.includes('/')) {
                     await utapi.deleteFiles(reel.video_key)
                 }

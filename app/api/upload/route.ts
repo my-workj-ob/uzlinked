@@ -1,63 +1,68 @@
-import { NextResponse } from 'next/server'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
 
 export async function POST(request: Request) {
-    try {
-        const endpointInput = process.env.BLACKBAZE_BUCKET_ENDPOINT || ''
-        const rawEndpoint = endpointInput.startsWith('http') ? endpointInput : `https://${endpointInput}`
-        
-        const bucketName = process.env.BLACKBAZE_BUCKET_NAME 
-        const region = process.env.BLACKBAZE_BUCKET_REGION || ''
-        const keyId = process.env.BLACKBAZE_APPLICATION_ID || ''
-        const appKey = process.env.BLACKBAZE_APPLICATION_KEY
+  try {
+    const supabase = await createClient();
 
-        if (!keyId || !appKey) {
-            return NextResponse.json({ 
-                error: 'Backblaze kalitlari topilmadi. .env faylini tekshiring.' 
-            }, { status: 500 })
-        }
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-        const formData = await request.formData()
-        const file = formData.get('file') as File
-
-        if (!file) {
-            return NextResponse.json({ error: 'Fayl tanlanmagan' }, { status: 400 })
-        }
-
-        const arrayBuffer = await file.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
-
-        const fileExtension = file.name.split('.').pop()
-        const fileName = `avatars/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExtension}`
-
-        const s3 = new S3Client({
-            endpoint: rawEndpoint,
-            credentials: {
-                accessKeyId: keyId,
-                secretAccessKey: appKey,
-            },
-            region: region,
-            forcePathStyle: true, 
-        })
-
-        await s3.send(
-            new PutObjectCommand({
-                Bucket: bucketName,
-                Key: fileName,
-                Body: buffer,
-                ContentType: file.type,
-            })
-        )
-
-        const match = region.match(/\d+$/)
-        const regionNum = match ? match[0] : '005'
-        const publicUrl = `/api/images?key=${fileName}`
-
-        return NextResponse.json({ url: publicUrl })
-    } catch (error: any) {
-        return NextResponse.json({ 
-            error: error.message,
-            name: error.name
-        }, { status: 500 })
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Avtorizatsiyadan o'tilmagan" },
+        { status: 401 }
+      );
     }
+
+    const formData = await request.formData();
+
+    const file = formData.get("file") as File | null;
+
+    if (!file) {
+      return NextResponse.json(
+        { error: "Fayl topilmadi" },
+        { status: 400 }
+      );
+    }
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, file, {
+        upsert: true,
+      });
+
+    if (uploadError) {
+      return NextResponse.json(
+        { error: uploadError.message },
+        { status: 400 }
+      );
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(fileName);
+
+    return NextResponse.json({
+      success: true,
+      url: publicUrl,
+    });
+  } catch (error: any) {
+    console.error(error);
+
+    return NextResponse.json(
+      {
+        error: "Ichki xatolik yuz berdi",
+        details: error.message,
+      },
+      { status: 500 }
+    );
+  }
 }

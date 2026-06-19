@@ -1,13 +1,18 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { HiXMark, HiChevronLeft, HiChevronRight } from 'react-icons/hi2'
 
+interface StoryMedia {
+  url: string
+  type: 'image' | 'video'
+}
+
 interface StoryUser {
-  id: number
+  id: string
   name: string
   avatar: string
-  stories: string[]
+  stories: StoryMedia[]
 }
 
 interface StoryViewerProps {
@@ -17,36 +22,24 @@ interface StoryViewerProps {
   onPrevUser: () => void
 }
 
+const IMAGE_DURATION_MS = 5000 // rasm uchun 5 soniya
+
 export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextUser, onPrevUser }) => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const currentStory = user.stories[currentIndex]
 
   // Foydalanuvchi o'zgarganda har doim birinchi story'dan boshlash
   useEffect(() => {
     setCurrentIndex(0)
   }, [user])
 
-  // 5 soniyalik avtomatik taymer logikasi
-  useEffect(() => {
-    setProgress(0)
-    const intervalTime = 50 // Har 50ms da progress yangilanadi
-
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          handleNext()
-          return 100
-        }
-        return prev + 1
-      })
-    }, intervalTime)
-
-    return () => clearInterval(timer)
-  }, [user, currentIndex])
-
   const handleNext = () => {
     if (currentIndex < user.stories.length - 1) {
-      setCurrentIndex(currentIndex + 1)
+      setCurrentIndex((i) => i + 1)
     } else {
       onNextUser() // Agar foydalanuvchining story'lari tugasa, keyingi odamga o'tish
     }
@@ -54,11 +47,75 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextU
 
   const handlePrev = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1)
+      setCurrentIndex((i) => i - 1)
     } else {
       onPrevUser() // Agar birinchi story bo'lsa, oldingi odamga qaytish
     }
   }
+
+  // Rasm uchun taymer logikasi (video o'zining timeupdate eventidan foydalanadi)
+  useEffect(() => {
+    if (!currentStory || currentStory.type === 'video') return
+    if (isPaused) return
+
+    setProgress(0)
+    const intervalTime = 50
+    const step = (intervalTime / IMAGE_DURATION_MS) * 100
+
+    const timer = setInterval(() => {
+      setProgress((prev) => {
+        if (prev + step >= 100) {
+          handleNext()
+          return 100
+        }
+        return prev + step
+      })
+    }, intervalTime)
+
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, currentIndex, isPaused, currentStory?.type])
+
+  // Video uchun progress
+  useEffect(() => {
+    if (!currentStory || currentStory.type !== 'video') return
+    setProgress(0)
+
+    const video = videoRef.current
+    if (!video) return
+
+    const onTimeUpdate = () => {
+      if (video.duration) {
+        setProgress((video.currentTime / video.duration) * 100)
+      }
+    }
+    const onEnded = () => handleNext()
+
+    video.addEventListener('timeupdate', onTimeUpdate)
+    video.addEventListener('ended', onEnded)
+
+    if (!isPaused) {
+      video.play().catch(() => { })
+    }
+
+    return () => {
+      video.removeEventListener('timeupdate', onTimeUpdate)
+      video.removeEventListener('ended', onEnded)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, currentIndex, currentStory?.type])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || currentStory?.type !== 'video') return
+    if (isPaused) {
+      video.pause()
+    } else {
+      video.play().catch(() => { })
+    }
+  }, [isPaused, currentStory?.type])
+
+  if (!currentStory) return null
 
   return (
     <div className="fixed inset-0 z-70 bg-black/95 md:bg-neutral-950 flex items-center justify-center select-none">
@@ -70,15 +127,15 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextU
       </button>
 
       <div className="relative w-full h-full md:h-[92vh] md:max-w-[420px] md:rounded-2xl overflow-hidden bg-neutral-900 flex flex-col justify-center">
-        
+
         <div className="absolute top-3 left-3 right-3 z-30 flex gap-1.5 px-1">
           {user.stories.map((_, idx) => (
             <div key={idx} className="h-[3px] flex-1 bg-white/30 rounded-full overflow-hidden">
-              <div 
-                style={{ 
+              <div
+                style={{
                   width: idx < currentIndex ? '100%' : idx === currentIndex ? `${progress}%` : '0%',
                   transition: idx === currentIndex ? 'none' : 'width 0.1s linear'
-                }} 
+                }}
                 className="h-full bg-white rounded-full"
               />
             </div>
@@ -96,17 +153,38 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextU
           </button>
         </div>
 
-        <div className="absolute inset-y-0 left-0 w-[30%] z-20 cursor-pointer" onClick={handlePrev} />
-        <div className="absolute inset-y-0 right-0 w-[70%] z-20 cursor-pointer" onClick={handleNext} />
+        <div
+          className="absolute inset-y-0 left-0 w-[30%] z-20 cursor-pointer"
+          onClick={handlePrev}
+        />
+        <div
+          className="absolute inset-y-0 right-0 w-[70%] z-20 cursor-pointer"
+          onClick={handleNext}
+          onMouseDown={() => setIsPaused(true)}
+          onMouseUp={() => setIsPaused(false)}
+          onTouchStart={() => setIsPaused(true)}
+          onTouchEnd={() => setIsPaused(false)}
+        />
 
-        <img src={user.stories[currentIndex]} alt="Story" className="w-full h-full object-cover pointer-events-none" />
+        {currentStory.type === 'video' ? (
+          <video
+            key={currentStory.url}
+            ref={videoRef}
+            src={currentStory.url}
+            className="w-full h-full object-cover pointer-events-none"
+            playsInline
+            muted={false}
+          />
+        ) : (
+          <img src={currentStory.url} alt="Story" className="w-full h-full object-cover pointer-events-none" />
+        )}
 
         <div className="absolute bottom-5 left-4 right-4 z-30 flex gap-3 items-center">
-          <input 
-            type="text" 
-            placeholder={`${user.name}ga javob yozish...`} 
+          <input
+            type="text"
+            placeholder={`${user.name}ga javob yozish...`}
             className="flex-1 bg-black/20 hover:bg-black/40 focus:bg-black/60 text-white placeholder-white/60 border border-white/20 rounded-full py-3 px-5 text-sm backdrop-blur-md outline-none focus:border-white/40 transition-all"
-            onClick={(e) => e.stopPropagation()} 
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
       </div>
