@@ -8,7 +8,7 @@ import {
   HiRss, HiOutlineRss,
   HiChatBubbleLeftRight, HiOutlineChatBubbleLeftRight,
   HiCog6Tooth, HiOutlineCog6Tooth,
-  HiPlus, HiOutlineBell, HiOutlineEnvelope,
+  HiPlus, HiBell, HiOutlineBell, HiOutlineEnvelope,
   HiVideoCamera, HiOutlineVideoCamera,
   HiSun, HiMoon
 } from 'react-icons/hi2'
@@ -135,7 +135,16 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     { id: 2, user: "Zilola Ergasheva", text: "Yuborgan faylingiz ochilmadi.", time: "Kecha", unread: false },
   ]
 
-  const navItems = [
+  const sidebarItems = [
+    { id: 'home', path: '/dashboard', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
+    { id: 'explore', path: '/dashboard/explore', label: 'Kashf eting', IconActive: HiRss, IconOutline: HiOutlineRss },
+    { id: 'reels', path: '/dashboard/reels', label: 'Reels', IconActive: HiVideoCamera, IconOutline: HiOutlineVideoCamera },
+    { id: 'messages', path: '/dashboard/messages', label: 'Xabarlar', IconActive: HiChatBubbleLeftRight, IconOutline: HiOutlineChatBubbleLeftRight },
+    { id: 'notifications', path: '/dashboard/notifications', label: 'Bildirishnomalar', IconActive: HiBell, IconOutline: HiOutlineBell },
+    { id: 'profile', path: '/dashboard/profile', label: 'Profil', IconActive: HiCog6Tooth, IconOutline: HiOutlineCog6Tooth },
+  ]
+
+  const bottomNavItems = [
     { id: 'home', path: '/dashboard', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
     { id: 'explore', path: '/dashboard/explore', label: 'Kashf eting', IconActive: HiRss, IconOutline: HiOutlineRss },
     { id: 'reels', path: '/dashboard/reels', label: 'Reels', IconActive: HiVideoCamera, IconOutline: HiOutlineVideoCamera },
@@ -225,7 +234,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           </Link>
 
           <nav className="flex flex-col gap-1.5 flex-1">
-            {navItems.map((item) => {
+            {sidebarItems.map((item) => {
               const isActive = pathname === item.path
               const Icon = isActive ? item.IconActive : item.IconOutline
 
@@ -344,7 +353,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           ? 'bg-black/60 backdrop-blur-xl border-white/10'
           : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-100 dark:border-white/5'
       }`}>
-        {navItems.map((item) => {
+        {bottomNavItems.map((item) => {
           const isActive = pathname === item.path
           const Icon = isActive ? item.IconActive : item.IconOutline
 

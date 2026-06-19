@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { PostCard, PostType } from '@/components/post-card'
 import { Stories } from '@/components/stories'
 import { HiChevronDown } from 'react-icons/hi2'
+import { FeedSkeleton } from '@/components/skeleton-loader'
 
 export default function FeedList() {
     const [posts, setPosts] = useState<PostType[]>([])
@@ -49,6 +50,7 @@ export default function FeedList() {
         if (window.scrollY === 0) {
             startY.current = e.touches[0].clientY
             setIsDragging(true)
+            setPullOffset(0)
         }
     }
 
@@ -56,19 +58,31 @@ export default function FeedList() {
         if (!isDragging) return
         const currentY = e.touches[0].clientY
         const diff = currentY - startY.current
-        if (diff > 0 && !showStories) {
-            setPullOffset(Math.min(diff * 0.4, 110))
-        } else if (diff < 0 && showStories) {
-            setPullOffset(Math.max(110 + diff * 0.4, 0))
+        if (showStories) {
+            if (diff < 0) {
+                setPullOffset(diff * 0.5)
+            } else {
+                setPullOffset(0)
+            }
+        } else {
+            if (diff > 0) {
+                setPullOffset(Math.min(diff * 0.5, 110))
+            } else {
+                setPullOffset(0)
+            }
         }
     }
 
     const handleTouchEnd = () => {
         setIsDragging(false)
-        if (!showStories && pullOffset > 50) {
-            setShowStories(true)
-        } else if (showStories && pullOffset > 0 && pullOffset < 60) {
-            setShowStories(false)
+        if (showStories) {
+            if (pullOffset < -40) {
+                setShowStories(false)
+            }
+        } else {
+            if (pullOffset > 50) {
+                setShowStories(true)
+            }
         }
         setPullOffset(0)
     }
@@ -77,6 +91,7 @@ export default function FeedList() {
         if (window.scrollY === 0) {
             startY.current = e.clientY
             setIsDragging(true)
+            setPullOffset(0)
         }
     }
 
@@ -84,19 +99,31 @@ export default function FeedList() {
         if (!isDragging) return
         const currentY = e.clientY
         const diff = currentY - startY.current
-        if (diff > 0 && !showStories) {
-            setPullOffset(Math.min(diff * 0.4, 110))
-        } else if (diff < 0 && showStories) {
-            setPullOffset(Math.max(110 + diff * 0.4, 0))
+        if (showStories) {
+            if (diff < 0) {
+                setPullOffset(diff * 0.5)
+            } else {
+                setPullOffset(0)
+            }
+        } else {
+            if (diff > 0) {
+                setPullOffset(Math.min(diff * 0.5, 110))
+            } else {
+                setPullOffset(0)
+            }
         }
     }
 
     const handleMouseUp = () => {
         setIsDragging(false)
-        if (!showStories && pullOffset > 50) {
-            setShowStories(true)
-        } else if (showStories && pullOffset > 0 && pullOffset < 60) {
-            setShowStories(false)
+        if (showStories) {
+            if (pullOffset < -40) {
+                setShowStories(false)
+            }
+        } else {
+            if (pullOffset > 50) {
+                setShowStories(true)
+            }
         }
         setPullOffset(0)
     }
@@ -147,12 +174,7 @@ export default function FeedList() {
     }
 
     if (loading) {
-        return (
-            <div className="w-full py-20 flex flex-col items-center justify-center gap-3">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Tasmani yangilash...</p>
-            </div>
-        )
+        return <FeedSkeleton />
     }
 
     if (error) {
@@ -178,8 +200,12 @@ export default function FeedList() {
             {/* Collapsible Stories Tray */}
             <div
                 style={{
-                    height: showStories ? '100px' : `${pullOffset}px`,
-                    opacity: showStories || pullOffset > 15 ? 1 : 0,
+                    height: isDragging 
+                        ? (showStories 
+                            ? `${Math.max(100 + pullOffset, 0)}px` 
+                            : `${pullOffset}px`)
+                        : (showStories ? '100px' : '0px'),
+                    opacity: showStories || (isDragging && (showStories ? (100 + pullOffset > 15) : (pullOffset > 15))) ? 1 : 0,
                     transition: isDragging ? 'none' : 'all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
                 }}
                 className="w-full overflow-hidden bg-white/50 dark:bg-slate-900/10 rounded-2xl border border-transparent dark:border-white/5"

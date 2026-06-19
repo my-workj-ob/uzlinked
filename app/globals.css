@@ -27,11 +27,13 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: contain;
 }
 
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
 }
 
 /* Like animatsiyasi */

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { HiArrowLeft } from 'react-icons/hi2'
 import { PostCard, PostType } from '@/components/post-card'
+import { ProfileSkeleton } from '@/components/skeleton-loader'
 
 interface ProfileData {
     id: string
@@ -145,12 +146,7 @@ export default function UserProfilePage() {
     }
 
     if (loading) {
-        return (
-            <div className="w-full py-20 flex flex-col items-center justify-center gap-3">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-xs font-semibold text-slate-400">Profil yuklanmoqda...</p>
-            </div>
-        )
+        return <ProfileSkeleton />
     }
 
     if (error || !profile) {
@@ -162,8 +158,8 @@ export default function UserProfilePage() {
     }
 
     return (
-        <div className="flex flex-col gap-4 pb-10 text-slate-800 dark:text-slate-200">
-            <div className="flex items-center gap-3 pt-2">
+        <div className="pb-20 text-slate-800 dark:text-slate-200">
+            <div className="flex items-center gap-3 pt-2 px-4">
                 <button
                     onClick={() => router.back()}
                     className="p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-xl active:scale-90 transition-all text-slate-700 dark:text-slate-300"
@@ -173,60 +169,132 @@ export default function UserProfilePage() {
                 <span className="text-sm font-black text-slate-900 dark:text-slate-100">Profil</span>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-5 flex flex-col items-center text-center gap-3">
-                <img
-                    src={profile.avatar_url || '/default-avatar.png'}
-                    alt={profile.username}
-                    className="w-20 h-20 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-4 ring-slate-50 dark:ring-slate-950"
-                />
-                <div>
-                    <h2 className="text-base font-black text-slate-900 dark:text-slate-100">{profile.nickname || profile.username}</h2>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold">@{profile.username}</p>
-                </div>
+            {/* Mesh Gradient Cover */}
+            <div className="relative h-32 sm:h-44 w-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 animate-mesh-gradient overflow-hidden sm:rounded-b-2xl border-b border-slate-100 dark:border-white/5 mt-3">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_40%),radial-gradient(circle_at_80%_70%,rgba(0,0,0,0.15),transparent_50%)] mix-blend-overlay" />
+            </div>
 
-                <div className="flex items-center gap-5 text-center">
-                    <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-slate-100">{followersCount}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Obunachilar</p>
-                    </div>
-                    <div className="w-px h-6 bg-slate-100 dark:bg-white/10" />
-                    <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-slate-100">{followingCount}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Obunalar</p>
+            <div className="px-4 -mt-12 relative z-10 text-center sm:text-left sm:flex sm:items-end sm:gap-6 sm:px-6">
+                <div className="relative inline-block">
+                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 p-[3px] mx-auto">
+                        <div className="w-full h-full bg-white dark:bg-slate-950 rounded-full p-[3px]">
+                            <img
+                                src={profile.avatar_url || '/default-avatar.png'}
+                                alt={profile.nickname || profile.username}
+                                className="w-full h-full object-cover rounded-full"
+                            />
+                        </div>
                     </div>
                 </div>
 
-                {profile.bio && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-xs">{profile.bio}</p>
-                )}
+                <div className="mt-3 sm:mt-0 sm:mb-2 flex-1">
+                    <h2 className="font-black text-xl text-slate-900 dark:text-slate-100 leading-tight">
+                        {profile.nickname || profile.username}
+                    </h2>
+                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mt-0.5">
+                        @{profile.username}
+                    </p>
+                </div>
+            </div>
 
+            <div className="px-4 mt-3 text-center sm:text-left sm:px-6">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-450 max-w-lg leading-relaxed font-medium">
+                    {profile.bio || 'Bu yerda bio ma\'lumoti chiqadi.'}
+                </p>
+            </div>
+
+            {/* Stats Block (Premium Borderless) */}
+            <div className="mx-4 mt-6 py-2 flex items-center justify-around text-center select-none bg-transparent">
+                <div className="flex flex-col items-center justify-center flex-1">
+                    <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 leading-none">
+                        {followersCount}
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider mt-1.5">
+                        Obunachilar
+                    </span>
+                </div>
+                <div className="w-px h-6 bg-slate-200/60 dark:bg-white/10 shrink-0" />
+                <div className="flex flex-col items-center justify-center flex-1">
+                    <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 leading-none">
+                        {followingCount}
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider mt-1.5">
+                        Obunalar
+                    </span>
+                </div>
+                <div className="w-px h-6 bg-slate-200/60 dark:bg-white/10 shrink-0" />
+                <div className="flex flex-col items-center justify-center flex-1">
+                    <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 leading-none">
+                        {posts.length}
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider mt-1.5">
+                        Postlar
+                    </span>
+                </div>
+            </div>
+
+            {/* Profile Action Buttons */}
+            <div className="mx-4 mt-4 flex gap-2">
                 <button
                     onClick={handleFollowToggle}
                     disabled={followLoading}
-                    className={`w-full max-w-[220px] py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer ${
+                    className={`flex-1 py-3 font-bold text-xs rounded-xl active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer ${
                         isFollowing
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700'
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
                     }`}
                 >
                     {followLoading ? '...' : isFollowing ? 'Obunani bekor qilish' : 'Obuna bo\'lish'}
                 </button>
             </div>
 
-            <div className="flex flex-col gap-4">
-                {posts.length === 0 ? (
-                    <div className="w-full py-16 bg-slate-50/50 dark:bg-slate-900/20 border border-dashed border-slate-100 dark:border-white/5 rounded-2xl text-center">
-                        <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">Hozircha postlar yo'q 🏜️</p>
+            {/* Profile Tab Header */}
+            <div className="mx-4 mt-6 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 sticky top-0 z-20 transition-colors">
+                <div className="flex max-w-lg mx-auto">
+                    <button className="flex-1 py-2.5 text-xs font-bold text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 cursor-default">
+                        Postlar ({posts.length})
+                    </button>
+                </div>
+            </div>
+
+            {/* Posts Pane */}
+            <div className="w-full p-4 max-w-2xl mx-auto">
+                {posts.length > 0 ? (
+                    <div className="space-y-6 text-left">
+                        {posts.map((post) => {
+                            const postTitle = post.content.trim().slice(0, 45) + (post.content.trim().length > 45 ? '...' : '')
+                            const postDate = new Date(post.time).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })
+                            
+                            return (
+                                <div key={post.id} className="group border-b border-slate-100 dark:border-white/5 pb-5 last:border-0 select-text">
+                                    {/* URL Breadcrumb */}
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-450 truncate mb-1">
+                                        vibegrid.com <span className="text-[9px]">›</span> post <span className="text-[9px]">›</span> {typeof post.id === 'string' ? post.id.slice(0, 8) : post.id}
+                                    </div>
+                                    {/* Clickable Blue Title */}
+                                    <h3 className="text-sm sm:text-base font-semibold text-blue-600 dark:text-blue-400 group-hover:underline cursor-pointer leading-tight mb-1" onClick={() => router.push(`/post/${post.id}`)}>
+                                        {postTitle || 'VibeGrid Post'}
+                                    </h3>
+                                    {/* Content Snippet */}
+                                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-350 leading-relaxed line-clamp-2 mb-2 font-normal">
+                                        {post.content}
+                                    </p>
+                                    {/* Metadata Row */}
+                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5 select-none">
+                                        <span>{Number(post.likes) || 0} layk</span>
+                                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                                        <span>{Number(post.commentsCount) || 0} izoh</span>
+                                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                                        <span>{postDate}</span>
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 ) : (
-                    posts.map((post) => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            onDeletePost={handleDeletePost}
-                            onUpdatePost={handleUpdatePost}
-                        />
-                    ))
+                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs font-medium bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-white/5 transition-colors">
+                        Hozircha postlar yo'q
+                    </div>
                 )}
             </div>
         </div>

@@ -72,20 +72,28 @@ export async function POST(request: Request) {
 // ==========================================
 // 2. GET - POSTLARNI OLISH
 // ==========================================
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const supabase = await createClient()
         const { data: { session } } = await supabase.auth.getSession()
         const currentUserId = session?.user?.id
 
-        const { data: posts, error } = await supabase
+        const { searchParams } = new URL(request.url)
+        const postId = searchParams.get('id')
+
+        let dbQuery = supabase
             .from('posts')
             .select(`
                 *,
                 profiles (nickname, avatar_url),
                 likes (user_id)
             `)
-            .order('created_at', { ascending: false })
+
+        if (postId) {
+            dbQuery = dbQuery.eq('id', postId)
+        }
+
+        const { data: posts, error } = await dbQuery.order('created_at', { ascending: false })
 
         if (error) throw error
 

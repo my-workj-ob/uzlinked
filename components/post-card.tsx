@@ -35,6 +35,7 @@ interface PostCardProps {
   post: PostType
   onDeletePost?: (id: string | number) => void
   onUpdatePost?: (id: string | number, newContent: string) => void
+  isDetailPage?: boolean
 }
 
 function formatTime(timeStr: string) {
@@ -63,7 +64,7 @@ function formatTime(timeStr: string) {
   }
 }
 
-export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) => {
+export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = false }: PostCardProps) => {
   const router = useRouter()
 
   // Hydration uchun mounted state
@@ -82,8 +83,13 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
   const [commentText, setCommentText] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
 
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
   useEffect(() => {
     setMounted(true)
+    return () => {
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -123,6 +129,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
     }
   }
 
+  // Like bosish/o'chirish logikasi
   const handleLikeToggle = async () => {
     const nextLiked = !liked
     const previousLiked = liked
@@ -138,13 +145,24 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
         body: JSON.stringify({ postId: post.id })
       })
 
-      if (!res.ok) throw new Error("Serverda xato")
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert("Iltimos, postga like bosish uchun tizimga kiring!")
+          router.push('/login')
+          throw new Error("Avtorizatsiyadan o'tilmagan")
+        }
+        const errorData = await res.json()
+        console.error("Server xatoligi:", errorData)
+        throw new Error("Serverda xato")
+      }
     } catch (err) {
+      console.error("Like bosishda xatolik:", err)
       setLiked(previousLiked)
       setLikesCount(previousCount)
     }
   }
 
+  // Kommentariya qo'shish logikasi
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!commentText.trim()) return
@@ -161,6 +179,13 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
         setComments(prev => [...prev, newComment])
         setCommentsCount(prev => prev + 1)
         setCommentText('')
+      } else {
+        if (res.status === 401) {
+          alert("Iltimos, izoh qoldirish uchun tizimga kiring!")
+          router.push('/login')
+          return
+        }
+        alert("Komment qoldirishda xatolik yuz berdi")
       }
     } catch (err) {
       alert("Komment qoldirishda xatolik yuz berdi")
@@ -174,13 +199,17 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
     setIsEditing(false)
   }
 
-  const handleCopyLink = () => {
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.stopPropagation()
     navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`)
     alert("Post havolasi nusxalandi!")
     setShowMenu(false)
   }
 
-  const goToProfile = () => {
+  // Profilga o'tish — agar o'zining posti bo'lsa, shaxsiy profilga,
+  // aks holda boshqa userning dinamik profil sahifasiga
+  const goToProfile = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (post.isOwner) {
       router.push('/dashboard/profile')
     } else {
@@ -188,27 +217,47 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
     }
   }
 
-  const lastTapRef = useRef<number>(0)
   const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false)
 
-  const handleImageClick = () => {
-    const now = Date.now()
-    if (now - lastTapRef.current < 300) {
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    if (clickTimeoutRef.current) {
+      // Double tap detected: trigger like, cancel navigation
+      clearTimeout(clickTimeoutRef.current)
+      clickTimeoutRef.current = null
+      
       setShowDoubleTapHeart(true)
       setTimeout(() => setShowDoubleTapHeart(false), 1000)
-      if (!liked) handleLikeToggle()
-      lastTapRef.current = 0
+      if (!liked) {
+        handleLikeToggle()
+      }
     } else {
-      lastTapRef.current = now
+      // Potential single tap: wait to differentiate from double tap
+      clickTimeoutRef.current = setTimeout(() => {
+        clickTimeoutRef.current = null
+        if (!isDetailPage) {
+          router.push(`/post/${post.id}`)
+        }
+      }, 250)
+    }
+  }
+
+  const handleCardClick = () => {
+    if (!isDetailPage) {
+      router.push(`/post/${post.id}`)
     }
   }
 
   return (
     <>
-      <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden relative transition-all duration-300 ${showMenu ? 'z-50' : 'z-10'}`}>
+      <div 
+        onClick={handleCardClick}
+        className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden relative transition-all duration-300 ${showMenu ? 'z-50' : 'z-10'} ${isDetailPage ? '' : 'cursor-pointer hover:shadow-md hover:border-slate-200 dark:hover:border-white/10'}`}
+      >
         <div className="flex items-center justify-between p-4 relative">
           <div
-            onClick={goToProfile}
+            onClick={(e) => goToProfile(e)}
             className="flex items-center gap-3 cursor-pointer group"
           >
             <img
@@ -228,7 +277,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
           </div>
 
           <div className="relative" ref={menuRef}>
-            <button onClick={() => setShowMenu(!showMenu)} className={`p-1 rounded-full transition-colors ${showMenu ? 'bg-slate-100 dark:bg-slate-850 text-slate-700 dark:text-slate-300' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }} 
+              className={`p-1 rounded-full transition-colors ${showMenu ? 'bg-slate-100 dark:bg-slate-850 text-slate-700 dark:text-slate-300' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
               <HiEllipsisHorizontal className="w-6 h-6" />
             </button>
 
@@ -236,19 +288,40 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
               <div className="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-xl z-[9999] p-1.5 animate-in fade-in zoom-in-95 duration-100 shadow-xl">
                 {post.isOwner ? (
                   <>
-                    <button onClick={() => { setIsEditing(true); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setIsEditing(true); setShowMenu(false); }} 
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"
+                    >
                       <FiEdit3 className="w-4 h-4 text-slate-400" /> Tahrirlash
                     </button>
-                    <button onClick={() => { if (onDeletePost) onDeletePost(post.id); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-950/20 rounded-lg transition-colors text-left">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); if (onDeletePost) onDeletePost(post.id); setShowMenu(false); }} 
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-950/20 rounded-lg transition-colors text-left"
+                    >
                       <FiTrash2 className="w-4 h-4" /> Postni o'chirish
                     </button>
                   </>
                 ) : (
                   <>
-                    <button onClick={() => { goToProfile(); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"><FiUser className="w-4 h-4 text-slate-400" /> Profilni ko'rish</button>
-                    <button onClick={handleCopyLink} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"><FiCopy className="w-4 h-4 text-slate-400" /> Havolani nusxalash</button>
+                    <button 
+                      onClick={(e) => { goToProfile(e); setShowMenu(false); }} 
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"
+                    >
+                      <FiUser className="w-4 h-4 text-slate-400" /> Profilni ko'rish
+                    </button>
+                    <button 
+                      onClick={(e) => handleCopyLink(e)} 
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"
+                    >
+                      <FiCopy className="w-4 h-4 text-slate-400" /> Havolani nusxalash
+                    </button>
                     <div className="h-px bg-slate-100 dark:bg-white/5 my-1" />
-                    <button className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-950/20 rounded-lg transition-colors text-left"><FiAlertTriangle className="w-4 h-4" /> Shikoyat qilish</button>
+                    <button 
+                      onClick={(e) => e.stopPropagation()} 
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-950/20 rounded-lg transition-colors text-left"
+                    >
+                      <FiAlertTriangle className="w-4 h-4" /> Shikoyat qilish
+                    </button>
                   </>
                 )}
               </div>
@@ -258,8 +331,15 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
 
         {post.image && (
           <div className="px-4">
-            <div onClick={handleImageClick} className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 cursor-pointer select-none">
-              <img src={post.image} alt="Post content" className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02]" />
+            <div 
+              onClick={(e) => handleImageClick(e)} 
+              className={`relative w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 cursor-pointer select-none ${isDetailPage ? 'max-h-[70vh] flex items-center justify-center' : 'aspect-4/3'}`}
+            >
+              <img 
+                src={post.image} 
+                alt="Post content" 
+                className={`w-full h-full ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'} transition-transform duration-500 hover:scale-[1.02]`} 
+              />
               {showDoubleTapHeart && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 animate-double-tap-heart">
                   <FaHeart className="w-20 h-20 text-rose-500" />
@@ -271,27 +351,40 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
 
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
-            <button onClick={handleLikeToggle} className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition active:scale-90">
+            <button 
+              onClick={(e) => { e.stopPropagation(); handleLikeToggle(); }} 
+              className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition active:scale-90"
+            >
               {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{likesCount}</span>
             </button>
 
-            <button onClick={() => setShowComments(true)} className={`flex items-center gap-1.5 transition active:scale-90 ${showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400'}`}>
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowComments(true); }} 
+              className={`flex items-center gap-1.5 transition active:scale-90 ${showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400'}`}>
               <FiMessageSquare className="w-5 h-5" />
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{commentsCount}</span>
             </button>
 
-            <button className="text-slate-700 dark:text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition"><FiSend className="w-5 h-5" /></button>
+            <button 
+              onClick={(e) => e.stopPropagation()} 
+              className="text-slate-700 dark:text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition"
+            >
+              <FiSend className="w-5 h-5" />
+            </button>
           </div>
 
-          <button className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 border border-amber-200/30">
+          <button 
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 border border-amber-200/30"
+          >
             <div className="w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-white font-extrabold text-[9px]">$</div> Tip
           </button>
         </div>
 
         <div className="px-4 pb-4 text-xs text-slate-600 dark:text-slate-450 leading-relaxed border-b border-slate-50 dark:border-white/5">
           <span
-            onClick={goToProfile}
+            onClick={(e) => goToProfile(e)}
             className="font-bold text-slate-900 dark:text-slate-100 mr-1 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             {post.author}
@@ -299,7 +392,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost }: PostCardProps) =>
         </div>
 
         <div
-          onClick={() => setShowComments(true)}
+          onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
           className="p-3 bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-50 dark:border-white/5 flex items-center justify-between cursor-pointer text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350 transition-colors"
         >
           <span>Fikr bildiring...</span>
