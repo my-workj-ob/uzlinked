@@ -6,15 +6,14 @@ import { HiArrowLeft, HiSun, HiMoon } from 'react-icons/hi2'
 import Link from 'next/link'
 import { PostCard, PostType } from '@/components/post-card'
 import { PostDetailSkeleton } from '@/components/skeleton-loader'
+import { usePost } from '@/hooks/use-queries'
 
 export default function PostDetailPage() {
     const params = useParams()
     const router = useRouter()
     const postId = params.postId as string
 
-    const [post, setPost] = useState<PostType | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
+    const { data: post = null, isLoading: loading, error } = usePost(postId)
     const [isDark, setIsDark] = useState(false)
 
     useEffect(() => {
@@ -32,33 +31,6 @@ export default function PostDetailPage() {
             localStorage.setItem('theme', 'light')
         }
     }
-
-    useEffect(() => {
-        const fetchPost = async () => {
-            try {
-                setLoading(true)
-                setError(null)
-                const res = await fetch(`/api/posts?id=${postId}`)
-                if (!res.ok) {
-                    throw new Error("Post topilmadi")
-                }
-                const data = await res.json()
-                if (Array.isArray(data) && data.length > 0) {
-                    setPost(data[0])
-                } else {
-                    throw new Error("Post topilmadi")
-                }
-            } catch (err: any) {
-                setError(err.message || "Xatolik yuz berdi")
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        if (postId) {
-            fetchPost()
-        }
-    }, [postId])
 
     if (loading) {
         return <PostDetailSkeleton />
@@ -98,7 +70,9 @@ export default function PostDetailPage() {
             <main className="py-8 max-w-2xl mx-auto px-4 md:px-6">
                 {error || !post ? (
                     <div className="w-full p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl text-center flex flex-col items-center justify-center">
-                        <p className="text-sm font-bold text-slate-500 dark:text-slate-450 mb-3">{error || "Post topilmadi"}</p>
+                        <p className="text-sm font-bold text-slate-500 dark:text-slate-450 mb-3">
+                            {error instanceof Error ? error.message : (typeof error === 'string' ? error : "Post topilmadi")}
+                        </p>
                         <Link href="/dashboard" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl active:scale-95 transition-all">
                             Tasmasiga qaytish
                         </Link>

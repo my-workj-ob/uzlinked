@@ -5,35 +5,18 @@ import { PostCard, PostType } from '@/components/post-card'
 import { Stories } from '@/components/stories'
 import { HiChevronDown } from 'react-icons/hi2'
 import { FeedSkeleton } from '@/components/skeleton-loader'
+import { usePosts, useUpdatePost, useDeletePost } from '@/hooks/use-queries'
 
 export default function FeedList() {
-    const [posts, setPosts] = useState<PostType[]>([])
-    const [loading, setLoading] = useState<boolean>(true)
-    const [error, setError] = useState<string | null>(null)
+    const { data: posts = [], isLoading: loading, error } = usePosts()
+    const updatePostMutation = useUpdatePost()
+    const deletePostMutation = useDeletePost()
 
     // Pull down stories states
     const [showStories, setShowStories] = useState(false)
     const [pullOffset, setPullOffset] = useState(0)
     const [isDragging, setIsDragging] = useState(false)
     const startY = useRef(0)
-
-    const fetchPosts = async () => {
-        try {
-            setLoading(true)
-            const response = await fetch('/api/posts')
-            if (!response.ok) throw new Error('Postlarni yuklashda xatolik yuz berdi')
-            const data = await response.json()
-            setPosts(data)
-        } catch (err: any) {
-            setError(err.message)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    useEffect(() => {
-        fetchPosts()
-    }, [])
 
     useEffect(() => {
         const handleScroll = () => {
@@ -128,26 +111,11 @@ export default function FeedList() {
         setPullOffset(0)
     }
 
+
+
     const handleUpdatePost = async (id: string | number, newContent: string) => {
         try {
-            const response = await fetch('/api/posts', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id, content: newContent }),
-            })
-
-            if (!response.ok) {
-                const errData = await response.json()
-                throw new Error(errData.error || "Postni tahrirlash imkonsiz bo'ldi")
-            }
-
-            setPosts(prevPosts =>
-                prevPosts.map(post =>
-                    post.id === id ? { ...post, content: newContent } : post
-                )
-            )
+            await updatePostMutation.mutateAsync({ id, content: newContent })
         } catch (err: any) {
             alert(`Xatolik: ${err.message}`)
         }
@@ -158,16 +126,7 @@ export default function FeedList() {
         if (!confirmDelete) return
 
         try {
-            const response = await fetch(`/api/posts?id=${id}`, {
-                method: 'DELETE',
-            })
-
-            if (!response.ok) {
-                const errData = await response.json()
-                throw new Error(errData.error || "Postni o'chirish imkonsiz bo'ldi")
-            }
-
-            setPosts(prevPosts => prevPosts.filter(post => post.id !== id))
+            await deletePostMutation.mutateAsync(id)
         } catch (err: any) {
             alert(`Xatolik: ${err.message}`)
         }
@@ -180,7 +139,7 @@ export default function FeedList() {
     if (error) {
         return (
             <div className="w-full p-4 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold text-center border border-red-100 dark:border-red-900/10">
-                {error}. Sahifani qayta yangilang.
+                {error instanceof Error ? error.message : String(error)}. Sahifani qayta yangilang.
             </div>
         )
     }

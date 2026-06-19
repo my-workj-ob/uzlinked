@@ -8,6 +8,7 @@ import { FFmpeg } from "@ffmpeg/ffmpeg"
 import { fetchFile, toBlobURL } from "@ffmpeg/util"
 import { uploadFiles } from '@/utils/uploadthing/uploadthing'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface CreateWizardProps {
     onClose: () => void
@@ -22,6 +23,7 @@ const stepTitles: Record<string, string> = {
 export const CreateWizard = ({ onClose }: CreateWizardProps) => {
     const [step, setStep] = useState<'menu' | 'post' | 'market' | 'reel'>('menu')
     const router = useRouter()
+    const queryClient = useQueryClient()
 
     const [postText, setPostText] = useState('')
     const [marketTitle, setMarketTitle] = useState('')
@@ -166,7 +168,8 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
 
             setPostText('')
             removeImage()
-            closeAndRefresh()
+            queryClient.invalidateQueries({ queryKey: ['posts'] })
+            onClose()
         } catch (error: any) {
             toast.error(error.message || "Postni ulashishda xatolik yuz berdi", { id: toastId })
         } finally {

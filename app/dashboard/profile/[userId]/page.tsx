@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { HiArrowLeft } from 'react-icons/hi2'
 import { PostCard, PostType } from '@/components/post-card'
 import { ProfileSkeleton } from '@/components/skeleton-loader'
+import { useProfile, useFollowToggle, useUpdatePost, useDeletePost } from '@/hooks/use-queries'
 
 interface ProfileData {
     id: string
@@ -19,58 +20,33 @@ export default function UserProfilePage() {
     const router = useRouter()
     const userId = params.userId as string
 
-    const [profile, setProfile] = useState<ProfileData | null>(null)
-    const [posts, setPosts] = useState<PostType[]>([])
-    const [isOwnProfile, setIsOwnProfile] = useState(false)
-    const [isFollowing, setIsFollowing] = useState(false)
+    const { data, isLoading: loading, error } = useProfile(userId)
+    const followMutation = useFollowToggle()
+    const updatePostMutation = useUpdatePost()
+    const deletePostMutation = useDeletePost()
+    
     const [followLoading, setFollowLoading] = useState(false)
-    const [followersCount, setFollowersCount] = useState(0)
-    const [followingCount, setFollowingCount] = useState(0)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                setLoading(true)
-                setError(null)
-                const res = await fetch(`/api/profile/${userId}`)
-                if (!res.ok) {
-                    const errData = await res.json()
-                    throw new Error(errData.error || 'Profilni yuklashda xatolik')
-                }
-                const data = await res.json()
+    const profile = data?.profile
+    const isOwnProfile = data?.isOwnProfile || false
+    const isFollowing = data?.isFollowing || false
+    const followersCount = data?.followersCount || 0
+    const followingCount = data?.followingCount || 0
 
-                setProfile(data.profile)
-                setIsOwnProfile(data.isOwnProfile)
-                setIsFollowing(data.isFollowing)
-                setFollowersCount(data.followersCount)
-                setFollowingCount(data.followingCount)
-
-                const formattedPosts: PostType[] = data.posts.map((p: any) => ({
-                    id: p.id,
-                    authorId: p.authorId, // Endi to'g'ri keladi — har doim shu profil egasi
-                    author: data.profile.nickname || data.profile.username,
-                    avatar: data.profile.avatar_url || '/default-avatar.png',
-                    time: p.createdAt,
-                    location: '',
-                    image: p.image,
-                    content: p.content,
-                    likes: p.likes,
-                    isOwner: data.isOwnProfile,
-                    likedByMe: p.likedByMe,
-                    commentsCount: p.commentsCount,
-                }))
-                setPosts(formattedPosts)
-            } catch (err: any) {
-                setError(err.message)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        if (userId) fetchProfile()
-    }, [userId])
+    const posts: PostType[] = data?.posts.map((p: any) => ({
+        id: p.id,
+        authorId: p.authorId,
+        author: data.profile.nickname || data.profile.username,
+        avatar: data.profile.avatar_url || '/default-avatar.png',
+        time: p.createdAt,
+        location: '',
+        image: p.image,
+        content: p.content,
+        likes: p.likes,
+        isOwner: data.isOwnProfile,
+        likedByMe: p.likedByMe,
+        commentsCount: p.commentsCount,
+    })) || []
 
     // Agar bu o'zining profili bo'lsa, shaxsiy profil sahifasiga yo'naltirish
     useEffect(() => {
@@ -81,31 +57,10 @@ export default function UserProfilePage() {
 
     const handleFollowToggle = async () => {
         if (followLoading || !profile) return
-
-        const nextFollowing = !isFollowing
-        const prevFollowing = isFollowing
-        const prevCount = followersCount
-
-        // Optimistik UI yangilanishi
-        setIsFollowing(nextFollowing)
-        setFollowersCount(prev => nextFollowing ? prev + 1 : prev - 1)
         setFollowLoading(true)
-
         try {
-            const res = await fetch('/api/follow', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetUserId: profile.id }),
-            })
-
-            if (!res.ok) {
-                const errData = await res.json()
-                throw new Error(errData.error || 'Xatolik yuz berdi')
-            }
+            await followMutation.mutateAsync(profile.id)
         } catch (err: any) {
-            // Xato bo'lsa eski holatga qaytarish
-            setIsFollowing(prevFollowing)
-            setFollowersCount(prevCount)
             alert(`Xatolik: ${err.message}`)
         } finally {
             setFollowLoading(false)
@@ -117,12 +72,7 @@ export default function UserProfilePage() {
         if (!confirmDelete) return
 
         try {
-            const response = await fetch(`/api/posts?id=${id}`, { method: 'DELETE' })
-            if (!response.ok) {
-                const errData = await response.json()
-                throw new Error(errData.error || "Postni o'chirish imkonsiz bo'ldi")
-            }
-            setPosts(prev => prev.filter(post => post.id !== id))
+            await deletePostMutation.mutateAsync(id)
         } catch (err: any) {
             alert(`Xatolik: ${err.message}`)
         }
@@ -130,16 +80,7 @@ export default function UserProfilePage() {
 
     const handleUpdatePost = async (id: string | number, newContent: string) => {
         try {
-            const response = await fetch('/api/posts', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id, content: newContent }),
-            })
-            if (!response.ok) {
-                const errData = await response.json()
-                throw new Error(errData.error || "Postni tahrirlash imkonsiz bo'ldi")
-            }
-            setPosts(prev => prev.map(post => post.id === id ? { ...post, content: newContent } : post))
+            await updatePostMutation.mutateAsync({ id, content: newContent })
         } catch (err: any) {
             alert(`Xatolik: ${err.message}`)
         }
@@ -152,7 +93,7 @@ export default function UserProfilePage() {
     if (error || !profile) {
         return (
             <div className="w-full p-4 bg-red-50 text-red-600 rounded-xl text-xs font-bold text-center mt-4">
-                {error || 'Foydalanuvchi topilmadi'}
+                {error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Foydalanuvchi topilmadi')}
             </div>
         )
     }

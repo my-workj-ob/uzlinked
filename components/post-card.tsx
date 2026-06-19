@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy, FiAlertTriangle, FiUser } from 'react-icons/fi'
+import { useLikeToggle } from '@/hooks/use-queries'
 import { FaHeart } from 'react-icons/fa'
 import { HiEllipsisHorizontal, HiXMark } from 'react-icons/hi2'
 
@@ -84,6 +85,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const menuRef = useRef<HTMLDivElement>(null)
 
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const likeMutation = useLikeToggle()
 
   useEffect(() => {
     setMounted(true)
@@ -139,24 +141,15 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
     setLikesCount(prev => nextLiked ? prev + 1 : prev - 1)
 
     try {
-      const res = await fetch('/api/posts/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: post.id })
-      })
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          alert("Iltimos, postga like bosish uchun tizimga kiring!")
-          router.push('/login')
-          throw new Error("Avtorizatsiyadan o'tilmagan")
-        }
-        const errorData = await res.json()
-        console.error("Server xatoligi:", errorData)
-        throw new Error("Serverda xato")
-      }
-    } catch (err) {
+      await likeMutation.mutateAsync(post.id)
+    } catch (err: any) {
       console.error("Like bosishda xatolik:", err)
+      if (err.message === 'UNAUTHORIZED') {
+        alert("Iltimos, postga like bosish uchun tizimga kiring!")
+        router.push('/login')
+      } else {
+        alert("Xatolik yuz berdi")
+      }
       setLiked(previousLiked)
       setLikesCount(previousCount)
     }
