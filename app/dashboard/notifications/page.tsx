@@ -121,7 +121,7 @@ export default function NotificationsPage() {
       
       {/* Header */}
       <div className="flex items-center justify-between pt-2">
-        <div className="flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-3">
           <button
             onClick={() => router.back()}
             className="p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-xl active:scale-90 transition-all text-slate-700 dark:text-slate-300 cursor-pointer"
@@ -130,6 +130,7 @@ export default function NotificationsPage() {
           </button>
           <span className="text-sm font-black text-slate-900 dark:text-slate-100">Bildirishnomalar</span>
         </div>
+        <div className="md:hidden" />
 
         {notifications.some(n => !n.isRead) && (
           <button

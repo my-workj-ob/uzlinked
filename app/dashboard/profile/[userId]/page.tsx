@@ -32,6 +32,7 @@ export default function UserProfilePage() {
     const isFollowing = data?.isFollowing || false
     const followersCount = data?.followersCount || 0
     const followingCount = data?.followingCount || 0
+    const hideContent = data?.hideContent || false
 
     const posts: PostType[] = data?.posts.map((p: any) => ({
         id: p.id,
@@ -120,7 +121,7 @@ export default function UserProfilePage() {
                     <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 p-[3px] mx-auto">
                         <div className="w-full h-full bg-white dark:bg-slate-950 rounded-full p-[3px]">
                             <img
-                                src={profile.avatar_url || '/default-avatar.png'}
+                                src={profile.avatar_url || 'https://ui-avatars.com/api/?name=' + (profile.nickname || profile.username) + '&background=e2e8f0&color=1e293b'}
                                 alt={profile.nickname || profile.username}
                                 className="w-full h-full object-cover rounded-full"
                             />
@@ -166,7 +167,7 @@ export default function UserProfilePage() {
                 <div className="w-px h-6 bg-slate-200/60 dark:bg-white/10 shrink-0" />
                 <div className="flex flex-col items-center justify-center flex-1">
                     <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 leading-none">
-                        {posts.length}
+                        {hideContent ? '—' : posts.length}
                     </span>
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider mt-1.5">
                         Postlar
@@ -189,55 +190,74 @@ export default function UserProfilePage() {
                 </button>
             </div>
 
-            {/* Profile Tab Header */}
-            <div className="mx-4 mt-6 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 sticky top-0 z-20 transition-colors">
-                <div className="flex max-w-lg mx-auto">
-                    <button className="flex-1 py-2.5 text-xs font-bold text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 cursor-default">
-                        Postlar ({posts.length})
-                    </button>
+            {/* If profile is private and user is not following */}
+            {hideContent ? (
+                <div className="mx-4 mt-8 py-12 px-6 flex flex-col items-center justify-center text-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl transition-colors">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 border border-slate-100 dark:border-white/5">
+                        <svg className="w-6 h-6 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 mb-1">
+                        Bu hisob maxfiy (Private)
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed font-semibold">
+                        Ushbu foydalanuvchining postlarini ko'rish uchun unga obuna bo'ling.
+                    </p>
                 </div>
-            </div>
+            ) : (
+                <>
+                    {/* Profile Tab Header */}
+                    <div className="mx-4 mt-6 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 sticky top-0 z-20 transition-colors">
+                        <div className="flex max-w-lg mx-auto">
+                            <button className="flex-1 py-2.5 text-xs font-bold text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 cursor-default">
+                                Postlar ({posts.length})
+                            </button>
+                        </div>
+                    </div>
 
-            {/* Posts Pane */}
-            <div className="w-full p-4 max-w-2xl mx-auto">
-                {posts.length > 0 ? (
-                    <div className="space-y-6 text-left">
-                        {posts.map((post) => {
-                            const postTitle = post.content.trim().slice(0, 45) + (post.content.trim().length > 45 ? '...' : '')
-                            const postDate = new Date(post.time).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })
-                            
-                            return (
-                                <div key={post.id} className="group border-b border-slate-100 dark:border-white/5 pb-5 last:border-0 select-text">
-                                    {/* URL Breadcrumb */}
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-450 truncate mb-1">
-                                        vibegrid.com <span className="text-[9px]">›</span> post <span className="text-[9px]">›</span> {typeof post.id === 'string' ? post.id.slice(0, 8) : post.id}
-                                    </div>
-                                    {/* Clickable Blue Title */}
-                                    <h3 className="text-sm sm:text-base font-semibold text-blue-600 dark:text-blue-400 group-hover:underline cursor-pointer leading-tight mb-1" onClick={() => router.push(`/post/${post.id}`)}>
-                                        {postTitle || 'VibeGrid Post'}
-                                    </h3>
-                                    {/* Content Snippet */}
-                                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-350 leading-relaxed line-clamp-2 mb-2 font-normal">
-                                        {post.content}
-                                    </p>
-                                    {/* Metadata Row */}
-                                    <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5 select-none">
-                                        <span>{Number(post.likes) || 0} layk</span>
-                                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-                                        <span>{Number(post.commentsCount) || 0} izoh</span>
-                                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-                                        <span>{postDate}</span>
-                                    </div>
-                                </div>
-                            )
-                        })}
+                    {/* Posts Pane */}
+                    <div className="w-full p-4 max-w-2xl mx-auto">
+                        {posts.length > 0 ? (
+                            <div className="space-y-6 text-left">
+                                {posts.map((post) => {
+                                    const postTitle = post.content.trim().slice(0, 45) + (post.content.trim().length > 45 ? '...' : '')
+                                    const postDate = new Date(post.time).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })
+                                    
+                                    return (
+                                        <div key={post.id} className="group border-b border-slate-100 dark:border-white/5 pb-5 last:border-0 select-text">
+                                            {/* URL Breadcrumb */}
+                                            <div className="text-[11px] text-slate-500 dark:text-slate-450 truncate mb-1">
+                                                vibegrid.com <span className="text-[9px]">›</span> post <span className="text-[9px]">›</span> {typeof post.id === 'string' ? post.id.slice(0, 8) : post.id}
+                                            </div>
+                                            {/* Clickable Blue Title */}
+                                            <h3 className="text-sm sm:text-base font-semibold text-blue-600 dark:text-blue-400 group-hover:underline cursor-pointer leading-tight mb-1" onClick={() => router.push(`/post/${post.id}`)}>
+                                                {postTitle || 'VibeGrid Post'}
+                                            </h3>
+                                            {/* Content Snippet */}
+                                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-350 leading-relaxed line-clamp-2 mb-2 font-normal">
+                                                {post.content}
+                                            </p>
+                                            {/* Metadata Row */}
+                                            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5 select-none">
+                                                <span>{Number(post.likes) || 0} layk</span>
+                                                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                                                <span>{Number(post.commentsCount) || 0} izoh</span>
+                                                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                                                <span>{postDate}</span>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs font-medium bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-white/5 transition-colors">
+                                Hozircha postlar yo'q
+                            </div>
+                        )}
                     </div>
-                ) : (
-                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs font-medium bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-white/5 transition-colors">
-                        Hozircha postlar yo'q
-                    </div>
-                )}
-            </div>
+                </>
+            )}
         </div>
     )
 }

@@ -429,7 +429,7 @@ export default function MessagesPage() {
       {/* SIDEBAR: CHATS & SEARCH LIST */}
       <div className={`w-full md:w-[340px] border-r border-slate-100 dark:border-white/5 flex flex-col bg-white dark:bg-slate-900 shrink-0 ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900">
-          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-3.5 flex items-center gap-2">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-3.5 hidden md:flex items-center gap-2">
             Xabarlar
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />

@@ -16,6 +16,8 @@ export interface ProfileResponse {
   followersCount: number
   followingCount: number
   posts: any[]
+  isPrivateProfile?: boolean
+  hideContent?: boolean
 }
 
 // ----------------------------------------------------
@@ -27,7 +29,7 @@ export function usePosts() {
   return useQuery<PostType[]>({
     queryKey: ['posts'],
     queryFn: async () => {
-      const res = await fetch('/api/posts')
+      const res = await fetch('/api/posts', { cache: 'no-store' })
       if (!res.ok) throw new Error('Postlarni yuklashda xatolik yuz berdi')
       return res.json()
     },
@@ -39,7 +41,7 @@ export function usePost(postId: string) {
   return useQuery<PostType>({
     queryKey: ['post', postId],
     queryFn: async () => {
-      const res = await fetch(`/api/posts?id=${postId}`)
+      const res = await fetch(`/api/posts?id=${postId}`, { cache: 'no-store' })
       if (!res.ok) throw new Error('Post topilmadi')
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
@@ -56,7 +58,7 @@ export function useProfile(userId: string) {
   return useQuery<ProfileResponse>({
     queryKey: ['profile', userId],
     queryFn: async () => {
-      const res = await fetch(`/api/profile/${userId}`)
+      const res = await fetch(`/api/profile/${userId}?t=${Date.now()}`, { cache: 'no-store' })
       if (!res.ok) {
         const errData = await res.json()
         throw new Error(errData.error || 'Profilni yuklashda xatolik yuz berdi')
@@ -164,3 +166,98 @@ export function useDeletePost() {
     },
   })
 }
+
+// ----------------------------------------------------
+// 3. Settings & Security Hooks
+// ----------------------------------------------------
+
+export interface SecurityLog {
+  id: string
+  user_id: string
+  event_type: 'login' | 'logout' | 'password_change' | 'privacy_toggle' | 'two_factor_toggle' | 'account_delete_attempt'
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
+
+export interface SettingsProfile {
+  id: string
+  username: string
+  nickname: string | null
+  avatar_url: string | null
+  bio: string | null
+  is_private: boolean
+  is_two_factor_enabled: boolean
+}
+
+export interface SettingsData {
+  profile: SettingsProfile
+  logs: SecurityLog[]
+}
+
+export interface UpdateSettingsInput {
+  nickname?: string
+  username?: string
+  bio?: string
+  avatar_url?: string
+  is_private?: boolean
+  is_two_factor_enabled?: boolean
+  password?: string
+}
+
+// Fetch user settings and security logs
+export function useSettings() {
+  return useQuery<SettingsData>({
+    queryKey: ['settings'],
+    queryFn: async () => {
+      const res = await fetch('/api/profile/settings')
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.error || 'Sozlamalarni yuklashda xatolik yuz berdi')
+      }
+      return res.json()
+    },
+  })
+}
+
+// Update settings and security toggles / password
+export function useUpdateSettings() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: UpdateSettingsInput) => {
+      const res = await fetch('/api/profile/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.error || "Sozlamalarni saqlash imkonsiz bo'ldi")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+      queryClient.invalidateQueries({ queryKey: ['profile'] })
+    },
+  })
+}
+
+// Delete user account
+export function useDeleteAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/profile/settings', { method: 'DELETE' })
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.error || "Hisobni o'chirish imkonsiz bo'ldi")
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.clear()
+    },
+  })
+}
+

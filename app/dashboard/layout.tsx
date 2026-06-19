@@ -10,7 +10,8 @@ import {
   HiCog6Tooth, HiOutlineCog6Tooth,
   HiPlus, HiBell, HiOutlineBell, HiOutlineEnvelope,
   HiVideoCamera, HiOutlineVideoCamera,
-  HiSun, HiMoon
+  HiSun, HiMoon,
+  HiUser, HiOutlineUser
 } from 'react-icons/hi2'
 import { CreateWizard } from '@/components/create-wizard'
 import { createClient } from '@/utils/supabase/client'
@@ -23,6 +24,18 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+
+  const getPageTitle = (path: string) => {
+    if (path === '/dashboard') return 'Bosh sahifa'
+    if (path.startsWith('/dashboard/explore')) return 'Kashf eting'
+    if (path.startsWith('/dashboard/reels')) return 'Reels'
+    if (path.startsWith('/dashboard/messages')) return 'Xabarlar'
+    if (path.startsWith('/dashboard/notifications')) return 'Bildirishnomalar'
+    if (path.startsWith('/dashboard/profile')) return 'Profil'
+    if (path.startsWith('/dashboard/settings')) return 'Sozlamalar'
+    if (path.startsWith('/dashboard/market')) return "E'lonlar"
+    return 'VibeGrid'
+  }
   
   const [user, setUser] = useState<any>(null)
   const [avatarUrl, setAvatarUrl] = useState<string>('')
@@ -167,10 +180,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
       {/* MOBILE HEADER: Glassmorphism, hidden on Reels page */}
       {!isReelsPage && (
-        <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 select-none transition-all duration-300">
-          <Link href="/dashboard" className="text-2xl font-black tracking-tight bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent active:scale-95 transition-transform">
-            VibeGrid
-          </Link>
+        <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 select-none transition-all duration-300 md:hidden">
+          <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+            {getPageTitle(pathname)}
+          </span>
 
           <div className="flex items-center gap-2 relative">
             {/* Theme Toggle */}
@@ -378,7 +391,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                   ? 'max-w-24 opacity-100 ml-2' 
                   : 'max-w-0 opacity-0 ml-0'
               }`}>
-                {item.id === 'profile' ? 'Profil' : item.label}
+                {item.label}
               </span>
             </Link>
           )

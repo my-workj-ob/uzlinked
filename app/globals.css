@@ -213,3 +213,17 @@ html {
   scrollbar-width: none;
 }
 
+/* Landing page animations */
+@keyframes landingGlow {
+  0%, 100% { transform: scale(1) translate(0px, 0px); opacity: 0.35; }
+  33% { transform: scale(1.15) translate(30px, -50px); opacity: 0.5; }
+  66% { transform: scale(0.9) translate(-20px, 20px); opacity: 0.3; }
+}
+.animate-landing-glow-1 {
+  animation: landingGlow 20s infinite ease-in-out;
+}
+.animate-landing-glow-2 {
+  animation: landingGlow 25s infinite ease-in-out reverse;
+}
+
+

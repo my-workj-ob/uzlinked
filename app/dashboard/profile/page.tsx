@@ -617,6 +617,9 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                         <button onClick={() => setIsEditing(true)} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl active:scale-[0.99] transition-all cursor-pointer">
                             Edit Profile
                         </button>
+                        <button onClick={() => router.push('/dashboard/settings')} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 font-bold text-xs rounded-xl active:scale-[0.99] transition-all cursor-pointer border border-transparent dark:border-white/5">
+                            Hisob sozlamalari
+                        </button>
                         <button className="px-4 bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700/85 rounded-xl active:scale-[0.99] transition-all flex items-center justify-center cursor-pointer border border-transparent dark:border-white/5">
                             <HiOutlineShare className="w-4 h-4" />
                         </button>
