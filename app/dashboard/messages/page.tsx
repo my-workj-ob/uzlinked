@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react'
-import { get } from 'lodash'
 import { createClient } from '@/utils/supabase/client'
 import { generateReactHelpers } from "@uploadthing/react"
 import type { OurFileRouter } from "@/app/api/uploadthing/core"
@@ -16,7 +15,7 @@ import {
   HiOutlineExclamationTriangle, HiOutlineMinusCircle,
   HiOutlineUserGroup, HiOutlineSpeakerWave, HiOutlineMapPin,
   HiOutlineNoSymbol, HiMapPin, HiXMark,
-  HiOutlineGlobeAlt, HiLockClosed
+  HiOutlineGlobeAlt, HiLockClosed, HiCheckBadge as HiBadge
 } from 'react-icons/hi2'
 import { IoSearchOutline, IoChatbubblesOutline } from 'react-icons/io5'
 import { BottomSheet } from '@/components/bottom-sheet'
@@ -47,6 +46,19 @@ interface Message {
   _pending?: boolean
   reactions?: any
   is_read?: boolean
+}
+
+interface GroupChannel {
+  id: string
+  name: string
+  username: string | null
+  avatar_url: string | null
+  description: string | null
+  type: 'group' | 'channel'
+  is_public: boolean
+  creator_id: string
+  created_at?: string
+  member_count?: number
 }
 
 const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
@@ -83,24 +95,9 @@ const genieVariants: Variants = {
     scaleY: 1,
     y: 0,
     transition: {
-      y: {
-        type: "spring",
-        stiffness: 320,
-        damping: 18,
-        mass: 0.8
-      },
-      scaleX: {
-        type: "spring",
-        stiffness: 400,
-        damping: 12,
-        mass: 1
-      },
-      scaleY: {
-        type: "spring",
-        stiffness: 200,
-        damping: 8,
-        mass: 0.8
-      },
+      y: { type: "spring", stiffness: 320, damping: 18, mass: 0.8 },
+      scaleX: { type: "spring", stiffness: 400, damping: 12, mass: 1 },
+      scaleY: { type: "spring", stiffness: 200, damping: 8, mass: 0.8 },
       opacity: { duration: 0.15 }
     }
   }
@@ -111,17 +108,24 @@ const plainVariants: Variants = {
   visible: { opacity: 1, scale: 1, y: 0 }
 }
 
-// ─── Sidebar Chat Item Context Menu State types ──────────────────────────────
 type SidebarCtxMenu = { chatId: string; partnerId: string; x: number; y: number } | null
 type CreateGroupModalType = 'group' | 'channel' | null
+type SidebarTab = 'chats' | 'groups' | 'channels'
 
 function MessagesPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const chatParam = searchParams.get('chat')
 
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('chats')
+
   const [chats, setChats] = useState<any[]>([])
   const [isLoadingChats, setIsLoadingChats] = useState(true)
+
+  const [myGroupsChannels, setMyGroupsChannels] = useState<GroupChannel[]>([])
+  const [isLoadingGroups, setIsLoadingGroups] = useState(true)
+  const [groupSearchQuery, setGroupSearchQuery] = useState("")
+  const [channelSearchQuery, setChannelSearchQuery] = useState("")
 
   const [searchResults, setSearchResults] = useState<Profile[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -134,33 +138,27 @@ function MessagesPageContent() {
   const [typedMessage, setTypedMessage] = useState("")
   const [currentUserId, setCurrentUserId] = useState<string | any>('')
 
-  // Real-time typing and online status states
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set())
   const [isPartnerTyping, setIsPartnerTyping] = useState(false)
   const typingTimeoutRef = useRef<any>(null)
 
-  // Block states
   const [isBlockedByMe, setIsBlockedByMe] = useState(false)
   const [isBlockedByPartner, setIsBlockedByPartner] = useState(false)
   const [isEllipsisOpen, setIsEllipsisOpen] = useState(false)
 
-  // Edit / Delete / Reply states
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [replyingMessage, setReplyingMessage] = useState<Message | null>(null)
   const [activeContextMsg, setActiveContextMsg] = useState<Message | null>(null)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number, y: number }>({ x: 0, y: 0 })
   const longPressTimeoutRef = useRef<any>(null)
 
-  // Media previewer states
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
-  // Voice Recording States
   const [isRecording, setIsRecording] = useState(false)
   const [recordingDuration, setRecordingDuration] = useState(0)
   const [audioTranscript, setAudioTranscript] = useState("")
   const [selectedTranscriptMsg, setSelectedTranscriptMsg] = useState<Message | null>(null)
 
-  // Search / Scroll / Reaction premium states
   const [isMsgSearchOpen, setIsMsgSearchOpen] = useState(false)
   const [msgSearchQuery, setMsgSearchQuery] = useState("")
   const [msgSearchMatches, setMsgSearchMatches] = useState<number[]>([])
@@ -169,20 +167,13 @@ function MessagesPageContent() {
   const [hasNewMessagesBelow, setHasNewMessagesBelow] = useState(false)
   const [heartBurstMsgId, setHeartBurstMsgId] = useState<string | null>(null)
 
-  // Sidebar chat context menu (long-press or right-click on chat item)
   const [sidebarCtxMenu, setSidebarCtxMenu] = useState<SidebarCtxMenu>(null)
   const sidebarLongPressRef = useRef<any>(null)
 
-  // Unread message counts per chat
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
-
-  // Last message preview per chat
   const [lastMessages, setLastMessages] = useState<Record<string, any>>({})
-
-  // Pinned chats
   const [pinnedChatIds, setPinnedChatIds] = useState<Set<string>>(new Set())
 
-  // Group/Channel creation modal
   const [createModalType, setCreateModalType] = useState<CreateGroupModalType>(null)
   const [gcName, setGcName] = useState('')
   const [gcUsername, setGcUsername] = useState('')
@@ -209,6 +200,7 @@ function MessagesPageContent() {
   useEffect(() => {
     if (chatParam && chatParam !== selectedChatId) {
       setSelectedChatId(chatParam)
+      setSidebarTab('chats')
     }
   }, [chatParam])
 
@@ -463,7 +455,6 @@ function MessagesPageContent() {
     } else if (data) {
       setChats(data)
 
-      // Determine pinned chats for current user
       const pinned = new Set<string>()
       data.forEach((c: any) => {
         const isUserOne = c.user_one?.id === currentUserId
@@ -472,10 +463,8 @@ function MessagesPageContent() {
       })
       setPinnedChatIds(pinned)
 
-      // Fetch last messages and unread counts for each chat
       const chatIds = data.map((c: any) => c.id)
       if (chatIds.length > 0) {
-        // Last message per chat (get latest message for each chat)
         const { data: msgData } = await supabase
           .from('messages')
           .select('id, chat_id, text, file_type, created_at, sender_id, is_deleted')
@@ -504,6 +493,85 @@ function MessagesPageContent() {
   useEffect(() => {
     fetchChats()
   }, [fetchChats])
+
+  // Fetch groups/channels current user belongs to
+  const fetchMyGroupsChannels = useCallback(async () => {
+    if (!userIdReady) {
+      setIsLoadingGroups(false)
+      return
+    }
+    setIsLoadingGroups(true)
+    try {
+      const { data: memberships, error: memberErr } = await supabase
+        .from('group_members')
+        .select('group_id, role')
+        .eq('user_id', currentUserId)
+
+      if (memberErr) throw memberErr
+
+      const groupIds = (memberships || []).map((m: any) => m.group_id)
+      if (groupIds.length === 0) {
+        setMyGroupsChannels([])
+        setIsLoadingGroups(false)
+        return
+      }
+
+      const { data: groupsData, error: groupsErr } = await supabase
+        .from('groups_channels')
+        .select('*')
+        .in('id', groupIds)
+        .order('created_at', { ascending: false })
+
+      if (groupsErr) throw groupsErr
+
+      // Member counts (best-effort, ignore failure)
+      const { data: allMembers } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .in('group_id', groupIds)
+
+      const countMap: Record<string, number> = {}
+        ; (allMembers || []).forEach((m: any) => {
+          countMap[m.group_id] = (countMap[m.group_id] || 0) + 1
+        })
+
+      const enriched = (groupsData || []).map((g: any) => ({
+        ...g,
+        member_count: countMap[g.id] || 0
+      }))
+
+      setMyGroupsChannels(enriched)
+    } catch (err) {
+      console.error('[Xabarlar] Guruh/kanallarni yuklashda xato:', err)
+    } finally {
+      setIsLoadingGroups(false)
+    }
+  }, [currentUserId, userIdReady])
+
+  useEffect(() => {
+    fetchMyGroupsChannels()
+  }, [fetchMyGroupsChannels])
+
+  // Realtime: refresh groups list on membership / group changes
+  useEffect(() => {
+    if (!currentUserId || !userIdReady) return
+
+    const groupsChannel = supabase
+      .channel('groups-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'group_members', filter: `user_id=eq.${currentUserId}` },
+        () => fetchMyGroupsChannels()
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'groups_channels' },
+        () => fetchMyGroupsChannels()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(groupsChannel)
+    }
+  }, [currentUserId, userIdReady, fetchMyGroupsChannels])
 
   // Toggle pin/unpin a chat for the current user
   const handleTogglePin = async (chatId: string) => {
@@ -561,6 +629,9 @@ function MessagesPageContent() {
       setGcUsername('')
       setGcDescription('')
       setGcIsPublic(false)
+      fetchMyGroupsChannels()
+      setSidebarTab('groups')
+      router.push(`/dashboard/groups/${gc.id}`)
     } catch (err: any) {
       toast.error(err.message || 'Yaratishda xatolik yuz berdi')
     } finally {
@@ -591,7 +662,6 @@ function MessagesPageContent() {
       toast.error(err.message || 'Amalda xatolik yuz berdi')
     }
   }
-
 
   useEffect(() => {
     const term = sanitizeSearchTerm(searchQuery)
@@ -670,7 +740,6 @@ function MessagesPageContent() {
       .eq('chat_id', chatId)
       .neq('sender_id', currentUserId)
       .eq('is_read', false)
-    // Clear unread count in sidebar
     setUnreadCounts(prev => ({ ...prev, [chatId]: 0 }))
   }, [currentUserId])
 
@@ -715,14 +784,12 @@ function MessagesPageContent() {
             return [...prev, incoming]
           })
 
-          // Update sidebar last message and unread count
           setLastMessages(prev => ({ ...prev, [incoming.chat_id]: incoming }))
           if (incoming.sender_id !== currentUserId) {
             setUnreadCounts(prev => ({ ...prev, [incoming.chat_id]: (prev[incoming.chat_id] || 0) + 1 }))
             markMessagesAsRead(selectedChatId)
           }
 
-          // Check scroll position to scroll bottom or show notification badge on bottom button
           const container = messagesContainerRef.current
           if (container) {
             const isFarUp = container.scrollHeight - container.scrollTop - container.clientHeight > 150
@@ -739,7 +806,6 @@ function MessagesPageContent() {
         (payload: any) => {
           const updated = payload.new as Message
           setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated } : m))
-          // Update last message if this was the last one
           setLastMessages(prev => {
             const last = prev[updated.chat_id]
             if (last && last.id === updated.id) return { ...prev, [updated.chat_id]: { ...last, ...updated } }
@@ -772,7 +838,6 @@ function MessagesPageContent() {
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`
   }
 
-  // Throttled typing broadcaster
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setTypedMessage(e.target.value)
     adjustTextareaHeight()
@@ -796,7 +861,6 @@ function MessagesPageContent() {
     }
   }
 
-  // Handle Send / Edit flows
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     const text = typedMessage.trim()
@@ -805,7 +869,6 @@ function MessagesPageContent() {
     setTypedMessage("")
     requestAnimationFrame(adjustTextareaHeight)
 
-    // Edit message path
     if (editingMessageId) {
       const msgId = editingMessageId
       setEditingMessageId(null)
@@ -823,7 +886,6 @@ function MessagesPageContent() {
       return
     }
 
-    // New message path
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const replyId = replyingMessage?.id || null
 
@@ -877,7 +939,6 @@ function MessagesPageContent() {
     }
   }
 
-  // Edit / Delete / Copy Actions
   const handleEditMessage = (msg: Message) => {
     setEditingMessageId(msg.id)
     setReplyingMessage(null)
@@ -907,7 +968,7 @@ function MessagesPageContent() {
 
   const handleToggleReaction = async (msg: Message, emoji: string) => {
     if (!currentUserId || !msg.id) return
-    setActiveContextMsg(null) // Close menu
+    setActiveContextMsg(null)
 
     let currentReactions: any[] = []
     try {
@@ -948,7 +1009,6 @@ function MessagesPageContent() {
     await handleToggleReaction(msg, '❤️')
   }
 
-  // Inside Chat Search logic
   useEffect(() => {
     if (!msgSearchQuery.trim() || messages.length === 0) {
       setMsgSearchMatches([])
@@ -1025,7 +1085,6 @@ function MessagesPageContent() {
     }
   }
 
-  // Context Menu Long Press Triggers
   const handleTouchStart = (e: React.TouchEvent, msg: Message) => {
     if (msg.is_deleted) return
     const touch = e.touches[0]
@@ -1046,7 +1105,6 @@ function MessagesPageContent() {
     if (longPressTimeoutRef.current) clearTimeout(longPressTimeoutRef.current)
   }
 
-  // Context Menu for desktop right-click
   const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
     if (msg.is_deleted) return
     e.preventDefault()
@@ -1054,7 +1112,6 @@ function MessagesPageContent() {
     setActiveContextMsg(msg)
   }
 
-  // Header Dropdown Blocks & Spam
   const handleBlockAction = async (action: 'block' | 'unblock' | 'spam') => {
     if (!activeUser || !currentUserId) return
     setIsEllipsisOpen(false)
@@ -1084,6 +1141,26 @@ function MessagesPageContent() {
       toast.error(err.message || "Amalda xatolik yuz berdi")
     }
   }
+
+  // Split groups/channels by type and apply search
+  const filteredGroups = myGroupsChannels.filter(g => {
+    if (g.type !== 'group') return false
+    if (!groupSearchQuery.trim()) return true
+    const q = groupSearchQuery.toLowerCase()
+    return g.name.toLowerCase().includes(q) || (g.username || '').toLowerCase().includes(q)
+  })
+
+  const filteredChannels = myGroupsChannels.filter(g => {
+    if (g.type !== 'channel') return false
+    if (!channelSearchQuery.trim()) return true
+    const q = channelSearchQuery.toLowerCase()
+    return g.name.toLowerCase().includes(q) || (g.username || '').toLowerCase().includes(q)
+  })
+
+  const groupsCount = myGroupsChannels.filter(g => g.type === 'group').length
+  const channelsCount = myGroupsChannels.filter(g => g.type === 'channel').length
+
+  const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0)
 
   return (
     <div className="bg-white dark:bg-slate-950 w-full h-full flex overflow-hidden border-none rounded-none select-none relative">
@@ -1127,7 +1204,6 @@ function MessagesPageContent() {
               }}
               className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 shadow-2xl rounded-2xl p-1.5 w-52 z-90 flex flex-col text-left font-semibold text-xs text-slate-700 dark:text-slate-200 select-none backdrop-blur-md"
             >
-              {/* Quick Reactions Bar */}
               <div className="flex justify-between items-center px-2 py-1.5 border-b border-slate-100 dark:border-white/5 mb-1.5 select-none">
                 {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
                   <button
@@ -1184,7 +1260,6 @@ function MessagesPageContent() {
         )}
       </AnimatePresence>
 
-      {/* SIDEBAR: CHATS & SEARCH LIST */}
       {/* SIDEBAR CHAT ITEM CONTEXT MENU */}
       <AnimatePresence>
         {sidebarCtxMenu && (
@@ -1247,7 +1322,6 @@ function MessagesPageContent() {
               exit={{ opacity: 0, y: 40 }}
               className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 dark:border-white/10 overflow-hidden"
             >
-              {/* Modal Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/5">
                 <div className="flex items-center gap-2.5">
                   {createModalType === 'group'
@@ -1267,7 +1341,6 @@ function MessagesPageContent() {
               </div>
 
               <div className="p-5 space-y-4">
-                {/* Avatar Placeholder */}
                 <div className="flex items-center gap-4">
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${createModalType === 'group' ? 'bg-blue-50 dark:bg-blue-950/40' : 'bg-violet-50 dark:bg-violet-950/40'}`}>
                     {createModalType === 'group'
@@ -1290,7 +1363,6 @@ function MessagesPageContent() {
                   </div>
                 </div>
 
-                {/* Username */}
                 <div>
                   <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 block">
                     Username (ixtiyoriy)
@@ -1308,7 +1380,6 @@ function MessagesPageContent() {
                   </div>
                 </div>
 
-                {/* Description */}
                 <div>
                   <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 block">
                     Tavsif (ixtiyoriy)
@@ -1323,7 +1394,6 @@ function MessagesPageContent() {
                   />
                 </div>
 
-                {/* Public/Private Toggle */}
                 <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-white/5">
                   <div className="flex items-center gap-2.5">
                     {gcIsPublic
@@ -1335,7 +1405,7 @@ function MessagesPageContent() {
                         {gcIsPublic ? 'Hammaga ochiq' : 'Maxfiy'}
                       </p>
                       <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                         {gcIsPublic ? "Har kim topib qo\u02BCshila oladi" : 'Faqat taklif orqali'}
+                        {gcIsPublic ? "Har kim topib qo\u02BCshila oladi" : 'Faqat taklif orqali'}
                       </p>
                     </div>
                   </div>
@@ -1347,7 +1417,6 @@ function MessagesPageContent() {
                   </button>
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-2.5 pt-1">
                   <button
                     onClick={() => setCreateModalType(null)}
@@ -1358,11 +1427,10 @@ function MessagesPageContent() {
                   <button
                     onClick={handleCreateGroupChannel}
                     disabled={!gcName.trim() || gcCreating}
-                    className={`flex-1 py-2.5 rounded-2xl text-xs font-black text-white transition-all active:scale-95 ${
-                      gcName.trim() && !gcCreating
+                    className={`flex-1 py-2.5 rounded-2xl text-xs font-black text-white transition-all active:scale-95 ${gcName.trim() && !gcCreating
                         ? createModalType === 'group' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-violet-600 hover:bg-violet-700'
                         : 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed'
-                    }`}
+                      }`}
                   >
                     {gcCreating ? 'Yaratilmoqda...' : `Yaratish`}
                   </button>
@@ -1430,173 +1498,425 @@ function MessagesPageContent() {
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Global User Search */}
-        <div className="px-4 py-2 shrink-0 bg-white dark:bg-slate-950">
-          <div className="relative flex items-center group">
-            <IoSearchOutline className="w-4 h-4 text-slate-400 absolute left-3.5 group-focus-within:text-blue-500 transition-colors" />
-            <input
-              type="text"
-              placeholder="Suhbatdosh qidirish..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs font-semibold pl-10 pr-9 py-3 rounded-2xl border border-transparent dark:border-white/5 focus:border-blue-500/20 focus:bg-white dark:focus:bg-slate-950 outline-none transition-all"
-            />
-            {isSearching && (
-              <span className="absolute right-3.5 w-3.5 h-3.5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-            )}
-          </div>
-          {!userIdReady && (
-            <p className="mt-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-lg border border-amber-200/20">
-              Profil sozlanmoqda...
-            </p>
-          )}
-        </div>
-
-        {/* Chat List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1 [&::-webkit-scrollbar]:hidden bg-white dark:bg-slate-950">
-          {searchQuery.trim().length > 0 ? (
-            <>
-              <p className="text-[10px] font-bold text-slate-400 px-3 uppercase tracking-wider mb-2 text-left">Foydalanuvchilar</p>
-              {searchError ? (
-                <p className="text-xs font-medium text-red-400 p-4 text-center">{searchError}</p>
-              ) : isSearching ? (
-                <div className="space-y-2 px-1">
-                  {[0, 1, 2].map(i => (
-                    <div key={i} className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" />
-                  ))}
-                </div>
-              ) : searchResults.length > 0 ? (
-                searchResults.map((user) => (
-                  <div
-                    key={user.id}
-                    onClick={() => handleSelectUser(user)}
-                    className="p-3 flex items-center gap-3.5 cursor-pointer rounded-2xl hover:bg-blue-50/50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200 transition-all group"
-                  >
-                    <div className="relative">
-                      <img src={user.avatar_url || FALLBACK_AVATAR} alt="" className="w-10 h-10 object-cover rounded-full" />
-                      {onlineUserIds.has(user.id) && (
-                        <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-slate-950 animate-pulse" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0 text-left">
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">{user.nickname}</h4>
-                      <p className="text-xs text-slate-400 truncate">@{user.username}</p>
-                    </div>
-                    <IoChatbubblesOutline className="w-4 h-4 text-slate-400 group-hover:text-blue-500 mr-2" />
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs font-medium text-slate-400 p-4 text-center">Foydalanuvchi topilmadi 😕</p>
+          {/* Tab Switcher: Chatlar / Guruhlar / Kanallar */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl select-none">
+            <button
+              onClick={() => setSidebarTab('chats')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${sidebarTab === 'chats'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                }`}
+            >
+              <IoChatbubblesOutline className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Chatlar</span>
+              {totalUnread > 0 && (
+                <span className="min-w-[16px] h-[16px] px-1 bg-blue-600 text-white text-[9px] font-black rounded-full flex items-center justify-center shrink-0">
+                  {totalUnread > 99 ? '99+' : totalUnread}
+                </span>
               )}
-            </>
-          ) : isLoadingChats ? (
-            <div className="space-y-2 px-1">
-              {[0, 1, 2, 3].map(i => (
-                <div key={i} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" />
-              ))}
-            </div>
-          ) : chats.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-                <IoChatbubblesOutline className="w-6 h-6 text-slate-400" />
+            </button>
+            <button
+              onClick={() => setSidebarTab('groups')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${sidebarTab === 'groups'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                }`}
+            >
+              <HiOutlineUserGroup className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Guruhlar</span>
+              {groupsCount > 0 && (
+                <span className="min-w-[16px] h-[16px] px-1 bg-blue-600 text-white text-[9px] font-black rounded-full flex items-center justify-center shrink-0">
+                  {groupsCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setSidebarTab('channels')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${sidebarTab === 'channels'
+                  ? 'bg-white dark:bg-slate-800 text-violet-600 dark:text-violet-400 shadow-sm'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
+                }`}
+            >
+              <HiOutlineSpeakerWave className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Kanallar</span>
+              {channelsCount > 0 && (
+                <span className="min-w-[16px] h-[16px] px-1 bg-violet-600 text-white text-[9px] font-black rounded-full flex items-center justify-center shrink-0">
+                  {channelsCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Tab Switcher (shown below mobile header) */}
+        <div className="px-4 pt-3 md:hidden shrink-0 bg-white dark:bg-slate-950">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl select-none">
+            <button
+              onClick={() => setSidebarTab('chats')}
+              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${sidebarTab === 'chats'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-slate-400 dark:text-slate-500'
+                }`}
+            >
+              <IoChatbubblesOutline className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Chatlar</span>
+            </button>
+            <button
+              onClick={() => setSidebarTab('groups')}
+              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${sidebarTab === 'groups'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-slate-400 dark:text-slate-500'
+                }`}
+            >
+              <HiOutlineUserGroup className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Guruhlar</span>
+            </button>
+            <button
+              onClick={() => setSidebarTab('channels')}
+              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${sidebarTab === 'channels'
+                  ? 'bg-white dark:bg-slate-800 text-violet-600 dark:text-violet-400 shadow-sm'
+                  : 'text-slate-400 dark:text-slate-500'
+                }`}
+            >
+              <HiOutlineSpeakerWave className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Kanallar</span>
+            </button>
+          </div>
+        </div>
+
+        {sidebarTab === 'chats' ? (
+          <>
+            {/* Global User Search */}
+            <div className="px-4 py-2 shrink-0 bg-white dark:bg-slate-950">
+              <div className="relative flex items-center group">
+                <IoSearchOutline className="w-4 h-4 text-slate-400 absolute left-3.5 group-focus-within:text-blue-500 transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Suhbatdosh qidirish..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs font-semibold pl-10 pr-9 py-3 rounded-2xl border border-transparent dark:border-white/5 focus:border-blue-500/20 focus:bg-white dark:focus:bg-slate-950 outline-none transition-all"
+                />
+                {isSearching && (
+                  <span className="absolute right-3.5 w-3.5 h-3.5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                )}
               </div>
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 text-center leading-relaxed px-4">
-                Chatlar mavjud emas.<br />Suhbatni boshlash uchun qidiring.
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Pinned chats section */}
-              {pinnedChatIds.size > 0 && (
-                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 pt-1 pb-0.5 flex items-center gap-1">
-                  <HiMapPin className="w-3 h-3 text-amber-500" /> Qadab qo'yilgan
+              {!userIdReady && (
+                <p className="mt-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-lg border border-amber-200/20">
+                  Profil sozlanmoqda...
                 </p>
               )}
-              {[
-                ...chats.filter(c => pinnedChatIds.has(c.id)),
-                ...(pinnedChatIds.size > 0 ? [null] : []), // divider placeholder
-                ...chats.filter(c => !pinnedChatIds.has(c.id))
-              ].map((chat, i) => {
-                // divider
-                if (chat === null) return (
-                  <p key="divider" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 pt-2 pb-0.5">Suhbatlar</p>
-                )
+            </div>
 
-                const partner = chat.user_one.id === currentUserId ? chat.user_two : chat.user_one
-                const isSelected = selectedChatId === chat.id
-                const isPartnerOnline = onlineUserIds.has(partner.id)
-                const isPinned = pinnedChatIds.has(chat.id)
-                const unread = unreadCounts[chat.id] || 0
-                const lastMsg = lastMessages[chat.id]
-                const lastMsgText = lastMsg
-                  ? lastMsg.is_deleted
-                    ? "\uD83D\uDEAB Xabar o\u02BCchirilgan"
-                    : lastMsg.file_type === 'image'
-                      ? '\uD83D\uDDBC\uFE0F Rasm'
-                      : lastMsg.file_type === 'video'
-                        ? '\uD83C\uDFA5 Video'
-                        : lastMsg.file_type === 'audio'
-                          ? '\uD83C\uDFA4 Ovozli xabar'
-                          : (lastMsg.text || '')
-                  : null
+            {/* Chat List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 [&::-webkit-scrollbar]:hidden bg-white dark:bg-slate-950">
+              {searchQuery.trim().length > 0 ? (
+                <>
+                  <p className="text-[10px] font-bold text-slate-400 px-3 uppercase tracking-wider mb-2 text-left">Foydalanuvchilar</p>
+                  {searchError ? (
+                    <p className="text-xs font-medium text-red-400 p-4 text-center">{searchError}</p>
+                  ) : isSearching ? (
+                    <div className="space-y-2 px-1">
+                      {[0, 1, 2].map(i => (
+                        <div key={i} className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" />
+                      ))}
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    searchResults.map((user) => (
+                      <div
+                        key={user.id}
+                        onClick={() => handleSelectUser(user)}
+                        className="p-3 flex items-center gap-3.5 cursor-pointer rounded-2xl hover:bg-blue-50/50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200 transition-all group"
+                      >
+                        <div className="relative">
+                          <img src={user.avatar_url || FALLBACK_AVATAR} alt="" className="w-10 h-10 object-cover rounded-full" />
+                          {onlineUserIds.has(user.id) && (
+                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-slate-950 animate-pulse" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate">{user.nickname}</h4>
+                          <p className="text-xs text-slate-400 truncate">@{user.username}</p>
+                        </div>
+                        <IoChatbubblesOutline className="w-4 h-4 text-slate-400 group-hover:text-blue-500 mr-2" />
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs font-medium text-slate-400 p-4 text-center">Foydalanuvchi topilmadi 😕</p>
+                  )}
+                </>
+              ) : isLoadingChats ? (
+                <div className="space-y-2 px-1">
+                  {[0, 1, 2, 3].map(i => (
+                    <div key={i} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" />
+                  ))}
+                </div>
+              ) : chats.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+                    <IoChatbubblesOutline className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-400 dark:text-slate-500 text-center leading-relaxed px-4">
+                    Chatlar mavjud emas.<br />Suhbatni boshlash uchun qidiring.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {pinnedChatIds.size > 0 && (
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 pt-1 pb-0.5 flex items-center gap-1">
+                      <HiMapPin className="w-3 h-3 text-amber-500" /> Qadab qo'yilgan
+                    </p>
+                  )}
+                  {[
+                    ...chats.filter(c => pinnedChatIds.has(c.id)),
+                    ...(pinnedChatIds.size > 0 ? [null] : []),
+                    ...chats.filter(c => !pinnedChatIds.has(c.id))
+                  ].map((chat, i) => {
+                    if (chat === null) return (
+                      <p key="divider" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 pt-2 pb-0.5">Suhbatlar</p>
+                    )
+
+                    const partner = chat.user_one.id === currentUserId ? chat.user_two : chat.user_one
+                    const isSelected = selectedChatId === chat.id
+                    const isPartnerOnline = onlineUserIds.has(partner.id)
+                    const isPinned = pinnedChatIds.has(chat.id)
+                    const unread = unreadCounts[chat.id] || 0
+                    const lastMsg = lastMessages[chat.id]
+                    const lastMsgText = lastMsg
+                      ? lastMsg.is_deleted
+                        ? "\uD83D\uDEAB Xabar o\u02BCchirilgan"
+                        : lastMsg.file_type === 'image'
+                          ? '\uD83D\uDDBC\uFE0F Rasm'
+                          : lastMsg.file_type === 'video'
+                            ? '\uD83C\uDFA5 Video'
+                            : lastMsg.file_type === 'audio'
+                              ? '\uD83C\uDFA4 Ovozli xabar'
+                              : (lastMsg.text || '')
+                      : null
 
 
-                return (
+                    return (
+                      <div
+                        key={chat.id}
+                        className={`p-3 flex items-center gap-3 cursor-pointer rounded-2xl transition-all duration-200 active:scale-[0.98] group ${isSelected
+                            ? 'bg-blue-600 text-white border border-transparent dark:border-white/5 shadow-md shadow-blue-500/20'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200'
+                          }`}
+                        onClick={() => setSelectedChatId(chat.id)}
+                        onContextMenu={(e) => { e.preventDefault(); handleSidebarLongPress(e, chat.id, partner.id) }}
+                        onTouchStart={(e) => {
+                          sidebarLongPressRef.current = setTimeout(() => {
+                            handleSidebarLongPress(e, chat.id, partner.id)
+                            if (navigator.vibrate) navigator.vibrate(40)
+                          }, 500)
+                        }}
+                        onTouchEnd={() => { if (sidebarLongPressRef.current) clearTimeout(sidebarLongPressRef.current) }}
+                        onTouchMove={() => { if (sidebarLongPressRef.current) clearTimeout(sidebarLongPressRef.current) }}
+                      >
+                        <div className="relative shrink-0">
+                          <img src={partner.avatar_url || FALLBACK_AVATAR} alt="" className="w-11 h-11 object-cover rounded-full" />
+                          {isPartnerOnline && (
+                            <span className={`absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full ring-2 ${isSelected ? 'ring-blue-600' : 'ring-white dark:ring-slate-950'}`} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center justify-between gap-1">
+                            <h4 className={`font-bold text-sm truncate ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'} flex items-center gap-1`}>
+                              {isPinned && <HiMapPin className={`w-3 h-3 shrink-0 ${isSelected ? 'text-white/70' : 'text-amber-500'}`} />}
+                              {partner.nickname}
+                            </h4>
+                            {lastMsg && (
+                              <span className={`text-[10px] font-bold shrink-0 ${isSelected ? 'text-white/60' : 'text-slate-400 dark:text-slate-500'}`}>
+                                {new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between gap-1">
+                            <p className={`text-xs truncate ${isSelected ? 'text-white/80' : unread > 0 ? 'text-slate-700 dark:text-slate-200 font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
+                              {lastMsgText || <span className="italic">@{partner.username}</span>}
+                            </p>
+                            {unread > 0 && !isSelected && (
+                              <span className="shrink-0 min-w-[18px] h-[18px] bg-blue-600 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1">
+                                {unread > 99 ? '99+' : unread}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+          </>
+        ) : sidebarTab === 'groups' ? (
+          <>
+            {/* Groups Search */}
+            <div className="px-4 py-2 shrink-0 bg-white dark:bg-slate-950">
+              <div className="relative flex items-center group">
+                <IoSearchOutline className="w-4 h-4 text-slate-400 absolute left-3.5 group-focus-within:text-blue-500 transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Guruh qidirish..."
+                  value={groupSearchQuery}
+                  onChange={(e) => setGroupSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs font-semibold pl-10 pr-9 py-3 rounded-2xl border border-transparent dark:border-white/5 focus:border-blue-500/20 focus:bg-white dark:focus:bg-slate-950 outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Groups List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 [&::-webkit-scrollbar]:hidden bg-white dark:bg-slate-950">
+              {isLoadingGroups ? (
+                <div className="space-y-2 px-1">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" />
+                  ))}
+                </div>
+              ) : filteredGroups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+                    <HiOutlineUserGroup className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-400 dark:text-slate-500 text-center leading-relaxed px-4">
+                    {groupSearchQuery.trim()
+                      ? "Hech narsa topilmadi 😕"
+                      : <>Hali guruhingiz yo'q.<br />Yangisini yarating!</>}
+                  </p>
+                  {!groupSearchQuery.trim() && (
+                    <button
+                      onClick={() => setCreateModalType('group')}
+                      className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-xl active:scale-95 transition-all flex items-center gap-1.5 mt-1"
+                    >
+                      <HiOutlineUserGroup className="w-3.5 h-3.5" /> Guruh yaratish
+                    </button>
+                  )}
+                </div>
+              ) : (
+                filteredGroups.map((gc) => (
                   <div
-                    key={chat.id}
-                    className={`p-3 flex items-center gap-3 cursor-pointer rounded-2xl transition-all duration-200 active:scale-[0.98] group ${
-                      isSelected
-                        ? 'bg-blue-600 text-white border border-transparent dark:border-white/5 shadow-md shadow-blue-500/20'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200'
-                    }`}
-                    onClick={() => setSelectedChatId(chat.id)}
-                    onContextMenu={(e) => { e.preventDefault(); handleSidebarLongPress(e, chat.id, partner.id) }}
-                    onTouchStart={(e) => {
-                      sidebarLongPressRef.current = setTimeout(() => {
-                        handleSidebarLongPress(e, chat.id, partner.id)
-                        if (navigator.vibrate) navigator.vibrate(40)
-                      }, 500)
-                    }}
-                    onTouchEnd={() => { if (sidebarLongPressRef.current) clearTimeout(sidebarLongPressRef.current) }}
-                    onTouchMove={() => { if (sidebarLongPressRef.current) clearTimeout(sidebarLongPressRef.current) }}
+                    key={gc.id}
+                    onClick={() => router.push(`/dashboard/groups/${gc.id}`)}
+                    className="p-3 flex items-center gap-3 cursor-pointer rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200 transition-all duration-200 active:scale-[0.98] group"
                   >
                     <div className="relative shrink-0">
-                      <img src={partner.avatar_url || FALLBACK_AVATAR} alt="" className="w-11 h-11 object-cover rounded-full" />
-                      {isPartnerOnline && (
-                        <span className={`absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full ring-2 ${isSelected ? 'ring-blue-600' : 'ring-white dark:ring-slate-950'}`} />
+                      {gc.avatar_url ? (
+                        <img src={gc.avatar_url} alt="" className="w-11 h-11 object-cover rounded-2xl" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-blue-50 dark:bg-blue-950/40 text-blue-500">
+                          <HiOutlineUserGroup className="w-5 h-5" />
+                        </div>
                       )}
+                      <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full ring-2 ring-white dark:ring-slate-950 flex items-center justify-center bg-blue-600">
+                        <HiOutlineUserGroup className="w-2.5 h-2.5 text-white" />
+                      </span>
                     </div>
                     <div className="flex-1 min-w-0 text-left">
-                      <div className="flex items-center justify-between gap-1">
-                        <h4 className={`font-bold text-sm truncate ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'} flex items-center gap-1`}>
-                          {isPinned && <HiMapPin className={`w-3 h-3 shrink-0 ${isSelected ? 'text-white/70' : 'text-amber-500'}`} />}
-                          {partner.nickname}
-                        </h4>
-                        {lastMsg && (
-                          <span className={`text-[10px] font-bold shrink-0 ${isSelected ? 'text-white/60' : 'text-slate-400 dark:text-slate-500'}`}>
-                            {new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate flex items-center gap-1.5">
+                        {gc.name}
+                        {gc.is_public ? (
+                          <HiOutlineGlobeAlt className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <HiLockClosed className="w-3 h-3 text-slate-400 shrink-0" />
                         )}
-                      </div>
-                      <div className="flex items-center justify-between gap-1">
-                        <p className={`text-xs truncate ${isSelected ? 'text-white/80' : unread > 0 ? 'text-slate-700 dark:text-slate-200 font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
-                          {lastMsgText || <span className="italic">@{partner.username}</span>}
-                        </p>
-                        {unread > 0 && !isSelected && (
-                          <span className="shrink-0 min-w-[18px] h-[18px] bg-blue-600 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1">
-                            {unread > 99 ? '99+' : unread}
-                          </span>
+                      </h4>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                        {gc.member_count !== undefined && (
+                          <span className="font-semibold">{gc.member_count} a'zo</span>
                         )}
-                      </div>
+                        {gc.description ? ` · ${gc.description}` : ''}
+                      </p>
                     </div>
                   </div>
-                )
-              })}
-            </>
-          )}
-        </div>
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Channels Search */}
+            <div className="px-4 py-2 shrink-0 bg-white dark:bg-slate-950">
+              <div className="relative flex items-center group">
+                <IoSearchOutline className="w-4 h-4 text-slate-400 absolute left-3.5 group-focus-within:text-violet-500 transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Kanal qidirish..."
+                  value={channelSearchQuery}
+                  onChange={(e) => setChannelSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs font-semibold pl-10 pr-9 py-3 rounded-2xl border border-transparent dark:border-white/5 focus:border-violet-500/20 focus:bg-white dark:focus:bg-slate-950 outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Channels List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 [&::-webkit-scrollbar]:hidden bg-white dark:bg-slate-950">
+              {isLoadingGroups ? (
+                <div className="space-y-2 px-1">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-900 animate-pulse" />
+                  ))}
+                </div>
+              ) : filteredChannels.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-violet-50 dark:bg-violet-950/30 flex items-center justify-center">
+                    <HiOutlineSpeakerWave className="w-6 h-6 text-violet-400" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-400 dark:text-slate-500 text-center leading-relaxed px-4">
+                    {channelSearchQuery.trim()
+                      ? "Hech narsa topilmadi 😕"
+                      : <>Hali kanalingiz yo'q.<br />Yangisini yarating!</>}
+                  </p>
+                  {!channelSearchQuery.trim() && (
+                    <button
+                      onClick={() => setCreateModalType('channel')}
+                      className="px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-[11px] font-bold rounded-xl active:scale-95 transition-all flex items-center gap-1.5 mt-1"
+                    >
+                      <HiOutlineSpeakerWave className="w-3.5 h-3.5" /> Kanal yaratish
+                    </button>
+                  )}
+                </div>
+              ) : (
+                filteredChannels.map((gc) => (
+                  <div
+                    key={gc.id}
+                    onClick={() => router.push(`/dashboard/groups/${gc.id}`)}
+                    className="p-3 flex items-center gap-3 cursor-pointer rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200 transition-all duration-200 active:scale-[0.98] group"
+                  >
+                    <div className="relative shrink-0">
+                      {gc.avatar_url ? (
+                        <img src={gc.avatar_url} alt="" className="w-11 h-11 object-cover rounded-2xl" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-violet-50 dark:bg-violet-950/40 text-violet-500">
+                          <HiOutlineSpeakerWave className="w-5 h-5" />
+                        </div>
+                      )}
+                      <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full ring-2 ring-white dark:ring-slate-950 flex items-center justify-center bg-violet-600">
+                        <HiOutlineSpeakerWave className="w-2.5 h-2.5 text-white" />
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate flex items-center gap-1.5">
+                        {gc.name}
+                        {gc.is_public ? (
+                          <HiOutlineGlobeAlt className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <HiLockClosed className="w-3 h-3 text-slate-400 shrink-0" />
+                        )}
+                      </h4>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                        {gc.member_count !== undefined && (
+                          <span className="font-semibold">{gc.member_count} obunachi</span>
+                        )}
+                        {gc.description ? ` · ${gc.description}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* MAIN: CHAT WINDOW */}
@@ -1712,7 +2032,6 @@ function MessagesPageContent() {
                         <HiOutlineEllipsisVertical className="w-5 h-5" />
                       </button>
 
-                      {/* Ellipsis Actions Menu */}
                       <AnimatePresence>
                         {isEllipsisOpen && (
                           <>
@@ -1782,7 +2101,6 @@ function MessagesPageContent() {
                   const showDateDivider = !prevMsg || formatDateLabel(prevMsg.created_at) !== formatDateLabel(msg.created_at)
                   const isFresh = freshMessageIds.current.has(msg.id)
 
-                  // Replied message resolution
                   const repliedToMsg = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
 
                   return (
@@ -1795,19 +2113,16 @@ function MessagesPageContent() {
                         </div>
                       )}
 
-                      {/* MESSAGE LAYOUT WRAPPER */}
                       <div
                         id={`message-${msg.id}`}
                         className={`flex flex-col max-w-[75%] mb-2 relative transition-all duration-300 rounded-2xl ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
                       >
-                        {/* Reply Icon Behind Bubble when swiped */}
                         {!isMe && (
                           <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none z-0 text-blue-500 opacity-60">
                             <HiOutlineArrowUturnLeft className="w-5 h-5 animate-pulse" />
                           </div>
                         )}
 
-                        {/* Swipe gesture wrapped message bubble */}
                         <motion.div
                           drag={!isMe ? "x" : false}
                           dragConstraints={{ left: 0, right: 80 }}
@@ -1832,7 +2147,6 @@ function MessagesPageContent() {
                             : 'bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-100 rounded-3xl rounded-tl-none'
                             } ${msg._pending ? 'opacity-60' : ''}`}
                         >
-                          {/* Heart Burst Overlay Animation */}
                           <AnimatePresence>
                             {heartBurstMsgId === msg.id && (
                               <motion.div
@@ -1847,7 +2161,6 @@ function MessagesPageContent() {
                             )}
                           </AnimatePresence>
 
-                          {/* Replied Snippet Header inside bubble */}
                           {repliedToMsg && (
                             <div
                               onClick={(e) => {
@@ -1916,7 +2229,6 @@ function MessagesPageContent() {
                           </div>
                         </motion.div>
 
-                        {/* Reactions Pill Display */}
                         {msg.reactions && (typeof msg.reactions === 'string' ? JSON.parse(msg.reactions) : msg.reactions).length > 0 && (
                           <div className={`absolute bottom-[-8px] flex gap-0.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 rounded-full px-1.5 py-0.5 shadow-md select-none z-10 text-[10px] font-bold text-slate-505 dark:text-slate-300 cursor-pointer ${isMe ? 'right-4' : 'left-4'}`}>
                             {(() => {
@@ -1933,7 +2245,6 @@ function MessagesPageContent() {
                           </div>
                         )}
 
-                        {/* TIME & STATUS */}
                         <div className="flex items-center gap-1 mt-1.5 px-1.5 select-none">
                           <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">
                             {msg._pending ? 'yuborilmoqda...' : new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1962,7 +2273,6 @@ function MessagesPageContent() {
 
             {/* MESSAGE ACTION INPUT HEADER (Edit/Reply bars) */}
             <div className="shrink-0 select-none bg-white dark:bg-slate-900 relative">
-              {/* Scroll-to-Bottom Button */}
               <AnimatePresence>
                 {showScrollBottomBtn && (
                   <motion.button
@@ -1986,7 +2296,6 @@ function MessagesPageContent() {
                 )}
               </AnimatePresence>
 
-              {/* Edit Mode Preview */}
               {editingMessageId && (
                 <div className="px-4 py-2.5 bg-blue-50/50 dark:bg-blue-950/20 border-t border-slate-200 dark:border-white/5 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400">
                   <div className="flex items-center gap-1.5">
@@ -2002,7 +2311,6 @@ function MessagesPageContent() {
                 </div>
               )}
 
-              {/* Reply Mode Preview */}
               {replyingMessage && (
                 <div className="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-950/20 border-t border-slate-200 dark:border-white/5 flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
                   <div className="flex items-center gap-2 truncate pr-4 text-left">
