@@ -43,6 +43,27 @@ export async function POST(request: Request) {
         if (existing) {
             // Like bor — o'chiramiz
             await supabase.from('reel_likes').delete().eq('id', existing.id)
+
+            // Notification o'chirish
+            try {
+                const { data: reel } = await supabase
+                    .from('reels')
+                    .select('user_id')
+                    .eq('id', reelId)
+                    .single()
+                if (reel) {
+                    await supabase
+                        .from('notifications')
+                        .delete()
+                        .eq('user_id', reel.user_id)
+                        .eq('actor_id', session.user.id)
+                        .eq('type', 'like')
+                        .eq('reel_id', reelId)
+                }
+            } catch (err) {
+                console.error("Like notification o'chirishda xatolik:", err)
+            }
+
             return NextResponse.json({ liked: false })
         } else {
             // Like yo'q — qo'shamiz
@@ -50,6 +71,26 @@ export async function POST(request: Request) {
                 reel_id: reelId,
                 user_id: session.user.id,
             })
+
+            // Notification yuborish
+            try {
+                const { data: reel } = await supabase
+                    .from('reels')
+                    .select('user_id')
+                    .eq('id', reelId)
+                    .single()
+                if (reel && reel.user_id !== session.user.id) {
+                    await supabase.from('notifications').insert({
+                        user_id: reel.user_id,
+                        actor_id: session.user.id,
+                        type: 'like',
+                        reel_id: reelId
+                    })
+                }
+            } catch (err) {
+                console.error("Like notification yuborishda xatolik:", err)
+            }
+
             return NextResponse.json({ liked: true })
         }
     } catch (error: any) {

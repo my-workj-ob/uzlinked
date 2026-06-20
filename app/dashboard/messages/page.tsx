@@ -11,9 +11,11 @@ import type { OurFileRouter } from "@/app/api/uploadthing/core"
 import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import {
   HiPaperAirplane, HiOutlinePaperClip, HiOutlineFaceSmile,
-  HiChevronLeft, HiOutlineEllipsisVertical, HiCheckBadge
+  HiChevronLeft, HiOutlineEllipsisVertical, HiCheckBadge,
+  HiOutlineMicrophone
 } from 'react-icons/hi2'
 import { IoSearchOutline, IoChatbubblesOutline } from 'react-icons/io5'
+import { BottomSheet } from '@/components/bottom-sheet'
 
 const supabase = createClient()
 const { useUploadThing } = generateReactHelpers<OurFileRouter>()
@@ -32,7 +34,8 @@ interface Message {
   sender_id: string
   text: string | null
   file_url: string | null
-  file_type: 'image' | 'video' | null
+  file_type: 'image' | 'video' | 'audio' | null
+  transcription?: string | null
   created_at: string
   _pending?: boolean
 }
@@ -124,6 +127,124 @@ export default function MessagesPage() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [typedMessage, setTypedMessage] = useState("")
   const [currentUserId, setCurrentUserId] = useState<string | any>('')
+  
+  // Voice Recording States
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const [audioTranscript, setAudioTranscript] = useState("")
+  const [selectedTranscriptMsg, setSelectedTranscriptMsg] = useState<Message | null>(null)
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const recognitionRef = useRef<any>(null)
+  const timerRef = useRef<any>(null)
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data)
+        }
+      }
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        const audioFile = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' })
+        
+        // Stop all audio tracks to release microphone
+        stream.getTracks().forEach(track => track.stop())
+
+        // Start upload
+        if (selectedChatId) {
+          try {
+            const finalTranscript = audioTranscript.trim();
+            const uploadRes = await startUpload([audioFile])
+            if (uploadRes && uploadRes[0]) {
+              const uploadedFile = uploadRes[0]
+              
+              await supabase.from('messages').insert([{
+                chat_id: selectedChatId,
+                sender_id: currentUserId,
+                text: null,
+                file_url: uploadedFile.url,
+                file_type: 'audio',
+                transcription: finalTranscript || null
+              }])
+            }
+          } catch (err) {
+            console.error("Audio yuklashda xato:", err)
+          }
+        }
+      }
+
+      // Web Speech API for transcription
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition()
+        recognition.lang = 'uz-UZ'
+        recognition.continuous = true
+        recognition.interimResults = false
+        
+        recognition.onresult = (event: any) => {
+          let text = ''
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            text += event.results[i][0].transcript
+          }
+          setAudioTranscript(prev => (prev + ' ' + text).trim())
+        }
+        
+        recognitionRef.current = recognition
+        recognition.start()
+      } else {
+        setAudioTranscript("Ovozli xabar transkripsiyasi (Brauzeringizda Web Speech API qo'llab-quvvatlanmaydi)")
+      }
+
+      setAudioTranscript("")
+      setRecordingDuration(0)
+      setIsRecording(true)
+      mediaRecorder.start()
+
+      timerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1)
+      }, 1000)
+
+    } catch (err) {
+      alert("Mikrofondan foydalanishga ruxsat berilmadi yoki xatolik yuz berdi.")
+      console.error(err)
+    }
+  }
+
+  const stopRecording = (shouldSend = true) => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop()
+      } catch {}
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      if (!shouldSend) {
+        mediaRecorderRef.current.onstop = null
+        const stream = mediaRecorderRef.current.stream
+        stream.getTracks().forEach(track => track.stop())
+      }
+      mediaRecorderRef.current.stop()
+    }
+    
+    setIsRecording(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -171,6 +292,12 @@ export default function MessagesPage() {
       if (res && res[0] && selectedChatId) {
         const uploadedFile = res[0]
         const isVideo = uploadedFile.type.startsWith("video") || uploadedFile.name.endsWith(".mp4")
+        const isAudio = uploadedFile.type.startsWith("audio") || uploadedFile.name.endsWith(".webm") || uploadedFile.name.includes("voice")
+
+        if (isAudio) {
+          // Handled separately inside mediaRecorder.onstop to include transcription
+          return
+        }
 
         await supabase.from('messages').insert([{
           chat_id: selectedChatId,
@@ -443,7 +570,7 @@ export default function MessagesPage() {
               placeholder="Foydalanuvchi qidirish (ism, username)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-205 text-xs font-semibold pl-10 pr-9 py-3 rounded-2xl border border-transparent dark:border-white/5 focus:border-blue-500/20 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
+              className="w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 text-xs font-semibold pl-10 pr-9 py-3 rounded-2xl border border-transparent dark:border-white/5 focus:border-blue-500/20 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all"
             />
             {isSearching && (
               <span className="absolute right-3.5 w-3.5 h-3.5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
@@ -511,7 +638,7 @@ export default function MessagesPage() {
                   <img src={partner.avatar_url || FALLBACK_AVATAR} alt="" className="w-11 h-11 object-cover rounded-full" />
                   <div className="flex-1 min-w-0">
                     <h4 className={`font-bold text-sm truncate ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>{partner.nickname}</h4>
-                    <p className={`text-xs truncate ${isSelected ? 'text-white/80' : 'text-slate-400 dark:text-slate-550'}`}>@{partner.username}</p>
+                    <p className={`text-xs truncate ${isSelected ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'}`}>@{partner.username}</p>
                   </div>
                 </div>
               )
@@ -590,11 +717,24 @@ export default function MessagesPage() {
                             } ${msg._pending ? 'opacity-60' : ''}`}
                         >
                           {msg.file_url && (
-                            <div className="mb-1.5 overflow-hidden rounded-xl max-w-xs bg-black/5">
+                            <div className="mb-1.5 overflow-hidden rounded-xl max-w-xs">
                               {msg.file_type === 'video' ? (
-                                <video src={msg.file_url} controls className="w-full max-h-60 object-contain rounded-xl" />
+                                <video src={msg.file_url} controls className="w-full max-h-60 object-contain rounded-xl bg-black/5" />
+                              ) : msg.file_type === 'audio' ? (
+                                <div className="p-2 dark:bg-slate-900 rounded-xl flex flex-col gap-1.5 min-w-[200px] select-none">
+                                  <audio src={msg.file_url} controls className="w-full h-8 rounded-md bg-transparent" />
+                                  {msg.transcription && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedTranscriptMsg(msg)}
+                                      className="text-[9px] font-extrabold uppercase tracking-wider text-blue-500 hover:text-blue-600 dark:text-blue-450 dark:hover:text-blue-300 transition-colors text-left pl-1 cursor-pointer font-semibold"
+                                    >
+                                      Matnni o'qish (Transcription)
+                                    </button>
+                                  )}
+                                </div>
                               ) : (
-                                <img src={msg.file_url} alt="Attachment" className="w-full max-h-60 object-cover rounded-xl" />
+                                <img src={msg.file_url} alt="Attachment" className="w-full max-h-60 object-cover rounded-xl bg-black/5" />
                               )}
                             </div>
                           )}
@@ -621,36 +761,81 @@ export default function MessagesPage() {
             </div>
 
             {/* MESSAGE INPUT FORM */}
-            <form onSubmit={handleSendMessage} className="p-3.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 flex items-end gap-2.5">
+            <form onSubmit={handleSendMessage} className="p-3.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 flex items-end gap-2.5 shrink-0">
                 <input type="file" accept="image/*,video/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
 
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 mb-0.5 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl active:scale-90 transition-all">
-                  <HiOutlinePaperClip className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 mb-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl active:scale-90 transition-all cursor-pointer">
+                    <HiOutlinePaperClip className="w-5 h-5" />
+                  </button>
 
-                <div className="relative flex-1 flex items-end group">
-                  <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    placeholder="Xabar yozing..."
-                    value={typedMessage}
-                    onChange={(e) => { setTypedMessage(e.target.value); adjustTextareaHeight() }}
-                    onKeyDown={handleKeyDown}
-                    disabled={isUploading}
-                    className="w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-205 text-xs font-semibold pl-4 pr-10 py-3.5 rounded-2xl border border-transparent dark:border-white/5 focus:border-blue-500/10 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all duration-200 resize-none max-h-[120px] [&::-webkit-scrollbar]:hidden"
-                  />
-                  <button type="button" className="absolute right-3 bottom-3.5 text-slate-400 hover:text-blue-500"><HiOutlineFaceSmile className="w-5 h-5" /></button>
+                  {!isRecording && (
+                    <button type="button" onClick={startRecording} className="p-2.5 mb-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl active:scale-90 transition-all cursor-pointer">
+                      <HiOutlineMicrophone className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
 
-                <motion.button
-                  type="submit"
-                  disabled={!typedMessage.trim() || isUploading}
-                  whileTap={{ scale: 0.85 }}
-                  className={`p-3.5 rounded-2xl flex items-center justify-center transition-colors duration-300 border border-transparent dark:border-white/5 ${typedMessage.trim() && !isUploading ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
-                    }`}
-                >
-                  <HiPaperAirplane className={`w-4 h-4 transform transition-transform duration-300 -rotate-45 ${typedMessage.trim() ? 'scale-110 translate-x-[1px]' : ''}`} />
-                </motion.button>
+                {isRecording ? (
+                  <div className="flex-1 bg-slate-50 dark:bg-slate-950 p-2 rounded-2xl border border-rose-500/20 flex items-center justify-between min-h-[46px] select-none">
+                    <div className="flex items-center gap-2 pl-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-450 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600" />
+                      </span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        {recordingDuration}s
+                      </span>
+                      {audioTranscript && (
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 italic max-w-[120px] truncate">
+                          ({audioTranscript})
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        type="button" 
+                        onClick={() => stopRecording(false)} 
+                        className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 px-3 py-2 rounded-xl active:scale-95 transition-all cursor-pointer"
+                      >
+                        Bekor qilish
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => stopRecording(true)} 
+                        className="text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl active:scale-95 transition-all cursor-pointer"
+                      >
+                        Yuborish
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative flex-1 flex items-end group">
+                    <textarea
+                      ref={textareaRef}
+                      rows={1}
+                      placeholder="Xabar yozing..."
+                      value={typedMessage}
+                      onChange={(e) => { setTypedMessage(e.target.value); adjustTextareaHeight() }}
+                      onKeyDown={handleKeyDown}
+                      disabled={isUploading}
+                      className="w-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 text-xs font-semibold pl-4 pr-10 py-3.5 rounded-2xl border border-transparent dark:border-white/5 focus:border-blue-500/10 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all duration-200 resize-none max-h-[120px] [&::-webkit-scrollbar]:hidden"
+                    />
+                    <button type="button" className="absolute right-3 bottom-3.5 text-slate-400 hover:text-blue-500"><HiOutlineFaceSmile className="w-5 h-5" /></button>
+                  </div>
+                )}
+
+                {!isRecording && (
+                  <motion.button
+                    type="submit"
+                    disabled={!typedMessage.trim() || isUploading}
+                    whileTap={{ scale: 0.85 }}
+                    className={`p-3.5 rounded-2xl flex items-center justify-center transition-colors duration-300 border border-transparent dark:border-white/5 cursor-pointer ${typedMessage.trim() && !isUploading ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                      }`}
+                  >
+                    <HiPaperAirplane className={`w-4 h-4 transform transition-transform duration-300 -rotate-45 ${typedMessage.trim() ? 'scale-110 translate-x-[1px]' : ''}`} />
+                  </motion.button>
+                )}
               </form>
           </motion.div>
 
@@ -667,6 +852,24 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
+
+      {/* Voice Transcript Bottom Sheet */}
+      <BottomSheet 
+        isOpen={selectedTranscriptMsg !== null} 
+        onClose={() => setSelectedTranscriptMsg(null)} 
+        title="Ovozli xabar transkripsiyasi"
+      >
+        <div className="flex flex-col gap-4 py-2 select-text text-left">
+          <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-white/5">
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+              "{selectedTranscriptMsg?.transcription}"
+            </p>
+          </div>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold text-center">
+            🎤 Nutq o'zbek tilida (uz-UZ) Web Speech API orqali matnga o'girildi
+          </p>
+        </div>
+      </BottomSheet>
     </div>
   )
 }

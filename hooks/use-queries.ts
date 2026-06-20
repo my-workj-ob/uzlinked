@@ -7,6 +7,17 @@ export interface ProfileData {
   nickname: string | null
   avatar_url: string | null
   bio: string | null
+  is_professional_mode?: boolean
+  headline?: string | null
+  tags?: string[] | null
+  experience_info?: string | null
+  contact_links?: {
+    telegram?: string
+    github?: string
+    website?: string
+  } | null
+  open_for_collab?: boolean
+  is_premium?: boolean
 }
 
 export interface ProfileResponse {

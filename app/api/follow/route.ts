@@ -39,6 +39,18 @@ export async function POST(request: Request) {
 
             if (deleteError) throw deleteError
 
+            // Notificationni ham o'chirish
+            try {
+                await supabase
+                    .from('notifications')
+                    .delete()
+                    .eq('user_id', targetUserId)
+                    .eq('actor_id', user.id)
+                    .eq('type', 'follow')
+            } catch (err) {
+                console.error("Notification o'chirishda xatolik:", err)
+            }
+
             return NextResponse.json({ following: false })
         } else {
             // Obuna bo'lish
@@ -47,6 +59,17 @@ export async function POST(request: Request) {
                 .insert({ follower_id: user.id, following_id: targetUserId })
 
             if (insertError) throw insertError
+
+            // Notification yuborish
+            try {
+                await supabase.from('notifications').insert({
+                    user_id: targetUserId,
+                    actor_id: user.id,
+                    type: 'follow'
+                })
+            } catch (err) {
+                console.error("Notification yuborishda xatolik:", err)
+            }
 
             return NextResponse.json({ following: true })
         }

@@ -16,7 +16,7 @@ export async function GET(
     // Profil ma'lumotlarini olish
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id, username, nickname, avatar_url, bio, is_private, is_two_factor_enabled')
+        .select('id, username, nickname, avatar_url, bio, is_private, is_two_factor_enabled, is_professional_mode, headline, tags, experience_info, contact_links, open_for_collab, is_premium')
         .eq('id', userId)
         .single()
 

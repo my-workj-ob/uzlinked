@@ -122,9 +122,6 @@ export default function FeedList() {
     }
 
     const handleDeletePost = async (id: string | number) => {
-        const confirmDelete = window.confirm("Ushbu postni butunlay o'chirishni xohlaysizmi?")
-        if (!confirmDelete) return
-
         try {
             await deletePostMutation.mutateAsync(id)
         } catch (err: any) {

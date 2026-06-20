@@ -53,9 +53,6 @@ export default function FeedList() {
     }
 
     const handleDeletePost = async (id: string | number) => {
-        const confirmDelete = window.confirm("Ushbu postni butunlay o'chirishni xohlaysizmi?")
-        if (!confirmDelete) return
-
         try {
             const response = await fetch(`/api/posts?id=${id}`, {
                 method: 'DELETE',

@@ -33,15 +33,23 @@ export async function GET(request: Request) {
         const { data: { session } } = await supabase.auth.getSession()
         const currentUserId = session?.user?.id
 
-        if (tab === 'ijodkorlar' || query) {
+        if (tab === 'ijodkorlar' || tab === 'hamjamiyat' || query) {
             // Foydalanuvchilarni qidirish
             let profileQuery = supabase
                 .from('profiles')
-                .select('id, nickname, username, avatar_url, bio')
+                .select('id, nickname, username, avatar_url, bio, is_professional_mode, headline, tags, open_for_collab')
                 .limit(20)
 
+            if (tab === 'hamjamiyat') {
+                profileQuery = profileQuery.eq('is_professional_mode', true)
+            }
+
             if (query) {
-                profileQuery = profileQuery.or(`nickname.ilike.%${query}%,username.ilike.%${query}%`)
+                if (tab === 'hamjamiyat') {
+                    profileQuery = profileQuery.or(`nickname.ilike.%${query}%,username.ilike.%${query}%,headline.ilike.%${query}%,tags::text.ilike.%${query}%`)
+                } else {
+                    profileQuery = profileQuery.or(`nickname.ilike.%${query}%,username.ilike.%${query}%`)
+                }
             }
 
             const { data: profiles, error } = await profileQuery

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { HiMagnifyingGlass, HiArrowTrendingUp, HiSparkles, HiFire } from 'react-icons/hi2'
 import { FiHeart, FiEye, FiUserPlus, FiUserCheck } from 'react-icons/fi'
 
@@ -23,6 +24,10 @@ interface ExploreProfile {
     posts: number
     isFollowing: boolean
     isMe: boolean
+    is_professional_mode?: boolean
+    headline?: string
+    tags?: string[]
+    open_for_collab?: boolean
 }
 
 // Bento Grid uchun o'lcham patternlari
@@ -36,6 +41,7 @@ const sizePatterns = [
 ]
 
 export default function ExplorePage() {
+    const router = useRouter()
     const [activeTab, setActiveTab] = useState('trendlar')
     const [searchQuery, setSearchQuery] = useState('')
     const [posts, setPosts] = useState<ExplorePost[]>([])
@@ -118,6 +124,7 @@ export default function ExplorePage() {
                         { id: 'trendlar', label: 'Trendlar', Icon: HiFire },
                         { id: 'rasmlar', label: 'Rasmlar', Icon: HiSparkles },
                         { id: 'ijodkorlar', label: 'Ijodkorlar', Icon: HiArrowTrendingUp },
+                        { id: 'hamjamiyat', label: 'Hamjamiyat', Icon: HiSparkles },
                     ].map((tab) => {
                         const isSelected = activeTab === tab.id
                         return (
@@ -144,48 +151,94 @@ export default function ExplorePage() {
                     </div>
                 )}
 
-                {/* Ijodkorlar ro'yxati */}
+                {/* Ijodkorlar va Hamjamiyat ro'yxati */}
                 {!loading && profiles.length > 0 && (
                     <div className="space-y-3">
                         <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight pl-1">
-                            {searchQuery ? `"${searchQuery}" natijalar` : 'Tavsiya etilgan ijodkorlar'}
+                            {activeTab === 'hamjamiyat' 
+                                ? (searchQuery ? `"${searchQuery}" bo'yicha hamjamiyat` : 'Faol hamjamiyat a\'zolari')
+                                : (searchQuery ? `"${searchQuery}" natijalar` : 'Tavsiya etilgan ijodkorlar')}
                         </h3>
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                             {profiles.map((profile) => (
                                 <div
                                     key={profile.id}
-                                    className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-4 flex items-center gap-3 group hover:border-slate-200 dark:hover:border-white/10 transition-all"
+                                    className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3.5 group hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer"
+                                    onClick={() => router.push(`/dashboard/profile/${profile.id}`)}
                                 >
-                                    <img
-                                        src={profile.avatar.startsWith('http') ? profile.avatar : profile.avatar}
-                                        alt={profile.nickname}
-                                        className="w-12 h-12 rounded-full object-cover bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-50 dark:ring-slate-950"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{profile.nickname}</h4>
-                                        <p className="text-xs text-blue-600 font-semibold">@{profile.username || 'user'}</p>
-                                        <div className="flex items-center gap-3 mt-1">
-                                            <span className="text-[10px] text-slate-400 font-bold">{profile.followers} followers</span>
-                                            <span className="text-[10px] text-slate-400 font-bold">{profile.posts} posts</span>
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <img
+                                            src={profile.avatar}
+                                            alt={profile.nickname}
+                                            className="w-12 h-12 rounded-full object-cover bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-50 dark:ring-slate-950 shrink-0"
+                                        />
+                                        <div className="flex-1 min-w-0 text-left">
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{profile.nickname}</h4>
+                                                {profile.open_for_collab && activeTab === 'hamjamiyat' && (
+                                                    <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Hamkorlik</span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-blue-600 font-semibold">@{profile.username || 'user'}</p>
+                                            
+                                            {/* Headline */}
+                                            {activeTab === 'hamjamiyat' && profile.headline && (
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">{profile.headline}</p>
+                                            )}
+
+                                            {/* Tags */}
+                                            {activeTab === 'hamjamiyat' && Array.isArray(profile.tags) && profile.tags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                                    {profile.tags.map((tag, tIdx) => (
+                                                        <span 
+                                                            key={tIdx} 
+                                                            onClick={(e) => { e.stopPropagation(); setSearchQuery(tag); }}
+                                                            className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/20 px-2 py-0.5 rounded hover:underline cursor-pointer"
+                                                        >
+                                                            #{tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {activeTab !== 'hamjamiyat' && (
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className="text-[10px] text-slate-400 font-bold">{profile.followers} followers</span>
+                                                    <span className="text-[10px] text-slate-400 font-bold">{profile.posts} posts</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    {!profile.isMe && (
-                                        <button
-                                            onClick={() => handleFollow(profile.id)}
-                                            disabled={followLoading === profile.id}
-                                            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95 disabled:opacity-60 ${
-                                                profile.isFollowing
-                                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700'
-                                                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                                            }`}
-                                        >
-                                            {profile.isFollowing ? (
-                                                <><FiUserCheck className="w-3.5 h-3.5" /> Obuna</>
-                                            ) : (
-                                                <><FiUserPlus className="w-3.5 h-3.5" /> Obuna bo'lish</>
-                                            )}
-                                        </button>
-                                    )}
+                                    <div className="flex gap-2 self-end sm:self-center shrink-0">
+                                        {activeTab === 'hamjamiyat' && !profile.isMe && (
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    router.push(`/dashboard/messages?partner=${profile.id}`);
+                                                }}
+                                                className="px-3.5 py-2 rounded-xl text-[11px] font-bold bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-450 hover:bg-blue-100 dark:hover:bg-slate-700 transition-all active:scale-95 border border-transparent dark:border-white/5"
+                                            >
+                                                Xabar yozish
+                                            </button>
+                                        )}
+                                        {!profile.isMe && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleFollow(profile.id); }}
+                                                disabled={followLoading === profile.id}
+                                                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95 disabled:opacity-60 ${
+                                                    profile.isFollowing
+                                                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                                }`}
+                                            >
+                                                {profile.isFollowing ? (
+                                                    <><FiUserCheck className="w-3.5 h-3.5" /> Obuna</>
+                                                ) : (
+                                                    <><FiUserPlus className="w-3.5 h-3.5" /> Obuna bo'lish</>
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>

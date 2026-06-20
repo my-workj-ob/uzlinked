@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { get } from 'lodash'
 import { createClient } from '@/utils/supabase/client'
-import { HiMiniSquares2X2, HiOutlineShare, HiOutlineChatBubbleLeftRight, HiOutlineShoppingBag } from 'react-icons/hi2'
+import { HiMiniSquares2X2, HiOutlineShare, HiOutlineChatBubbleLeftRight, HiOutlineShoppingBag, HiMiniCheckBadge } from 'react-icons/hi2'
 import { BsFilm, BsStar, BsCameraFill } from 'react-icons/bs'
 import { FiUserPlus, FiUserCheck } from 'react-icons/fi'
-import { FaHeart } from 'react-icons/fa'
+import { FaHeart, FaBriefcase, FaTelegram, FaGithub, FaGlobe, FaHandshake } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
 import { useUploadThing } from '@/utils/uploadthing/uploadthing';
+import { BottomSheet } from '@/components/bottom-sheet'
 
 interface EditProfileModalProps {
     profile: any
@@ -19,206 +20,349 @@ interface EditProfileModalProps {
 
 
 const EditProfileModal = ({
-  profile,
-  onClose,
-  onUpdateSuccess,
+    profile,
+    onClose,
+    onUpdateSuccess,
 }: EditProfileModalProps) => {
-  const [loading, setLoading] = useState(false);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+    const [loading, setLoading] = useState(false);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [activeTab, setActiveTab] = useState<'basic' | 'professional'>('basic')
 
-  const [avatarPreview, setAvatarPreview] = useState<string>(
-    profile?.avatar_url || ""
-  );
+    const [avatarPreview, setAvatarPreview] = useState<string>(
+        profile?.avatar_url || ""
+    );
 
-  const [formData, setFormData] = useState({
-    nickname: profile?.nickname || "",
-    username: profile?.username || "",
-    bio: profile?.bio || "",
-  });
+    const [formData, setFormData] = useState({
+        nickname: profile?.nickname || "",
+        username: profile?.username || "",
+        bio: profile?.bio || "",
+        is_professional_mode: profile?.is_professional_mode || false,
+        headline: profile?.headline || "",
+        tags: Array.isArray(profile?.tags) ? profile.tags.join(', ') : "",
+        experience_info: profile?.experience_info || "",
+        open_for_collab: profile?.open_for_collab || false,
+        telegram: profile?.contact_links?.telegram || "",
+        github: profile?.contact_links?.github || "",
+        website: profile?.contact_links?.website || "",
+    });
 
-  const supabase = createClient();
+    const supabase = createClient();
 
-  useEffect(() => {
-    return () => {
-      if (avatarPreview.startsWith("blob:")) {
-        URL.revokeObjectURL(avatarPreview);
-      }
+    useEffect(() => {
+        return () => {
+            if (avatarPreview.startsWith("blob:")) {
+                URL.revokeObjectURL(avatarPreview);
+            }
+        };
+    }, [avatarPreview]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setAvatarFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
     };
-  }, [avatarPreview]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const { startUpload, isUploading } = useUploadThing("mediaUploader", {
+        onClientUploadComplete: (res) => {
+            const uploadedUrl = res?.[0]?.url;
+            if (uploadedUrl) {
+                handleProfileUpdate(uploadedUrl);
+            }
+        },
+        onUploadError: (error) => {
+            console.error("Upload error:", error);
+            alert(error.message || "Rasm yuklashda xatolik");
+            setLoading(false);
+        },
+    });
 
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
-  };
+    const handleProfileUpdate = async (avatarUrl: string) => {
+        try {
+            const parsedTags = formData.tags
+                ? formData.tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0)
+                : [];
 
-  const { startUpload, isUploading } = useUploadThing("mediaUploader", {
-    onClientUploadComplete: (res) => {
-      const uploadedUrl = res?.[0]?.url;
-      if (uploadedUrl) {
-        handleProfileUpdate(uploadedUrl);
-      }
-    },
-    onUploadError: (error) => {
-      console.error("Upload error:", error);
-      alert(error.message || "Rasm yuklashda xatolik");
-      setLoading(false);
-    },
-  });
+            const updatedFields = {
+                nickname: formData.nickname,
+                username: formData.username,
+                bio: formData.bio,
+                avatar_url: avatarUrl,
+                is_professional_mode: formData.is_professional_mode,
+                headline: formData.headline,
+                tags: parsedTags,
+                experience_info: formData.experience_info,
+                open_for_collab: formData.open_for_collab,
+                contact_links: {
+                    telegram: formData.telegram,
+                    github: formData.github,
+                    website: formData.website,
+                },
+                updated_at: new Date().toISOString(),
+            };
 
-  const handleProfileUpdate = async (avatarUrl: string) => {
-    try {
-      const updatedFields = {
-        nickname: formData.nickname,
-        username: formData.username,
-        bio: formData.bio,
-        avatar_url: avatarUrl,
-        updated_at: new Date().toISOString(),
-      };
+            const { data, error } = await supabase
+                .from("profiles")
+                .update(updatedFields)
+                .eq("id", profile.id)
+                .select()
+                .single();
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .update(updatedFields)
-        .eq("id", profile.id)
-        .select()
-        .single();
+            if (error) throw error;
 
-      if (error) throw error;
+            onUpdateSuccess(data);
+            onClose();
+        } catch (error: any) {
+            console.error(error);
+            alert(error.message || "Profil yangilashda xatolik");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-      onUpdateSuccess(data);
-      onClose();
-    } catch (error: any) {
-      console.error(error);
-      alert(error.message || "Profil yangilashda xatolik");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+        try {
+            if (avatarFile) {
+                await startUpload([avatarFile]);
+            } else {
+                await handleProfileUpdate(profile?.avatar_url || "");
+            }
+        } catch (err) {
+            console.error(err);
+            setLoading(false);
+        }
+    };
 
-    try {
-      if (avatarFile) {
-        await startUpload([avatarFile]);
-        
-      } else {
-       
-        await handleProfileUpdate(profile?.avatar_url || "");
-      }
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
+    return (
+        <BottomSheet isOpen={true} onClose={onClose} title="Profilni tahrirlash">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4 select-none">
 
-  return (
-    <div className="fixed inset-0 z-55 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <form 
-        onSubmit={handleSubmit} 
-        className="relative w-full max-w-sm rounded-[2rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 sm:p-8"
-      >
-        <h3 className="mb-4 text-center text-xl font-black text-slate-900 dark:text-slate-100">
-          Profilni tahrirlash
-        </h3>
+                {/* Tabs header */}
+                <div className="flex border-b border-slate-100 dark:border-white/5 pb-2 gap-4 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('basic')}
+                        className={`text-xs font-bold pb-1 cursor-pointer transition-colors ${activeTab === 'basic' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Asosiy ma'lumotlar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('professional')}
+                        className={`text-xs font-bold pb-1 cursor-pointer transition-colors ${activeTab === 'professional' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Portfolio & Teglar
+                    </button>
+                </div>
 
-        <div className="mb-6 flex flex-col items-center">
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="group relative h-24 w-24 cursor-pointer overflow-hidden rounded-full border-2 border-blue-600"
-          >
-            <img
-              src={
-                avatarPreview ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.nickname)}`
-              }
-              alt="avatar"
-              className="h-full w-full object-cover transition group-hover:scale-105"
-            />
+                {activeTab === 'basic' ? (
+                    <div key="tab-panel-basic" className="space-y-4">
+                        <div className="flex flex-col items-center py-2">
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="group relative h-20 w-20 cursor-pointer overflow-hidden rounded-full border-2 border-blue-600"
+                            >
+                                <img
+                                    src={
+                                        avatarPreview ||
+                                        `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.nickname)}`
+                                    }
+                                    alt="avatar"
+                                    className="h-full w-full object-cover transition group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
+                                    <BsCameraFill className="h-5 w-5 text-white" />
+                                </div>
+                            </div>
+                            <input
+                                key="avatar-file-input"
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleFileChange}
+                                className="hidden"
+                            />
+                            <span className="mt-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                Rasmni almashtirish
+                            </span>
+                        </div>
 
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
-              <BsCameraFill className="h-5 w-5 text-white" />
-            </div>
-          </div>
+                        <div>
+                            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                Nickname
+                            </label>
+                            <input
+                                key="input-nickname"
+                                type="text"
+                                value={formData.nickname}
+                                onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                                placeholder="Nickname"
+                                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                                required
+                            />
+                        </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          <span className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Rasmni almashtirish
-          </span>
-        </div>
+                        <div>
+                            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                Username
+                            </label>
+                            <input
+                                key="input-username"
+                                type="text"
+                                value={formData.username}
+                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                placeholder="Username"
+                                className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                                required
+                            />
+                        </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1.5 ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Nickname
-            </label>
-            <input
-              type="text"
-              value={formData.nickname}
-              onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-              placeholder="Nickname"
-              className="w-full rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-3.5 text-sm font-semibold text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              required
-            />
-          </div>
+                        <div>
+                            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                Bio
+                            </label>
+                            <textarea
+                                key="textarea-bio"
+                                value={formData.bio}
+                                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                                placeholder="O'zingiz haqingizda qisqacha..."
+                                rows={3}
+                                className="w-full resize-none rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div key="tab-panel-professional" className="space-y-4">
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/10">
+                            <div>
+                                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-none">Portfolio rejimini yoqish</h4>
+                                <p className="text-[10px] text-slate-400 mt-1 font-semibold">Profilingiz professional/hobbiy ko'rinishga ega bo'ladi</p>
+                            </div>
+                            <input
+                                key="checkbox-professional-mode"
+                                type="checkbox"
+                                checked={formData.is_professional_mode}
+                                onChange={(e) => setFormData({ ...formData, is_professional_mode: e.target.checked })}
+                                className="w-4 h-4 text-blue-600 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-white/15 rounded-md focus:ring-blue-500 cursor-pointer"
+                            />
+                        </div>
 
-          <div>
-            <label className="mb-1.5 ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Username
-            </label>
-            <input
-              type="text"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              placeholder="Username"
-              className="w-full rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-3.5 text-sm font-semibold text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              required
-            />
-          </div>
+                        {formData.is_professional_mode && (
+                            <>
+                                <div>
+                                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                        Sohangiz / Sarlavha (Headline)
+                                    </label>
+                                    <input
+                                        key="input-headline"
+                                        type="text"
+                                        value={formData.headline}
+                                        onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
+                                        placeholder="Masalan: Dizayner / Dasturchi / Futbol ishqibozi"
+                                        className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                                    />
+                                </div>
 
-          <div>
-            <label className="mb-1.5 ml-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              Bio
-            </label>
-            <textarea
-              value={formData.bio}
-              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              placeholder="O'zingiz haqingizda qisqacha..."
-              className="min-h-[90px] w-full resize-none rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-3.5 text-sm font-medium text-slate-700 dark:text-slate-300 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-        </div>
+                                <div>
+                                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                        Teglar / Qiziqishlar (Vergul bilan ajrating)
+                                    </label>
+                                    <input
+                                        key="input-tags"
+                                        type="text"
+                                        value={formData.tags}
+                                        onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                                        placeholder="React, Dizayn, Futbol, Sayohat"
+                                        className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                                    />
+                                </div>
 
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-350 py-3.5 text-sm font-bold transition-all active:scale-95 cursor-pointer"
-          >
-            Bekor qilish
-          </button>
+                                <div>
+                                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                        Tajriba va Loyihalar haqida ma'lumot
+                                    </label>
+                                    <textarea
+                                        key="textarea-experience"
+                                        value={formData.experience_info}
+                                        onChange={(e) => setFormData({ ...formData, experience_info: e.target.value })}
+                                        placeholder="Loyihalaringiz, yutuqlaringiz va tajribangiz haqida batafsil..."
+                                        rows={3}
+                                        className="w-full resize-none rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                                    />
+                                </div>
 
-          <button
-            type="submit"
-            disabled={loading || isUploading}
-            className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-3.5 text-sm font-bold transition-all active:scale-95 disabled:opacity-70 cursor-pointer"
-          >
-            {loading || isUploading ? "Saqlanmoqda..." : "Saqlash"}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
+                                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-white/10">
+                                    <div>
+                                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-none">Hamkorlikka ochiqlik</h4>
+                                        <p className="text-[10px] text-slate-400 mt-1 font-semibold">Explore qidiruvida 'Hamkorlar' ro'yxatida chiqasiz</p>
+                                    </div>
+                                    <input
+                                        key="checkbox-collab"
+                                        type="checkbox"
+                                        checked={formData.open_for_collab}
+                                        onChange={(e) => setFormData({ ...formData, open_for_collab: e.target.checked })}
+                                        className="w-4 h-4 text-blue-600 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-white/15 rounded-md focus:ring-blue-500 cursor-pointer"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Aloqa havolalari (Ixtiyoriy)</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                            key="input-telegram"
+                                            type="text"
+                                            value={formData.telegram}
+                                            onChange={(e) => setFormData({ ...formData, telegram: e.target.value })}
+                                            placeholder="Telegram Username"
+                                            className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                                        />
+                                        <input
+                                            key="input-github"
+                                            type="text"
+                                            value={formData.github}
+                                            onChange={(e) => setFormData({ ...formData, github: e.target.value })}
+                                            placeholder="GitHub Username"
+                                            className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                                        />
+                                    </div>
+                                    <input
+                                        key="input-website"
+                                        type="text"
+                                        value={formData.website}
+                                        onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                                        placeholder="Shaxsiy sayt (https://website.uz)"
+                                        className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-950 p-3 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                <div className="mt-2 flex gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 py-3.5 text-xs font-bold transition-all active:scale-95 cursor-pointer border border-transparent dark:border-white/5"
+                    >
+                        Bekor qilish
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={loading || isUploading}
+                        className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-3.5 text-xs font-bold transition-all active:scale-95 disabled:opacity-70 cursor-pointer"
+                    >
+                        {loading || isUploading ? "Saqlanmoqda..." : "Saqlash"}
+                    </button>
+                </div>
+            </form>
+        </BottomSheet>
+    );
 };
 
 
@@ -231,6 +375,7 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState('posts')
     const [isEditing, setIsEditing] = useState(false)
+    const [isOptionsOpen, setIsOptionsOpen] = useState(false)
     const [loading, setLoading] = useState(true)
 
     const [isFollowing, setIsFollowing] = useState(false)
@@ -389,7 +534,7 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
         if (!container) return
         container.style.userSelect = ''
         container.style.scrollSnapType = 'x mandatory'
-        
+
         const width = container.clientWidth
         if (width > 0) {
             const index = Math.round(container.scrollLeft / width)
@@ -547,15 +692,19 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                 />
             )}
 
-            {/* Mesh Gradient Cover (Shadowless!) */}
-            <div className="relative h-32 sm:h-44 w-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 animate-mesh-gradient overflow-hidden sm:rounded-b-2xl border-b border-slate-100 dark:border-white/5">
+            {/* Mesh Gradient Cover (Seamless Blend) */}
+            <div className="relative h-32 sm:h-44 w-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 animate-mesh-gradient overflow-hidden sm:rounded-b-2xl">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_40%),radial-gradient(circle_at_80%_70%,rgba(0,0,0,0.15),transparent_50%)] mix-blend-overlay" />
+                {/* Seamless Fade Mask */}
+                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white dark:from-slate-950 to-transparent pointer-events-none" />
             </div>
 
-            <div className="px-4 -mt-12 relative z-10 text-center sm:text-left sm:flex sm:items-end sm:gap-6 sm:px-6">
-                <div className="relative inline-block">
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 p-[3px] mx-auto">
-                        <div className="w-full h-full bg-white dark:bg-slate-950 rounded-full p-[3px]">
+            {/* Left aligned avatar and side-by-side name/username block */}
+            <div className="px-4 -mt-10 relative z-10 flex items-end gap-4 sm:gap-6 sm:px-6 select-none">
+                {/* Avatar */}
+                <div className="relative shrink-0">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 p-[2.5px] shadow-lg">
+                        <div className="w-full h-full bg-white dark:bg-slate-950 rounded-full p-[2px]">
                             <img
                                 src={get(profile, 'avatar_url') || 'https://ui-avatars.com/api/?name=' + get(profile, 'nickname', 'U') + '&background=e2e8f0&color=1e293b'}
                                 alt={get(profile, 'nickname')}
@@ -565,24 +714,65 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                     </div>
                 </div>
 
-                <div className="mt-3 sm:mt-0 sm:mb-2 flex-1">
-                    <h2 className="font-black text-xl text-slate-900 dark:text-slate-100 leading-tight">
-                        {get(profile, 'nickname', 'Foydalanuvchi')}
-                    </h2>
-                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mt-0.5">
+                {/* Nickname, Username and Verify Badge */}
+                <div className="mb-2 flex-1 min-w-0 text-left">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <h2 className="font-black text-sm sm:text-xl text-slate-900 dark:text-slate-100 leading-tight truncate">
+                            {get(profile, 'nickname', 'Foydalanuvchi')}
+                        </h2>
+                        {profile?.is_premium && (
+                            <HiMiniCheckBadge className="w-5 h-5 text-blue-500 dark:text-blue-400 shrink-0" title="Tasdiqlangan PRO hisob" />
+                        )}
+                    </div>
+                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5 truncate">
                         @{get(profile, 'username', 'username_kiritilmagan')}
                     </p>
                 </div>
             </div>
 
-            <div className="px-4 mt-3 text-center sm:text-left sm:px-6">
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg leading-relaxed font-medium">
+            {/* Profile Fields (Headline, Bio, and Social links below) */}
+            <div className="px-4 mt-3 sm:px-6 flex flex-col gap-2 select-none text-left">
+                {profile?.is_professional_mode && profile?.headline && (
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-900 border border-slate-200/50 dark:border-white/5 rounded-full text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-350 w-fit mt-1 shadow-xs">
+                        <FaBriefcase className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span className="uppercase tracking-wider">{profile.headline}</span>
+                    </div>
+                )}
+
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg leading-relaxed font-medium mt-1">
                     {get(profile, 'bio', 'Bu yerda bio ma\'lumoti chiqadi. Edit tugmasi orqali o\'zgartiring.')}
                 </p>
+
+                {/* Links & Collaboration Status (Outline Circles!) */}
+                {((profile?.contact_links && Object.values(profile.contact_links).some(Boolean)) || profile?.open_for_collab) && (
+                    <div className="flex flex-wrap gap-3 mt-2 items-center">
+                        {profile.contact_links?.telegram && (
+                            <a href={`https://t.me/${profile.contact_links.telegram}`} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center text-sky-600 dark:text-sky-400 hover:bg-sky-50/50 dark:hover:bg-sky-950/20 transition-all active:scale-90" title="Telegram">
+                                <FaTelegram className="w-4 h-4" />
+                            </a>
+                        )}
+                        {profile.contact_links?.github && (
+                            <a href={`https://github.com/${profile.contact_links.github}`} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all active:scale-90" title="GitHub">
+                                <FaGithub className="w-4 h-4" />
+                            </a>
+                        )}
+                        {profile.contact_links?.website && (
+                            <a href={profile.contact_links.website.startsWith('http') ? profile.contact_links.website : `https://${profile.contact_links.website}`} target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center text-blue-600 dark:text-blue-450 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all active:scale-90" title="Website">
+                                <FaGlobe className="w-4 h-4" />
+                            </a>
+                        )}
+                        {profile.open_for_collab && (
+                            <span className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-3.5 py-1.5 rounded-xl text-xs font-bold border border-emerald-100/30 dark:border-emerald-900/10 select-none animate-pulse">
+                                <FaHandshake className="w-4 h-4" />
+                                <span>Hamkorlikka ochiq</span>
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* Stats Block (Premium Borderless) */}
-            <div className="mx-4 mt-6 py-4 flex items-center justify-around text-center select-none bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-white/5 rounded-2xl">
+            {/* Stats Block (Centered with vertical lines) */}
+            <div className="mx-4 mt-6 py-3 flex items-center justify-around text-center select-none bg-slate-50/30 dark:bg-slate-950/20 border border-slate-100 dark:border-white/5 rounded-xl">
                 {stats.map((stat, idx) => {
                     const tabMap: Record<string, string> = {
                         'Followers': 'followers',
@@ -593,15 +783,15 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                     const tabId = tabMap[stat.label]
                     return (
                         <React.Fragment key={idx}>
-                            {idx > 0 && <div className="w-px h-6 bg-slate-200/60 dark:bg-white/10 shrink-0" />}
-                            <div 
+                            {idx > 0 && <div className="w-px h-5 bg-slate-200 dark:bg-white/10 shrink-0" />}
+                            <div
                                 onClick={() => tabId && selectTab(tabId)}
                                 className="flex flex-col items-center justify-center flex-1 cursor-pointer hover:opacity-80 active:scale-95 transition-all"
                             >
-                                <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 leading-none">
+                                <span className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-slate-100 leading-none">
                                     {stat.count}
                                 </span>
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider mt-1.5">
+                                <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider mt-1.5">
                                     {stat.label}
                                 </span>
                             </div>
@@ -611,17 +801,34 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
             </div>
 
             {/* Profile Action Buttons */}
-            <div className="mx-4 mt-4 flex gap-2">
+            <div className="mx-4 mt-4 flex gap-2 select-none">
                 {isOwnProfile ? (
                     <>
                         <button onClick={() => setIsEditing(true)} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl active:scale-[0.99] transition-all cursor-pointer">
                             Edit Profile
                         </button>
-                        <button onClick={() => router.push('/dashboard/settings')} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 font-bold text-xs rounded-xl active:scale-[0.99] transition-all cursor-pointer border border-transparent dark:border-white/5">
-                            Hisob sozlamalari
-                        </button>
-                        <button className="px-4 bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700/85 rounded-xl active:scale-[0.99] transition-all flex items-center justify-center cursor-pointer border border-transparent dark:border-white/5">
-                            <HiOutlineShare className="w-4 h-4" />
+
+                        {profile?.is_premium ? (
+                            <button
+                                disabled
+                                className="flex-1 py-3 bg-slate-50 dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-white/5 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5"
+                            >
+                                <HiMiniCheckBadge className="w-4 h-4 text-blue-500" /> PRO Faol
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => router.push('/dashboard/pricing')}
+                                className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs rounded-xl active:scale-[0.99] transition-all cursor-pointer shadow-sm shadow-blue-500/10"
+                            >
+                                Upgrade to PRO
+                            </button>
+                        )}
+
+                        <button
+                            onClick={() => setIsOptionsOpen(true)}
+                            className="px-4 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl active:scale-[0.99] transition-all flex items-center justify-center cursor-pointer border border-transparent dark:border-white/5 font-bold text-sm tracking-widest"
+                        >
+                            •••
                         </button>
                     </>
                 ) : (
@@ -641,16 +848,94 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                         <button
                             onClick={handleSendMessage}
                             disabled={messageLoading}
-                            className="flex-1 py-3 bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-750 font-bold text-xs rounded-xl active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer border border-transparent dark:border-white/5"
+                            className="flex-1 py-3 bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700 font-bold text-xs rounded-xl active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer border border-transparent dark:border-white/5"
                         >
                             <HiOutlineChatBubbleLeftRight className="w-4 h-4" /> {messageLoading ? 'Ochilmoqda...' : 'Xabar'}
                         </button>
-                        <button className="px-4 bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-750 rounded-xl active:scale-[0.99] transition-all flex items-center justify-center cursor-pointer border border-transparent dark:border-white/5">
+                        <button className="px-4 bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-xl active:scale-[0.99] transition-all flex items-center justify-center cursor-pointer border border-transparent dark:border-white/5">
                             <HiOutlineShare className="w-4 h-4" />
                         </button>
                     </>
                 )}
             </div>
+
+            {/* Options Bottom Sheet */}
+            {isOptionsOpen && (
+                <BottomSheet isOpen={true} onClose={() => setIsOptionsOpen(false)} title="Qo'shimcha sozlamalar & Portfolio">
+                    <div className="flex flex-col gap-4 select-none text-left">
+                        {profile?.is_professional_mode && (
+                            <>
+                                {/* Resume Info */}
+                                {profile?.experience_info && (
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-white/5">
+                                        <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
+                                            <FaBriefcase className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                            Tajriba va Loyihalar
+                                        </h4>
+                                        <p className="text-xs text-slate-700 dark:text-slate-350 whitespace-pre-line leading-relaxed font-semibold">
+                                            {profile.experience_info}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Skills / Tags */}
+                                {Array.isArray(profile?.tags) && profile.tags.length > 0 && (
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-white/5">
+                                        <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+                                            Ko'nikmalar & Qiziqishlar
+                                        </h4>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {profile.tags.map((tag: string, idx: number) => (
+                                                <span key={idx} className="px-2.5 py-1 bg-blue-50/70 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-bold border border-blue-100/20 dark:border-blue-900/10">
+                                                    #{tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* Navigation Options */}
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => {
+                                    setIsOptionsOpen(false)
+                                    router.push('/dashboard/settings')
+                                }}
+                                className="w-full py-3.5 px-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl text-left border border-slate-100 dark:border-white/5 flex items-center justify-between"
+                            >
+                                <span>Hisob sozlamalari</span>
+                                <span className="text-slate-400">›</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsOptionsOpen(false)
+                                    router.push('/dashboard/pricing')
+                                }}
+                                className="w-full py-3.5 px-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl text-left border border-slate-100 dark:border-white/5 flex items-center justify-between"
+                            >
+                                <span>Tariflar va PRO xususiyatlari</span>
+                                <span className="text-slate-400">›</span>
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        await navigator.clipboard.writeText(window.location.origin + `/dashboard/profile/${profile.id}`)
+                                        alert('Profil havolasi buferga nusxalandi!')
+                                    } catch (err) {
+                                        alert('Nusxalashda xatolik yuz berdi')
+                                    }
+                                    setIsOptionsOpen(false)
+                                }}
+                                className="w-full py-3.5 px-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-850 dark:text-slate-250 font-bold text-xs rounded-xl text-left border border-slate-100 dark:border-white/5"
+                            >
+                                Profil havolasini ulashish
+                            </button>
+                        </div>
+                    </div>
+                </BottomSheet>
+            )}
 
             {/* Profile Tab Header */}
             <div className="mt-6 border-b border-slate-200 dark:border-white/5 bg-white dark:bg-slate-950 sticky top-0 z-20 transition-colors">
@@ -668,12 +953,11 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                                 key={tab.id}
                                 onClick={() => !tab.disabled && selectTab(tab.id)}
                                 disabled={tab.disabled}
-                                className={`flex flex-col items-center justify-center gap-1 py-2.5 text-[9px] sm:text-xs font-bold transition-all border-b-2 ${
-                                        tab.disabled
-                                            ? 'border-transparent text-slate-350 dark:text-slate-700 cursor-not-allowed opacity-50'
-                                            : isSelected 
-                                                ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 cursor-pointer' 
-                                                : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350 cursor-pointer'
+                                className={`flex flex-col items-center justify-center gap-1 py-2.5 text-[9px] sm:text-xs font-bold transition-all border-b-2 ${tab.disabled
+                                        ? 'border-transparent text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-50'
+                                        : isSelected
+                                            ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 cursor-pointer'
+                                            : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer'
                                     }`}
                             >
                                 <tab.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -685,7 +969,7 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
             </div>
 
             {/* Slidable Tab Contents */}
-            <div 
+            <div
                 ref={paneContainerRef}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
@@ -702,7 +986,7 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                             {posts.map((post) => {
                                 const postTitle = post.content.trim().slice(0, 45) + (post.content.trim().length > 45 ? '...' : '')
                                 const postDate = new Date(post.created_at).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })
-                                
+
                                 return (
                                     <div key={post.id} className="group border-b border-slate-100 dark:border-white/5 pb-5 last:border-0 select-text">
                                         {/* URL Breadcrumb */}
@@ -769,23 +1053,23 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                     {followersList.length > 0 ? (
                         <div className="space-y-2.5">
                             {followersList.map((usr) => (
-                                <div 
-                                    key={usr.id} 
+                                <div
+                                    key={usr.id}
                                     onClick={() => router.push(`/dashboard/profile/${usr.id}`)}
                                     className="flex items-center justify-between p-3.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <img 
-                                            src={usr.avatar_url || 'https://ui-avatars.com/api/?name=' + usr.nickname + '&background=e2e8f0&color=1e293b'} 
-                                            className="w-9 h-9 object-cover rounded-full" 
-                                            alt="" 
+                                        <img
+                                            src={usr.avatar_url || 'https://ui-avatars.com/api/?name=' + usr.nickname + '&background=e2e8f0&color=1e293b'}
+                                            className="w-9 h-9 object-cover rounded-full"
+                                            alt=""
                                         />
                                         <div className="text-left">
                                             <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-none">{usr.nickname}</h4>
                                             <span className="text-[10px] text-slate-400 font-medium mt-1 inline-block">@{usr.username}</span>
                                         </div>
                                     </div>
-                                    <button className="px-3.5 py-1.5 bg-blue-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-750 text-blue-600 dark:text-blue-450 text-[10px] font-bold rounded-lg border border-transparent dark:border-white/5">
+                                    <button className="px-3.5 py-1.5 bg-blue-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-lg border border-transparent dark:border-white/5">
                                         Ko'rish
                                     </button>
                                 </div>
@@ -803,23 +1087,23 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                     {followingList.length > 0 ? (
                         <div className="space-y-2.5">
                             {followingList.map((usr) => (
-                                <div 
-                                    key={usr.id} 
+                                <div
+                                    key={usr.id}
                                     onClick={() => router.push(`/dashboard/profile/${usr.id}`)}
                                     className="flex items-center justify-between p-3.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <img 
-                                            src={usr.avatar_url || 'https://ui-avatars.com/api/?name=' + usr.nickname + '&background=e2e8f0&color=1e293b'} 
-                                            className="w-9 h-9 object-cover rounded-full" 
-                                            alt="" 
+                                        <img
+                                            src={usr.avatar_url || 'https://ui-avatars.com/api/?name=' + usr.nickname + '&background=e2e8f0&color=1e293b'}
+                                            className="w-9 h-9 object-cover rounded-full"
+                                            alt=""
                                         />
                                         <div className="text-left">
                                             <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-none">{usr.nickname}</h4>
                                             <span className="text-[10px] text-slate-400 font-medium mt-1 inline-block">@{usr.username}</span>
                                         </div>
                                     </div>
-                                    <button className="px-3.5 py-1.5 bg-blue-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-750 text-blue-600 dark:text-blue-450 text-[10px] font-bold rounded-lg border border-transparent dark:border-white/5">
+                                    <button className="px-3.5 py-1.5 bg-blue-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-lg border border-transparent dark:border-white/5">
                                         Ko'rish
                                     </button>
                                 </div>

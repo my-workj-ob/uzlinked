@@ -4,27 +4,33 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --foreground: #0f172a;
+  /* slate-900 (O'ta toza va toq ko'k-qora) */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #020617;
+    /* slate-950 (layout.tsx dagi viewport rangi bilan 100% bir xil qılındı) */
+    --foreground: #f8fafc;
+    /* slate-50 */
   }
+}
+
+/* TAILWIND v4 THEME O'ZGARUVCHILARI */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* Eski Geist o'rniga yangi Inter va JetBrains Mono ulandi */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: contain;
@@ -38,8 +44,15 @@ html {
 
 /* Like animatsiyasi */
 @keyframes jump {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.3); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.3);
+  }
 }
 
 .animate-jump {
@@ -51,6 +64,7 @@ html {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
@@ -60,15 +74,27 @@ html {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
 /* Ping-once animatsiyasi (reels play/pause uchun) */
 @keyframes ping-once {
-  0% { transform: scale(0.8); opacity: 0; }
-  50% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1.1); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.1);
+    opacity: 0;
+  }
 }
 
 .animate-ping-once {
@@ -77,86 +103,172 @@ html {
 
 /* Double-tap heart animatsiyasi (katta yurak) */
 @keyframes double-tap-heart {
-  0% { transform: scale(0) rotate(-15deg); opacity: 0; }
-  15% { transform: scale(1.3) rotate(5deg); opacity: 1; }
-  30% { transform: scale(0.95) rotate(-2deg); opacity: 1; }
-  45% { transform: scale(1.05) rotate(0deg); opacity: 1; }
-  80% { transform: scale(1) rotate(0deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0deg); opacity: 0; }
+  0% {
+    transform: scale(0) rotate(-15deg);
+    opacity: 0;
+  }
+
+  15% {
+    transform: scale(1.3) rotate(5deg);
+    opacity: 1;
+  }
+
+  30% {
+    transform: scale(0.95) rotate(-2deg);
+    opacity: 1;
+  }
+
+  45% {
+    transform: scale(1.05) rotate(0deg);
+    opacity: 1;
+  }
+
+  80% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0;
+  }
 }
+
 .animate-double-tap-heart {
   animation: double-tap-heart 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 /* Drawer slide-up animatsiyasi */
 @keyframes drawer-slide-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
+
 .animate-drawer-slide-up {
   animation: drawer-slide-up 0.35s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
 }
 
 @keyframes drawer-slide-down {
-  from { transform: translateY(0); }
-  to { transform: translateY(100%); }
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(100%);
+  }
 }
 
 /* Share sheet fade animatsiyasi */
 @keyframes share-fade-in {
-  from { opacity: 0; transform: translateY(20px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
+
 .animate-share-fade-in {
   animation: share-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Bookmark bounce animatsiyasi */
 @keyframes bookmark-bounce {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.4) rotate(-8deg); }
-  50% { transform: scale(0.9) rotate(4deg); }
-  70% { transform: scale(1.15); }
-  100% { transform: scale(1) rotate(0deg); }
+  0% {
+    transform: scale(1);
+  }
+
+  30% {
+    transform: scale(1.4) rotate(-8deg);
+  }
+
+  50% {
+    transform: scale(0.9) rotate(4deg);
+  }
+
+  70% {
+    transform: scale(1.15);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
+
 .animate-bookmark-bounce {
   animation: bookmark-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* Fade-in-up animatsiyasi */
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-fade-in-up {
   animation: fade-in-up 0.3s ease-out forwards;
 }
 
 /* Overlay backdrop animatsiyasi */
 @keyframes overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
+
 .animate-overlay-in {
   animation: overlay-in 0.2s ease-out forwards;
 }
 
 /* Shimmer loading effect */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
+
 .animate-shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
 /* Comment slide-in animatsiyasi */
 @keyframes comment-slide-in {
-  from { opacity: 0; transform: translateX(-12px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
+
 .animate-comment-slide-in {
   animation: comment-slide-in 0.25s ease-out forwards;
 }
@@ -167,32 +279,59 @@ html {
   animation: none;
   mix-blend-mode: normal;
 }
+
 ::view-transition-old(root) {
   z-index: 1;
 }
+
 ::view-transition-new(root) {
   z-index: 99999;
 }
+
 .dark::view-transition-old(root) {
   z-index: 99999;
 }
+
 .dark::view-transition-new(root) {
   z-index: 1;
 }
 
 /* Staggered lists */
-.stagger-1 { animation-delay: 40ms; }
-.stagger-2 { animation-delay: 80ms; }
-.stagger-3 { animation-delay: 120ms; }
-.stagger-4 { animation-delay: 160ms; }
-.stagger-5 { animation-delay: 200ms; }
+.stagger-1 {
+  animation-delay: 40ms;
+}
+
+.stagger-2 {
+  animation-delay: 80ms;
+}
+
+.stagger-3 {
+  animation-delay: 120ms;
+}
+
+.stagger-4 {
+  animation-delay: 160ms;
+}
+
+.stagger-5 {
+  animation-delay: 200ms;
+}
 
 /* Mesh banner gradient animation */
 @keyframes meshGradient {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
+
 .animate-mesh-gradient {
   background-size: 200% 200%;
   animation: meshGradient 12s ease infinite;
@@ -200,30 +339,18 @@ html {
 
 /* Dark mode custom styles */
 .dark :root {
-  --background: #020617; /* slate-950 */
-  --foreground: #f8fafc; /* slate-50 */
+  --background: #020617;
+  /* slate-950 */
+  --foreground: #f8fafc;
+  /* slate-50 */
 }
 
 /* Hide scrollbars but allow scrolling */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
-/* Landing page animations */
-@keyframes landingGlow {
-  0%, 100% { transform: scale(1) translate(0px, 0px); opacity: 0.35; }
-  33% { transform: scale(1.15) translate(30px, -50px); opacity: 0.5; }
-  66% { transform: scale(0.9) translate(-20px, 20px); opacity: 0.3; }
-}
-.animate-landing-glow-1 {
-  animation: landingGlow 20s infinite ease-in-out;
-}
-.animate-landing-glow-2 {
-  animation: landingGlow 25s infinite ease-in-out reverse;
-}
-
-

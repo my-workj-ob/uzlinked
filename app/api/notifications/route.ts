@@ -41,7 +41,8 @@ export async function GET() {
                 comment_id,
                 is_read,
                 created_at,
-                actor:actor_id (id, nickname, username, avatar_url)
+                actor:actor_id (id, nickname, username, avatar_url),
+                reels:reel_id (id, thumbnail_key, video_key)
             `)
             .eq('user_id', session.user.id)
             .order('created_at', { ascending: false })
@@ -51,6 +52,17 @@ export async function GET() {
 
         const formatted = (notifications || []).map((n: any) => {
             const actor = Array.isArray(n.actor) ? n.actor[0] : n.actor
+            const reel = Array.isArray(n.reels) ? n.reels[0] : n.reels
+            
+            let reelThumbnail = null
+            if (reel) {
+                if (reel.thumbnail_key) {
+                    reelThumbnail = reel.thumbnail_key.includes('/')
+                        ? `/api/images?key=${reel.thumbnail_key}`
+                        : `https://utfs.io/f/${reel.thumbnail_key}`
+                }
+            }
+
             return {
                 id: n.id,
                 type: n.type,
@@ -64,6 +76,7 @@ export async function GET() {
                     username: actor?.username || 'user',
                     avatar: actor?.avatar_url || '/default-avatar.png',
                 },
+                reelThumbnail,
             }
         })
 
