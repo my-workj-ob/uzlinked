@@ -13,7 +13,10 @@ import {
   HiChevronLeft, HiOutlineEllipsisVertical, HiCheckBadge,
   HiOutlineMicrophone, HiOutlineArrowUturnLeft, HiOutlinePencil,
   HiOutlineTrash, HiOutlineDocumentDuplicate, HiOutlineEye,
-  HiOutlineExclamationTriangle, HiOutlineMinusCircle
+  HiOutlineExclamationTriangle, HiOutlineMinusCircle,
+  HiOutlineUserGroup, HiOutlineSpeakerWave, HiOutlineMapPin,
+  HiOutlineNoSymbol, HiMapPin, HiXMark,
+  HiOutlineGlobeAlt, HiLockClosed
 } from 'react-icons/hi2'
 import { IoSearchOutline, IoChatbubblesOutline } from 'react-icons/io5'
 import { BottomSheet } from '@/components/bottom-sheet'
@@ -108,6 +111,10 @@ const plainVariants: Variants = {
   visible: { opacity: 1, scale: 1, y: 0 }
 }
 
+// ─── Sidebar Chat Item Context Menu State types ──────────────────────────────
+type SidebarCtxMenu = { chatId: string; partnerId: string; x: number; y: number } | null
+type CreateGroupModalType = 'group' | 'channel' | null
+
 function MessagesPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -161,6 +168,27 @@ function MessagesPageContent() {
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false)
   const [hasNewMessagesBelow, setHasNewMessagesBelow] = useState(false)
   const [heartBurstMsgId, setHeartBurstMsgId] = useState<string | null>(null)
+
+  // Sidebar chat context menu (long-press or right-click on chat item)
+  const [sidebarCtxMenu, setSidebarCtxMenu] = useState<SidebarCtxMenu>(null)
+  const sidebarLongPressRef = useRef<any>(null)
+
+  // Unread message counts per chat
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
+
+  // Last message preview per chat
+  const [lastMessages, setLastMessages] = useState<Record<string, any>>({})
+
+  // Pinned chats
+  const [pinnedChatIds, setPinnedChatIds] = useState<Set<string>>(new Set())
+
+  // Group/Channel creation modal
+  const [createModalType, setCreateModalType] = useState<CreateGroupModalType>(null)
+  const [gcName, setGcName] = useState('')
+  const [gcUsername, setGcUsername] = useState('')
+  const [gcDescription, setGcDescription] = useState('')
+  const [gcIsPublic, setGcIsPublic] = useState(false)
+  const [gcCreating, setGcCreating] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -422,6 +450,8 @@ function MessagesPageContent() {
       .select(`
         id,
         created_at,
+        pinned_by_user_one,
+        pinned_by_user_two,
         user_one:profiles!chats_user_one_fkey(*),
         user_two:profiles!chats_user_two_fkey(*)
       `)
@@ -432,6 +462,41 @@ function MessagesPageContent() {
       console.error('[Xabarlar] Chatlarni yuklashda xato:', error)
     } else if (data) {
       setChats(data)
+
+      // Determine pinned chats for current user
+      const pinned = new Set<string>()
+      data.forEach((c: any) => {
+        const isUserOne = c.user_one?.id === currentUserId
+        if (isUserOne && c.pinned_by_user_one) pinned.add(c.id)
+        if (!isUserOne && c.pinned_by_user_two) pinned.add(c.id)
+      })
+      setPinnedChatIds(pinned)
+
+      // Fetch last messages and unread counts for each chat
+      const chatIds = data.map((c: any) => c.id)
+      if (chatIds.length > 0) {
+        // Last message per chat (get latest message for each chat)
+        const { data: msgData } = await supabase
+          .from('messages')
+          .select('id, chat_id, text, file_type, created_at, sender_id, is_deleted')
+          .in('chat_id', chatIds)
+          .order('created_at', { ascending: false })
+
+        if (msgData) {
+          const lastMsgMap: Record<string, any> = {}
+          const unreadMap: Record<string, number> = {}
+          msgData.forEach((m: any) => {
+            if (!lastMsgMap[m.chat_id]) {
+              lastMsgMap[m.chat_id] = m
+            }
+            if (!m.is_read && m.sender_id !== currentUserId) {
+              unreadMap[m.chat_id] = (unreadMap[m.chat_id] || 0) + 1
+            }
+          })
+          setLastMessages(lastMsgMap)
+          setUnreadCounts(unreadMap)
+        }
+      }
     }
     setIsLoadingChats(false)
   }, [currentUserId, userIdReady])
@@ -439,6 +504,94 @@ function MessagesPageContent() {
   useEffect(() => {
     fetchChats()
   }, [fetchChats])
+
+  // Toggle pin/unpin a chat for the current user
+  const handleTogglePin = async (chatId: string) => {
+    setSidebarCtxMenu(null)
+    const chat = chats.find(c => c.id === chatId)
+    if (!chat) return
+    const isUserOne = chat.user_one?.id === currentUserId
+    const colName = isUserOne ? 'pinned_by_user_one' : 'pinned_by_user_two'
+    const isPinned = pinnedChatIds.has(chatId)
+    const newVal = !isPinned
+    const { error } = await supabase
+      .from('chats')
+      .update({ [colName]: newVal })
+      .eq('id', chatId)
+    if (!error) {
+      setPinnedChatIds(prev => {
+        const next = new Set(prev)
+        if (newVal) next.add(chatId)
+        else next.delete(chatId)
+        return next
+      })
+      toast.success(newVal ? "Chat qadab qo\u02BCyildi 📌" : "Chat qadoqdan chiqarildi")
+    }
+  }
+
+  // Create a new group or channel
+  const handleCreateGroupChannel = async () => {
+    if (!gcName.trim() || !createModalType) return
+    setGcCreating(true)
+    try {
+      const { data: gc, error } = await supabase
+        .from('groups_channels')
+        .insert([{
+          name: gcName.trim(),
+          username: gcUsername.trim() || null,
+          description: gcDescription.trim() || null,
+          type: createModalType,
+          is_public: gcIsPublic,
+          creator_id: currentUserId
+        }])
+        .select()
+        .single()
+      if (error) throw error
+
+      // Auto-add creator as member with 'creator' role
+      await supabase.from('group_members').insert([{
+        group_id: gc.id,
+        user_id: currentUserId,
+        role: 'creator'
+      }])
+
+      toast.success(`${createModalType === 'group' ? 'Guruh' : 'Kanal'} muvaffaqiyatli yaratildi!`)
+      setCreateModalType(null)
+      setGcName('')
+      setGcUsername('')
+      setGcDescription('')
+      setGcIsPublic(false)
+    } catch (err: any) {
+      toast.error(err.message || 'Yaratishda xatolik yuz berdi')
+    } finally {
+      setGcCreating(false)
+    }
+  }
+
+  // Sidebar chat item long-press handler
+  const handleSidebarLongPress = (e: React.TouchEvent | React.MouseEvent, chatId: string, partnerId: string) => {
+    const x = 'touches' in e ? (e as React.TouchEvent).touches[0].clientX : (e as React.MouseEvent).clientX
+    const y = 'touches' in e ? (e as React.TouchEvent).touches[0].clientY : (e as React.MouseEvent).clientY
+    setSidebarCtxMenu({ chatId, partnerId, x, y })
+  }
+
+  // Block/unblock from sidebar context menu
+  const handleSidebarBlock = async (partnerId: string, action: 'block' | 'unblock') => {
+    setSidebarCtxMenu(null)
+    try {
+      if (action === 'block') {
+        await supabase.from('user_blocks').insert([{ blocker_id: currentUserId, blocked_id: partnerId, is_spam: false }])
+        toast.success('Foydalanuvchi bloklandi')
+      } else {
+        await supabase.from('user_blocks').delete().eq('blocker_id', currentUserId).eq('blocked_id', partnerId)
+        toast.success('Foydalanuvchi blokdan chiqarildi')
+      }
+      checkBlockStatus()
+    } catch (err: any) {
+      toast.error(err.message || 'Amalda xatolik yuz berdi')
+    }
+  }
+
 
   useEffect(() => {
     const term = sanitizeSearchTerm(searchQuery)
@@ -517,6 +670,8 @@ function MessagesPageContent() {
       .eq('chat_id', chatId)
       .neq('sender_id', currentUserId)
       .eq('is_read', false)
+    // Clear unread count in sidebar
+    setUnreadCounts(prev => ({ ...prev, [chatId]: 0 }))
   }, [currentUserId])
 
   const fetchMessages = useCallback(async (chatId: string) => {
@@ -560,7 +715,10 @@ function MessagesPageContent() {
             return [...prev, incoming]
           })
 
+          // Update sidebar last message and unread count
+          setLastMessages(prev => ({ ...prev, [incoming.chat_id]: incoming }))
           if (incoming.sender_id !== currentUserId) {
+            setUnreadCounts(prev => ({ ...prev, [incoming.chat_id]: (prev[incoming.chat_id] || 0) + 1 }))
             markMessagesAsRead(selectedChatId)
           }
 
@@ -581,6 +739,12 @@ function MessagesPageContent() {
         (payload: any) => {
           const updated = payload.new as Message
           setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, ...updated } : m))
+          // Update last message if this was the last one
+          setLastMessages(prev => {
+            const last = prev[updated.chat_id]
+            if (last && last.id === updated.id) return { ...prev, [updated.chat_id]: { ...last, ...updated } }
+            return prev
+          })
         }
       )
       .on('postgres_changes',
@@ -1021,6 +1185,194 @@ function MessagesPageContent() {
       </AnimatePresence>
 
       {/* SIDEBAR: CHATS & SEARCH LIST */}
+      {/* SIDEBAR CHAT ITEM CONTEXT MENU */}
+      <AnimatePresence>
+        {sidebarCtxMenu && (
+          <>
+            <div className="fixed inset-0 z-[90]" onClick={() => setSidebarCtxMenu(null)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: -6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              style={{
+                position: 'fixed',
+                top: Math.min(sidebarCtxMenu.y, window.innerHeight - 260),
+                left: Math.min(sidebarCtxMenu.x, window.innerWidth - 230),
+              }}
+              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 shadow-2xl rounded-2xl p-1.5 w-56 z-[100] flex flex-col text-left text-xs font-semibold text-slate-700 dark:text-slate-200 select-none backdrop-blur-md"
+            >
+              <button
+                onClick={() => { router.push(`/dashboard/profile/${sidebarCtxMenu.partnerId}`); setSidebarCtxMenu(null) }}
+                className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+              >
+                <HiOutlineEye className="w-4 h-4 text-blue-500" />
+                <span className="whitespace-nowrap">Profilni ko'rish</span>
+              </button>
+
+              <button
+                onClick={() => handleTogglePin(sidebarCtxMenu.chatId)}
+                className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+              >
+                <HiOutlineMapPin className={`w-4 h-4 ${pinnedChatIds.has(sidebarCtxMenu.chatId) ? 'text-amber-500' : 'text-slate-400'}`} />
+                <span className="whitespace-nowrap">{pinnedChatIds.has(sidebarCtxMenu.chatId) ? 'Qadoqdan chiqarish' : "Suhbatni qadab qo\u02BCyish"}</span>
+              </button>
+
+              <div className="my-1 border-t border-slate-100 dark:border-white/5" />
+
+              <button
+                onClick={() => handleSidebarBlock(sidebarCtxMenu.partnerId, isBlockedByMe ? 'unblock' : 'block')}
+                className={`flex items-center gap-2.5 px-3 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl cursor-pointer ${isBlockedByMe ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}
+              >
+                <HiOutlineNoSymbol className="w-4 h-4" />
+                <span className="whitespace-nowrap">{isBlockedByMe ? 'Blokdan chiqarish' : 'Bloklash'}</span>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* GROUP / CHANNEL CREATION MODAL */}
+      <AnimatePresence>
+        {createModalType && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setCreateModalType(null) }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 40, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 40 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 dark:border-white/10 overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/5">
+                <div className="flex items-center gap-2.5">
+                  {createModalType === 'group'
+                    ? <HiOutlineUserGroup className="w-5 h-5 text-blue-500" />
+                    : <HiOutlineSpeakerWave className="w-5 h-5 text-violet-500" />
+                  }
+                  <h2 className="text-sm font-black text-slate-900 dark:text-slate-100">
+                    {createModalType === 'group' ? 'Yangi Guruh' : 'Yangi Kanal'} yaratish
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setCreateModalType(null)}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all"
+                >
+                  <HiXMark className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Avatar Placeholder */}
+                <div className="flex items-center gap-4">
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${createModalType === 'group' ? 'bg-blue-50 dark:bg-blue-950/40' : 'bg-violet-50 dark:bg-violet-950/40'}`}>
+                    {createModalType === 'group'
+                      ? <HiOutlineUserGroup className="w-7 h-7 text-blue-500" />
+                      : <HiOutlineSpeakerWave className="w-7 h-7 text-violet-500" />
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+                      {createModalType === 'group' ? 'Guruh' : 'Kanal'} nomi *
+                    </p>
+                    <input
+                      type="text"
+                      value={gcName}
+                      onChange={(e) => setGcName(e.target.value)}
+                      placeholder={createModalType === 'group' ? "Masalan: Do\u02BCstlar" : 'Masalan: Yangiliklar'}
+                      maxLength={80}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500/40 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Username */}
+                <div>
+                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 block">
+                    Username (ixtiyoriy)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">@</span>
+                    <input
+                      type="text"
+                      value={gcUsername}
+                      onChange={(e) => setGcUsername(e.target.value.replace(/[^a-z0-9_]/gi, '').toLowerCase())}
+                      placeholder="my_group"
+                      maxLength={32}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl pl-7 pr-3 py-2 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500/40 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 block">
+                    Tavsif (ixtiyoriy)
+                  </label>
+                  <textarea
+                    value={gcDescription}
+                    onChange={(e) => setGcDescription(e.target.value)}
+                    placeholder="Bu haqida qisqacha..."
+                    rows={2}
+                    maxLength={200}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500/40 transition-all resize-none"
+                  />
+                </div>
+
+                {/* Public/Private Toggle */}
+                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-white/5">
+                  <div className="flex items-center gap-2.5">
+                    {gcIsPublic
+                      ? <HiOutlineGlobeAlt className="w-4 h-4 text-emerald-500" />
+                      : <HiLockClosed className="w-4 h-4 text-slate-400" />
+                    }
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {gcIsPublic ? 'Hammaga ochiq' : 'Maxfiy'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                         {gcIsPublic ? "Har kim topib qo\u02BCshila oladi" : 'Faqat taklif orqali'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setGcIsPublic(!gcIsPublic)}
+                    className={`relative w-10 h-5 rounded-full transition-all duration-300 ${gcIsPublic ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300 ${gcIsPublic ? 'left-5' : 'left-0.5'}`} />
+                  </button>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2.5 pt-1">
+                  <button
+                    onClick={() => setCreateModalType(null)}
+                    className="flex-1 py-2.5 rounded-2xl border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                  >
+                    Bekor qilish
+                  </button>
+                  <button
+                    onClick={handleCreateGroupChannel}
+                    disabled={!gcName.trim() || gcCreating}
+                    className={`flex-1 py-2.5 rounded-2xl text-xs font-black text-white transition-all active:scale-95 ${
+                      gcName.trim() && !gcCreating
+                        ? createModalType === 'group' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-violet-600 hover:bg-violet-700'
+                        : 'bg-slate-300 dark:bg-slate-700 cursor-not-allowed'
+                    }`}
+                  >
+                    {gcCreating ? 'Yaratilmoqda...' : `Yaratish`}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className={`w-full md:w-[320px] border-r border-slate-100 dark:border-white/5 flex flex-col bg-white dark:bg-slate-950 shrink-0 h-full ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
 
         {/* Mobile Custom Header */}
@@ -1031,17 +1383,53 @@ function MessagesPageContent() {
             </button>
             <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">Xabarlar</span>
           </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCreateModalType('group')}
+              className="p-2 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-blue-500 transition-all active:scale-90"
+              title="Guruh yaratish"
+            >
+              <HiOutlineUserGroup className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setCreateModalType('channel')}
+              className="p-2 hover:bg-violet-50 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-violet-500 transition-all active:scale-90"
+              title="Kanal yaratish"
+            >
+              <HiOutlineSpeakerWave className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Desktop Sidebar Header */}
         <div className="p-4 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-slate-950 hidden md:block shrink-0">
-          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-3.5 flex items-center gap-2">
-            Xabarlar
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600" />
-            </span>
-          </h1>
+          <div className="flex items-center justify-between mb-3.5">
+            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+              Xabarlar
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-600" />
+              </span>
+            </h1>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCreateModalType('group')}
+                className="p-2 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-blue-500 transition-all active:scale-90 group relative"
+                title="Guruh yaratish"
+              >
+                <HiOutlineUserGroup className="w-4.5 h-4.5" />
+                <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold bg-slate-900 text-white px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Guruh</span>
+              </button>
+              <button
+                onClick={() => setCreateModalType('channel')}
+                className="p-2 hover:bg-violet-50 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-violet-500 transition-all active:scale-90 group relative"
+                title="Kanal yaratish"
+              >
+                <HiOutlineSpeakerWave className="w-4.5 h-4.5" />
+                <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold bg-slate-900 text-white px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Kanal</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Global User Search */}
@@ -1110,34 +1498,103 @@ function MessagesPageContent() {
               ))}
             </div>
           ) : chats.length === 0 ? (
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 p-6 text-center leading-relaxed font-bold">
-              Chatlar mavjud emas. Suhbatni boshlash uchun foydalanuvchini qidiring.
-            </p>
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+                <IoChatbubblesOutline className="w-6 h-6 text-slate-400" />
+              </div>
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 text-center leading-relaxed px-4">
+                Chatlar mavjud emas.<br />Suhbatni boshlash uchun qidiring.
+              </p>
+            </div>
           ) : (
-            chats.map((chat) => {
-              const partner = chat.user_one.id === currentUserId ? chat.user_two : chat.user_one
-              const isSelected = selectedChatId === chat.id
-              const isPartnerOnline = onlineUserIds.has(partner.id)
-              return (
-                <div
-                  key={chat.id}
-                  onClick={() => setSelectedChatId(chat.id)}
-                  className={`p-3 flex items-center gap-3 cursor-pointer rounded-2xl transition-all duration-200 active:scale-[0.98] ${isSelected ? 'bg-blue-600 text-white border border-transparent dark:border-white/5 shadow-md shadow-blue-500/20' : 'hover:bg-slate-50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200'
+            <>
+              {/* Pinned chats section */}
+              {pinnedChatIds.size > 0 && (
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 pt-1 pb-0.5 flex items-center gap-1">
+                  <HiMapPin className="w-3 h-3 text-amber-500" /> Qadab qo'yilgan
+                </p>
+              )}
+              {[
+                ...chats.filter(c => pinnedChatIds.has(c.id)),
+                ...(pinnedChatIds.size > 0 ? [null] : []), // divider placeholder
+                ...chats.filter(c => !pinnedChatIds.has(c.id))
+              ].map((chat, i) => {
+                // divider
+                if (chat === null) return (
+                  <p key="divider" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 pt-2 pb-0.5">Suhbatlar</p>
+                )
+
+                const partner = chat.user_one.id === currentUserId ? chat.user_two : chat.user_one
+                const isSelected = selectedChatId === chat.id
+                const isPartnerOnline = onlineUserIds.has(partner.id)
+                const isPinned = pinnedChatIds.has(chat.id)
+                const unread = unreadCounts[chat.id] || 0
+                const lastMsg = lastMessages[chat.id]
+                const lastMsgText = lastMsg
+                  ? lastMsg.is_deleted
+                    ? "\uD83D\uDEAB Xabar o\u02BCchirilgan"
+                    : lastMsg.file_type === 'image'
+                      ? '\uD83D\uDDBC\uFE0F Rasm'
+                      : lastMsg.file_type === 'video'
+                        ? '\uD83C\uDFA5 Video'
+                        : lastMsg.file_type === 'audio'
+                          ? '\uD83C\uDFA4 Ovozli xabar'
+                          : (lastMsg.text || '')
+                  : null
+
+
+                return (
+                  <div
+                    key={chat.id}
+                    className={`p-3 flex items-center gap-3 cursor-pointer rounded-2xl transition-all duration-200 active:scale-[0.98] group ${
+                      isSelected
+                        ? 'bg-blue-600 text-white border border-transparent dark:border-white/5 shadow-md shadow-blue-500/20'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200'
                     }`}
-                >
-                  <div className="relative shrink-0">
-                    <img src={partner.avatar_url || FALLBACK_AVATAR} alt="" className="w-10 h-10 object-cover rounded-full" />
-                    {isPartnerOnline && (
-                      <span className={`absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full ring-2 ${isSelected ? 'ring-blue-600' : 'ring-white dark:ring-slate-950'} animate-pulse`} />
-                    )}
+                    onClick={() => setSelectedChatId(chat.id)}
+                    onContextMenu={(e) => { e.preventDefault(); handleSidebarLongPress(e, chat.id, partner.id) }}
+                    onTouchStart={(e) => {
+                      sidebarLongPressRef.current = setTimeout(() => {
+                        handleSidebarLongPress(e, chat.id, partner.id)
+                        if (navigator.vibrate) navigator.vibrate(40)
+                      }, 500)
+                    }}
+                    onTouchEnd={() => { if (sidebarLongPressRef.current) clearTimeout(sidebarLongPressRef.current) }}
+                    onTouchMove={() => { if (sidebarLongPressRef.current) clearTimeout(sidebarLongPressRef.current) }}
+                  >
+                    <div className="relative shrink-0">
+                      <img src={partner.avatar_url || FALLBACK_AVATAR} alt="" className="w-11 h-11 object-cover rounded-full" />
+                      {isPartnerOnline && (
+                        <span className={`absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full ring-2 ${isSelected ? 'ring-blue-600' : 'ring-white dark:ring-slate-950'}`} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="flex items-center justify-between gap-1">
+                        <h4 className={`font-bold text-sm truncate ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'} flex items-center gap-1`}>
+                          {isPinned && <HiMapPin className={`w-3 h-3 shrink-0 ${isSelected ? 'text-white/70' : 'text-amber-500'}`} />}
+                          {partner.nickname}
+                        </h4>
+                        {lastMsg && (
+                          <span className={`text-[10px] font-bold shrink-0 ${isSelected ? 'text-white/60' : 'text-slate-400 dark:text-slate-500'}`}>
+                            {new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between gap-1">
+                        <p className={`text-xs truncate ${isSelected ? 'text-white/80' : unread > 0 ? 'text-slate-700 dark:text-slate-200 font-semibold' : 'text-slate-400 dark:text-slate-500'}`}>
+                          {lastMsgText || <span className="italic">@{partner.username}</span>}
+                        </p>
+                        {unread > 0 && !isSelected && (
+                          <span className="shrink-0 min-w-[18px] h-[18px] bg-blue-600 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1">
+                            {unread > 99 ? '99+' : unread}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <h4 className={`font-bold text-sm truncate ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>{partner.nickname}</h4>
-                    <p className={`text-xs truncate ${isSelected ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'}`}>@{partner.username}</p>
-                  </div>
-                </div>
-              )
-            })
+                )
+              })}
+            </>
           )}
         </div>
       </div>

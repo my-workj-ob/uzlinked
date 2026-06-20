@@ -18,13 +18,17 @@ import {
   HiLockClosed,
   HiCheck,
   HiArrowPath,
-  HiChatBubbleLeftRight
+  HiChatBubbleLeftRight,
+  HiOutlineUserGroup,
+  HiOutlineSpeakerWave,
+  HiOutlineGlobeAlt,
+  HiBell
 } from "react-icons/hi2";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useUploadThing } from "@/utils/uploadthing/uploadthing";
 import { createClient } from "@/utils/supabase/client";
 
-type SettingsTab = "profile" | "security" | "logs" | "danger" | "chat";
+type SettingsTab = "profile" | "security" | "logs" | "danger" | "chat" | "groups";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -366,6 +370,18 @@ export default function SettingsPage() {
           >
             <HiChatBubbleLeftRight className="h-5 w-5" />
             <span>Xabarlar Sozlamalari</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("groups")}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all shrink-0 md:w-full ${
+              activeTab === "groups"
+                ? "bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400"
+                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40 hover:text-slate-950 dark:hover:text-slate-100"
+            }`}
+          >
+            <HiOutlineUserGroup className="h-5 w-5" />
+            <span>Guruh va Kanallar</span>
           </button>
 
           <button
@@ -838,6 +854,61 @@ export default function SettingsPage() {
                     Siz hech kimni bloklamagansiz
                   </p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Groups & Channels Settings Tab */}
+          {activeTab === "groups" && (
+            <div className="space-y-6">
+              {/* General Group Settings */}
+              <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
+                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-2">
+                  <HiOutlineUserGroup className="h-5 w-5 text-violet-500" />
+                  Guruh Sozlamalari
+                </h2>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-6">
+                  Telegramdagi kabi — har bir guruh yoki kanalda alohida sozlamalar mavjud. Guruh/kanal yaratgandan keyin uning sahifasidan sozlamalarni boshqaring.
+                </p>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Feature list */}
+                  {[
+                    { icon: HiOutlineUserGroup, color: 'text-blue-500 bg-blue-50 dark:bg-blue-950/40', label: "A\u02BCzolarni boshqarish", desc: "A\u02BCzo qo\u02BCshish, chiqarish va rol berish" },
+                    { icon: HiOutlineSpeakerWave, color: 'text-violet-500 bg-violet-50 dark:bg-violet-950/40', label: 'Kanal ulashish', desc: 'Xabarlarni guruh/kanal uchun ulashish' },
+                    { icon: HiOutlineGlobeAlt, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40', label: 'Ommaviy/Maxfiy rejim', desc: "Kimlar qo\u02BCshila olishini sozlash" },
+                    { icon: HiBell, color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/40', label: 'Bildirishnomalar', desc: 'Guruh xabarlari uchun ovoz sozlamalari' },
+                    { icon: HiLockClosed, color: 'text-rose-500 bg-rose-50 dark:bg-rose-950/40', label: 'Maxfiy sozlamalar', desc: 'Faqat adminga yozish ruxsati' },
+                  ].map(({ icon: Icon, color, label, desc }) => (
+                    <div key={label} className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-white/5">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+                        <Icon className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{label}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500">{desc}</p>
+                      </div>
+                      <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/30">
+                        Mavjud
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* How to create */}
+              <div className="rounded-2xl border border-violet-100 dark:border-violet-900/20 bg-violet-50/30 dark:bg-violet-950/10 p-6 shadow-sm">
+                <h3 className="text-sm font-black text-violet-700 dark:text-violet-400 mb-3 flex items-center gap-2">
+                  <HiOutlineSpeakerWave className="w-4 h-4" />
+                  Guruh yoki Kanal qanday yaratiladi?
+                </h3>
+                <ol className="space-y-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">1.</span> Xabarlar sahifasiga o'ting</li>
+                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">2.</span> Yuqori o'ng burchakdagi <strong className="text-slate-800 dark:text-slate-200">👥 guruh</strong> yoki <strong className="text-slate-800 dark:text-slate-200">📣 kanal</strong> tugmasini bosing</li>
+                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">3.</span> Nom, username va tavsif kiriting</li>
+                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">4.</span> Ommaviy yoki maxfiy rejimni tanlang</li>
+                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">5.</span> "Yaratish" tugmasini bosing ✅</li>
+                </ol>
               </div>
             </div>
           )}
