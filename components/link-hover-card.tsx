@@ -28,7 +28,7 @@ export function HoverCardUsername({ username, token }: { username: string; token
         .select('id, nickname, username, avatar_url, bio')
         .eq('username', username.toLowerCase())
         .maybeSingle()
-        .then(({ data, error }) => {
+        .then(({ data, error }: any) => {
           setLoading(false)
           if (error || !data) {
             setNotFound(true)
@@ -49,12 +49,12 @@ export function HoverCardUsername({ username, token }: { username: string; token
   const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
 
   return (
-    <span 
+    <span
       className="relative inline-block"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <Link 
+      <Link
         href={profile ? `/dashboard/profile/${profile.id}` : '#'}
         onClick={(e) => {
           if (!profile) e.preventDefault()
@@ -88,9 +88,9 @@ export function HoverCardUsername({ username, token }: { username: string; token
             ) : profile ? (
               <div className="flex flex-col gap-2.5">
                 <div className="flex items-center gap-3">
-                  <img 
-                    src={profile.avatar_url || FALLBACK_AVATAR} 
-                    alt="" 
+                  <img
+                    src={profile.avatar_url || FALLBACK_AVATAR}
+                    alt=""
                     className="w-12 h-12 object-cover rounded-2xl shadow-sm shrink-0"
                   />
                   <div className="min-w-0">
@@ -107,7 +107,7 @@ export function HoverCardUsername({ username, token }: { username: string; token
                     {profile.bio}
                   </p>
                 )}
-                <Link 
+                <Link
                   href={`/dashboard/profile/${profile.id}`}
                   className="w-full mt-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-center text-xs font-bold rounded-xl active:scale-95 transition-all shadow-md shadow-blue-500/20"
                 >
