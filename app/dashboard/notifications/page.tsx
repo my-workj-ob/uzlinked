@@ -204,7 +204,7 @@ export default function NotificationsPage() {
   // Mark all as read
   const handleMarkAllRead = async () => {
     try {
-      const unreadIds = notifications.filter(n => !n.isRead && !n.id.startsWith('mock')).map(n => n.id)
+      const unreadIds = notifications.filter(n => !n.isRead && !String(n.id).startsWith('mock')).map(n => n.id)
       if (unreadIds.length > 0) {
         await fetch('/api/notifications', {
           method: 'PATCH',
@@ -220,7 +220,7 @@ export default function NotificationsPage() {
 
   // Auto mark read on mount
   useEffect(() => {
-    const unread = notifications.filter(n => !n.isRead && !n.id.startsWith('mock'))
+    const unread = notifications.filter(n => !n.isRead && !String(n.id).startsWith('mock'))
     if (unread.length > 0) {
       const unreadIds = unread.map(n => n.id)
       fetch('/api/notifications', {
@@ -233,7 +233,7 @@ export default function NotificationsPage() {
 
   const handleAcceptRequest = async (id: string, actorId: string) => {
     try {
-      if (!id.startsWith('mock')) {
+      if (!String(id).startsWith('mock')) {
         const res = await fetch('/api/follow', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -250,7 +250,7 @@ export default function NotificationsPage() {
 
   const handleDeclineRequest = async (id: string) => {
     try {
-      if (!id.startsWith('mock')) {
+      if (!String(id).startsWith('mock')) {
         // Mark notification as read or dismiss it
         await fetch('/api/notifications', {
           method: 'PATCH',
