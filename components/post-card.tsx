@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy, FiAlertTriangle, FiUser } from 'react-icons/fi'
+import { FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy, FiAlertTriangle, FiUser, FiCornerDownLeft } from 'react-icons/fi'
 import { useLikeToggle } from '@/hooks/use-queries'
 import { FaHeart } from 'react-icons/fa'
 import { HiEllipsisHorizontal, HiXMark } from 'react-icons/hi2'
@@ -17,6 +17,9 @@ export interface CommentType {
   text: string
   createdAt: string
   userId: string
+  parentId?: string | number | null
+  likesCount?: number
+  likedByMe?: boolean
 }
 
 export interface PostType {
@@ -79,6 +82,13 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const [comments, setComments] = useState<CommentType[]>([])
   const [commentsCount, setCommentsCount] = useState(post.commentsCount || 0)
   const [loadingComments, setLoadingComments] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<CommentType | null>(null)
+  const commentInputRef = useRef<HTMLInputElement>(null)
+
+  const closeComments = () => {
+    setShowComments(false)
+    setReplyingTo(null)
+  }
 
   const [showMenu, setShowMenu] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -159,6 +169,50 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
     }
   }
 
+  const handleLikeComment = async (commentId: string | number) => {
+    // Optimistic UI Update
+    setComments(prev => prev.map(c => {
+      if (c.id === commentId) {
+        const nextLiked = !c.likedByMe
+        return {
+          ...c,
+          likedByMe: nextLiked,
+          likesCount: nextLiked ? (c.likesCount || 0) + 1 : Math.max(0, (c.likesCount || 0) - 1)
+        }
+      }
+      return c
+    }))
+
+    try {
+      const res = await fetch('/api/posts/comments/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentId })
+      })
+      if (!res.ok) throw new Error('Like toggle failed')
+    } catch (err) {
+      // Revert changes on failure
+      setComments(prev => prev.map(c => {
+        if (c.id === commentId) {
+          const nextLiked = !c.likedByMe
+          return {
+            ...c,
+            likedByMe: nextLiked,
+            likesCount: nextLiked ? (c.likesCount || 0) + 1 : Math.max(0, (c.likesCount || 0) - 1)
+          }
+        }
+        return c
+      }))
+    }
+  }
+
+  const handleReplyTo = (comment: CommentType) => {
+    setReplyingTo(comment)
+    setTimeout(() => {
+      commentInputRef.current?.focus()
+    }, 100)
+  }
+
   // Kommentariya qo'shish logikasi
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -168,7 +222,11 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       const res = await fetch('/api/posts/comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: post.id, content: commentText })
+        body: JSON.stringify({ 
+          postId: post.id, 
+          content: commentText,
+          parentId: replyingTo?.id || null
+        })
       })
 
       if (res.ok) {
@@ -176,6 +234,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         setComments(prev => [...prev, newComment])
         setCommentsCount(prev => prev + 1)
         setCommentText('')
+        setReplyingTo(null)
       } else {
         if (res.status === 401) {
           alert("Iltimos, izoh qoldirish uchun tizimga kiring!")
@@ -415,57 +474,125 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         )}
       </motion.div>
 
-      {/* PORTALS UCHUN KODLAR: DOMning eng tepasida (body ichida) chiqadi */}
       {mounted && showComments && createPortal(
         <div className="fixed inset-0 z-[999999] flex items-end justify-center">
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300 animate-fade-in"
-            onClick={() => setShowComments(false)}
+            onClick={closeComments}
           />
 
           <div className="relative z-[1000000] bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 w-full md:max-w-[450px] rounded-t-[28px] max-h-[70vh] flex flex-col animate-drawer-slide-up select-none">
-            <div className="absolute top-2.5 left-0 right-0 flex justify-center cursor-pointer py-1" onClick={() => setShowComments(false)}>
+            <div className="absolute top-2.5 left-0 right-0 flex justify-center cursor-pointer py-1" onClick={closeComments}>
               <div className="w-10 h-1 bg-slate-200 dark:bg-slate-800 rounded-full" />
             </div>
 
             <div className="flex items-center justify-between px-4 pt-6 pb-3 border-b border-slate-100 dark:border-white/5">
               <span className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">Izohlar ({commentsCount})</span>
-              <button onClick={() => setShowComments(false)} className="p-1.5 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors">
+              <button onClick={closeComments} className="p-1.5 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors">
                 <HiXMark className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none [will-change:scroll-position] overscroll-y-contain -webkit-overflow-scrolling-touch">
               {loadingComments && comments.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : comments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400">
-                  <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Birinchi bo'lib izoh qoldiring 💬</p>
+                <div className="flex flex-col items-center justify-center py-8 text-center text-slate-450">
+                  <p className="text-xs font-semibold">Birinchi bo'lib izoh qoldiring 💬</p>
                 </div>
               ) : (
-                comments.map((comment) => (
-                  <div key={comment.id} className="flex items-start gap-2.5 text-xs animate-comment-slide-in">
-                    <img src={comment.avatar} className="w-8 h-8 object-cover rounded-full bg-slate-200 dark:bg-slate-800 mt-0.5" alt="" />
-                    <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-white/5 rounded-2xl px-3.5 py-2 max-w-[85%]">
-                      <span className="font-bold text-slate-950 dark:text-slate-100 block text-[11px] mb-0.5">{comment.user}</span>
-                      <p className="text-slate-700 dark:text-slate-300 leading-tight">{comment.text}</p>
-                    </div>
-                  </div>
-                ))
+                <div className="space-y-4">
+                  {comments.filter(c => !c.parentId).map((comment) => {
+                    const replies = comments.filter(c => c.parentId === comment.id)
+                    return (
+                      <div key={comment.id} className="space-y-3">
+                        {/* Parent Comment */}
+                        <div className="flex items-start gap-3 text-xs animate-comment-slide-in [will-change:transform,opacity]">
+                          <img src={comment.avatar} className="w-8 h-8 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
+                          <div className="flex-1 min-w-0">
+                            <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3.5 py-2">
+                              <span className="font-bold text-slate-950 dark:text-slate-100 block text-[11px] mb-0.5">{comment.user}</span>
+                              <p className="text-slate-850 dark:text-slate-100 leading-relaxed font-normal break-words select-text">{comment.text}</p>
+                            </div>
+                            <div className="flex items-center gap-4 mt-1.5 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-550 select-none">
+                              <span>{formatTime(comment.createdAt)}</span>
+                              <button 
+                                onClick={() => handleLikeComment(comment.id)} 
+                                className={`hover:text-rose-500 transition-colors flex items-center gap-1 ${comment.likedByMe ? 'text-rose-500 font-black' : ''}`}
+                              >
+                                {comment.likedByMe ? <FaHeart className="w-[17px] h-[17px] text-rose-500" /> : <FiHeart className="w-[17px] h-[17px]" />}
+                                {(comment.likesCount || 0) > 0 && <span className="text-[10px]">{comment.likesCount}</span>}
+                              </button>
+                              <button 
+                                onClick={() => handleReplyTo(comment)} 
+                                className="hover:text-blue-500 transition-colors flex items-center"
+                              >
+                                <FiCornerDownLeft className="w-[17px] h-[17px]" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Nested Replies */}
+                        {replies.length > 0 && (
+                          <div className="ml-10 pl-3 border-l-2 border-slate-100 dark:border-white/5 space-y-3">
+                            {replies.map((reply) => (
+                              <div key={reply.id} className="flex items-start gap-3 text-xs animate-comment-slide-in [will-change:transform,opacity]">
+                                <img src={reply.avatar} className="w-8 h-8 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3.5 py-2">
+                                    <span className="font-bold text-slate-950 dark:text-slate-100 block text-[11px] mb-0.5">{reply.user}</span>
+                                    <p className="text-slate-850 dark:text-slate-100 leading-relaxed font-normal break-words select-text">{reply.text}</p>
+                                  </div>
+                                  <div className="flex items-center gap-4 mt-1.5 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-550 select-none">
+                                    <span>{formatTime(reply.createdAt)}</span>
+                                    <button 
+                                      onClick={() => handleLikeComment(reply.id)} 
+                                      className={`hover:text-rose-500 transition-colors flex items-center gap-1 ${reply.likedByMe ? 'text-rose-500 font-black' : ''}`}
+                                    >
+                                      {reply.likedByMe ? <FaHeart className="w-[17px] h-[17px] text-rose-500" /> : <FiHeart className="w-[17px] h-[17px]" />}
+                                      {(reply.likesCount || 0) > 0 && <span className="text-[10px]">{reply.likesCount}</span>}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               )}
             </div>
 
+            {/* Replying to indicator preview */}
+            {replyingTo && (
+              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-white/10 text-xs text-slate-600 dark:text-slate-450 select-none">
+                <span>
+                  <strong>@{replyingTo.user}</strong> ga javob berilmoqda
+                </span>
+                <button 
+                  onClick={() => setReplyingTo(null)}
+                  className="text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                >
+                  Bekor qilish
+                </button>
+              </div>
+            )}
+
             <form onSubmit={handleAddComment} className="p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 flex items-center gap-2 pb-[calc(1.2rem+env(safe-area-inset-bottom))]">
               <input
+                ref={commentInputRef}
                 type="text"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Fikr bildiring..."
-                className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/5 rounded-2xl px-4 py-2.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
+                placeholder={replyingTo ? "Javob yozing..." : "Fikr bildiring..."}
+                className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-2.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
               />
-              <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 dark:disabled:text-slate-650 rounded-2xl transition active:scale-95">
+              <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-450 dark:disabled:text-slate-650 rounded-2xl transition active:scale-95">
                 <FiSend className="w-4 h-4" />
               </button>
             </form>
