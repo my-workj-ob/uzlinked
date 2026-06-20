@@ -29,11 +29,30 @@ CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON public.user_blocks(blocked
 -- Enable RLS for user_blocks
 ALTER TABLE public.user_blocks ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own blocks" ON public.user_blocks
-    FOR SELECT USING (auth.uid() = blocker_id);
+DROP POLICY IF EXISTS "Users can view their own blocks" ON public.user_blocks;
+CREATE POLICY "Users can view blocks they are involved in" ON public.user_blocks
+    FOR SELECT USING (auth.uid() = blocker_id OR auth.uid() = blocked_id);
 
 CREATE POLICY "Users can insert their own blocks" ON public.user_blocks
     FOR INSERT TO authenticated WITH CHECK (auth.uid() = blocker_id);
 
 CREATE POLICY "Users can delete their own blocks" ON public.user_blocks
     FOR DELETE TO authenticated USING (auth.uid() = blocker_id);
+
+-- 4. Add reactions and is_read to messages table
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '[]'::jsonB;
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
+
+-- 5. Enable Realtime publication for user_blocks safely
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    if not exists (
+      select 1 from pg_publication_tables 
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'user_blocks'
+    ) then
+      alter publication supabase_realtime add table public.user_blocks;
+    end if;
+  end if;
+end $$;
+

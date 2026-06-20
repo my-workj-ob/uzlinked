@@ -82,6 +82,31 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     return () => subscription.unsubscribe()
   }, [supabase])
 
+  // Track user online status globally using Supabase Presence
+  useEffect(() => {
+    if (!user?.id) return
+
+    const presenceChannel = supabase.channel('online-status', {
+      config: {
+        presence: {
+          key: user.id,
+        },
+      },
+    })
+
+    presenceChannel.subscribe(async (status: any) => {
+      if (status === 'SUBSCRIBED') {
+        await presenceChannel.track({
+          online_at: new Date().toISOString(),
+        })
+      }
+    })
+
+    return () => {
+      presenceChannel.unsubscribe()
+    }
+  }, [user?.id, supabase])
+
   // Circular reveal animatsiyasi bilan dark mode toggle
   const toggleTheme = (e: React.MouseEvent) => {
     const nextDark = !isDark
@@ -316,7 +341,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
               </div>
 
               <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-100 dark:border-white/5">
-                <div className="w-9 h-9 overflow-hidden rounded-full ring-2 ring-slate-150 dark:ring-slate-800 flex-shrink-0">
+                <div className="w-9 h-9 overflow-hidden rounded-full ring-2 ring-slate-200 dark:ring-slate-800 flex-shrink-0">
                   {avatarUrl && <img src={avatarUrl} alt="Avatar" className="object-cover w-full h-full" />}
                 </div>
                 <div className="flex-1 min-w-0">

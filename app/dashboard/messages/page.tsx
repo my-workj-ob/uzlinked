@@ -42,6 +42,8 @@ interface Message {
   is_edited?: boolean
   is_deleted?: boolean
   _pending?: boolean
+  reactions?: any
+  is_read?: boolean
 }
 
 const FALLBACK_AVATAR = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
@@ -151,12 +153,22 @@ function MessagesPageContent() {
   const [audioTranscript, setAudioTranscript] = useState("")
   const [selectedTranscriptMsg, setSelectedTranscriptMsg] = useState<Message | null>(null)
 
+  // Search / Scroll / Reaction premium states
+  const [isMsgSearchOpen, setIsMsgSearchOpen] = useState(false)
+  const [msgSearchQuery, setMsgSearchQuery] = useState("")
+  const [msgSearchMatches, setMsgSearchMatches] = useState<number[]>([])
+  const [currentMatchIdx, setCurrentMatchIdx] = useState(-1)
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false)
+  const [hasNewMessagesBelow, setHasNewMessagesBelow] = useState(false)
+  const [heartBurstMsgId, setHeartBurstMsgId] = useState<string | null>(null)
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const recognitionRef = useRef<any>(null)
   const timerRef = useRef<any>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const freshMessageIds = useRef<Set<string>>(new Set())
@@ -232,6 +244,32 @@ function MessagesPageContent() {
   useEffect(() => {
     checkBlockStatus()
   }, [checkBlockStatus])
+
+  // Realtime subscription for blocks/unblocks/spam
+  useEffect(() => {
+    if (!currentUserId || !userIdReady) return
+
+    const blockChannel = supabase
+      .channel('user-blocks-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'user_blocks' },
+        (payload: any) => {
+          const oldBlock = payload.old
+          const newBlock = payload.new
+          const blockerId = newBlock?.blocker_id || oldBlock?.blocker_id
+          const blockedId = newBlock?.blocked_id || oldBlock?.blocked_id
+
+          if (blockerId === currentUserId || blockedId === currentUserId) {
+            checkBlockStatus()
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(blockChannel)
+    }
+  }, [currentUserId, userIdReady, checkBlockStatus])
 
   // Voice recording triggers
   const startRecording = async () => {
@@ -490,6 +528,16 @@ function MessagesPageContent() {
     setSearchQuery("")
   }
 
+  const markMessagesAsRead = useCallback(async (chatId: string) => {
+    if (!currentUserId) return
+    await supabase
+      .from('messages')
+      .update({ is_read: true })
+      .eq('chat_id', chatId)
+      .neq('sender_id', currentUserId)
+      .eq('is_read', false)
+  }, [currentUserId])
+
   const fetchMessages = useCallback(async (chatId: string) => {
     setIsLoadingMessages(true)
     const { data, error } = await supabase
@@ -502,10 +550,11 @@ function MessagesPageContent() {
       console.error('[Xabarlar] Xabarlarni yuklashda xato:', error)
     } else if (data) {
       setMessages(data)
+      markMessagesAsRead(chatId)
     }
     setIsLoadingMessages(false)
     setTimeout(scrollToBottom, 50)
-  }, [])
+  }, [markMessagesAsRead])
 
   // Subscribe to changes (Realtime message additions, edits, deletions)
   useEffect(() => {
@@ -529,7 +578,21 @@ function MessagesPageContent() {
             freshMessageIds.current.add(incoming.id)
             return [...prev, incoming]
           })
-          setTimeout(scrollToBottom, 50)
+
+          if (incoming.sender_id !== currentUserId) {
+            markMessagesAsRead(selectedChatId)
+          }
+
+          // Check scroll position to scroll bottom or show notification badge on bottom button
+          const container = messagesContainerRef.current
+          if (container) {
+            const isFarUp = container.scrollHeight - container.scrollTop - container.clientHeight > 150
+            if (isFarUp) {
+              setHasNewMessagesBelow(true)
+            }
+          } else {
+            setTimeout(scrollToBottom, 50)
+          }
         }
       )
       .on('postgres_changes',
@@ -697,6 +760,126 @@ function MessagesPageContent() {
     toast.success("Xabar buferga nusxalandi")
   }
 
+  const handleToggleReaction = async (msg: Message, emoji: string) => {
+    if (!currentUserId || !msg.id) return
+    setActiveContextMsg(null) // Close menu
+
+    let currentReactions: any[] = []
+    try {
+      currentReactions = typeof msg.reactions === 'string'
+        ? JSON.parse(msg.reactions)
+        : (msg.reactions || [])
+    } catch {
+      currentReactions = []
+    }
+
+    if (!Array.isArray(currentReactions)) {
+      currentReactions = []
+    }
+
+    const existingIdx = currentReactions.findIndex(r => r.user_id === currentUserId && r.emoji === emoji)
+    if (existingIdx >= 0) {
+      currentReactions.splice(existingIdx, 1)
+    } else {
+      const userPrevIdx = currentReactions.findIndex(r => r.user_id === currentUserId)
+      if (userPrevIdx >= 0) {
+        currentReactions.splice(userPrevIdx, 1)
+      }
+      currentReactions.push({ user_id: currentUserId, emoji })
+    }
+
+    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, reactions: currentReactions } : m))
+
+    await supabase
+      .from('messages')
+      .update({ reactions: currentReactions })
+      .eq('id', msg.id)
+  }
+
+  const handleDoubleTap = async (msg: Message) => {
+    if (msg.is_deleted) return
+    setHeartBurstMsgId(msg.id)
+    setTimeout(() => setHeartBurstMsgId(null), 800)
+    await handleToggleReaction(msg, '❤️')
+  }
+
+  // Inside Chat Search logic
+  useEffect(() => {
+    if (!msgSearchQuery.trim() || messages.length === 0) {
+      setMsgSearchMatches([])
+      setCurrentMatchIdx(-1)
+      return
+    }
+    const query = msgSearchQuery.toLowerCase()
+    const matches: number[] = []
+    messages.forEach((msg, idx) => {
+      if (msg.text && !msg.is_deleted && msg.text.toLowerCase().includes(query)) {
+        matches.push(idx)
+      }
+    })
+    setMsgSearchMatches(matches)
+    setCurrentMatchIdx(matches.length > 0 ? matches.length - 1 : -1)
+  }, [msgSearchQuery, messages])
+
+  const scrollToMatch = useCallback((idx: number) => {
+    const matchMsg = messages[idx]
+    if (matchMsg) {
+      const el = document.getElementById(`message-${matchMsg.id}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('bg-yellow-500/20', 'dark:bg-yellow-500/30', 'scale-102')
+        setTimeout(() => {
+          el.classList.remove('bg-yellow-500/20', 'dark:bg-yellow-500/30', 'scale-102')
+        }, 1500)
+      }
+    }
+  }, [messages])
+
+  useEffect(() => {
+    if (currentMatchIdx >= 0 && msgSearchMatches[currentMatchIdx] !== undefined) {
+      scrollToMatch(msgSearchMatches[currentMatchIdx])
+    }
+  }, [currentMatchIdx, msgSearchMatches, scrollToMatch])
+
+  const renderCheckmarks = (msg: Message) => {
+    if (msg._pending) return null;
+    const isOnline = activeUser && onlineUserIds.has(activeUser.id);
+    if (msg.is_read) {
+      return (
+        <span className="flex text-blue-500 select-none ml-1">
+          <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17zM16.59 7.41L15.18 6l-6.18 6.18 1.41 1.41 4.77-4.76 1.42 1.58z" />
+          </svg>
+        </span>
+      )
+    }
+    if (isOnline) {
+      return (
+        <span className="flex text-slate-400 dark:text-slate-500 select-none ml-1">
+          <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17zM16.59 7.41L15.18 6l-6.18 6.18 1.41 1.41 4.77-4.76 1.42 1.58z" />
+          </svg>
+        </span>
+      )
+    }
+    return (
+      <span className="flex text-slate-400 dark:text-slate-500 select-none ml-1">
+        <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+        </svg>
+      </span>
+    )
+  }
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    const isFarUp = el.scrollHeight - el.scrollTop - el.clientHeight > 300
+    setShowScrollBottomBtn(isFarUp)
+    if (!isFarUp) {
+      setHasNewMessagesBelow(false)
+    }
+  }
+
   // Context Menu Long Press Triggers
   const handleTouchStart = (e: React.TouchEvent, msg: Message) => {
     if (msg.is_deleted) return
@@ -770,7 +953,7 @@ function MessagesPageContent() {
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md"
             onClick={() => setLightboxUrl(null)}
           >
-            <button className="absolute top-5 right-5 text-white hover:text-slate-350 p-2 text-2xl font-black">✕</button>
+            <button className="absolute top-5 right-5 text-white hover:text-slate-305 p-2 text-2xl font-black">✕</button>
             <motion.img
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
@@ -794,17 +977,31 @@ function MessagesPageContent() {
               exit={{ opacity: 0, scale: 0.95 }}
               style={{
                 position: 'fixed',
-                top: Math.min(contextMenuPos.y, window.innerHeight - 200),
-                left: Math.min(contextMenuPos.x, window.innerWidth - 180),
+                top: Math.min(contextMenuPos.y, window.innerHeight - 250),
+                left: Math.min(contextMenuPos.x, window.innerWidth - 220),
               }}
-              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 shadow-2xl rounded-2xl p-1.5 w-48 z-90 flex flex-col text-left font-semibold text-xs text-slate-700 dark:text-slate-200 select-none backdrop-blur-md"
+              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 shadow-2xl rounded-2xl p-1.5 w-52 z-90 flex flex-col text-left font-semibold text-xs text-slate-700 dark:text-slate-200 select-none backdrop-blur-md"
             >
+              {/* Quick Reactions Bar */}
+              <div className="flex justify-between items-center px-2 py-1.5 border-b border-slate-100 dark:border-white/5 mb-1.5 select-none">
+                {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => handleToggleReaction(activeContextMsg, emoji)}
+                    className="text-base hover:scale-130 active:scale-95 transition-transform duration-200 cursor-pointer p-0.5"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+
               <button
                 onClick={() => { setReplyingMessage(activeContextMsg); setActiveContextMsg(null) }}
                 className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
               >
                 <HiOutlineArrowUturnLeft className="w-4 h-4 text-blue-500" />
-                <span>Javob berish</span>
+                <span className="whitespace-nowrap">Javob berish</span>
               </button>
 
               {activeContextMsg.text && (
@@ -812,8 +1009,8 @@ function MessagesPageContent() {
                   onClick={() => { handleCopyMessage(activeContextMsg); setActiveContextMsg(null) }}
                   className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
                 >
-                  <HiOutlineDocumentDuplicate className="w-4 h-4 text-slate-450" />
-                  <span>Nusxalash</span>
+                  <HiOutlineDocumentDuplicate className="w-4 h-4 text-slate-400" />
+                  <span className="whitespace-nowrap">Nusxalash</span>
                 </button>
               )}
 
@@ -825,15 +1022,15 @@ function MessagesPageContent() {
                       className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
                     >
                       <HiOutlinePencil className="w-4 h-4 text-emerald-500" />
-                      <span>Tahrirlash</span>
+                      <span className="whitespace-nowrap">Tahrirlash</span>
                     </button>
                   )}
                   <button
                     onClick={() => { handleDeleteMessage(activeContextMsg); setActiveContextMsg(null) }}
-                    className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 text-rose-600 rounded-xl cursor-pointer"
+                    className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 text-rose-600 dark:text-rose-455 rounded-xl cursor-pointer"
                   >
                     <HiOutlineTrash className="w-4 h-4 text-rose-500" />
-                    <span>O'chirish</span>
+                    <span className="whitespace-nowrap">O'chirish</span>
                   </button>
                 </>
               )}
@@ -882,7 +1079,7 @@ function MessagesPageContent() {
             )}
           </div>
           {!userIdReady && (
-            <p className="mt-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-lg border border-amber-250/20">
+            <p className="mt-2 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-lg border border-amber-200/20">
               Profil sozlanmoqda...
             </p>
           )}
@@ -976,87 +1173,160 @@ function MessagesPageContent() {
           >
             {/* CHAT HEADER */}
             <div className="px-4 py-3 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-white/5 flex items-center justify-between shrink-0 select-none">
-              <div className="flex items-center gap-3 min-w-0">
-                <button onClick={() => setSelectedChatId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl md:hidden text-slate-700 dark:text-slate-300 active:scale-90 transition-transform">
-                  <HiChevronLeft className="w-6 h-6 stroke-[2.5]" />
-                </button>
-                <div className="relative">
-                  <img src={activeUser.avatar_url || FALLBACK_AVATAR} alt="" className="w-10 h-10 object-cover rounded-full" />
-                  {onlineUserIds.has(activeUser.id) && (
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-slate-950" />
+              {isMsgSearchOpen ? (
+                <div className="flex items-center gap-2.5 w-full">
+                  <IoSearchOutline className="w-4 h-4 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Xabarlarni qidirish..."
+                    value={msgSearchQuery}
+                    onChange={(e) => setMsgSearchQuery(e.target.value)}
+                    className="flex-1 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl outline-none border border-transparent focus:border-blue-500/10 focus:bg-white dark:focus:bg-slate-950"
+                    autoFocus
+                  />
+                  {msgSearchMatches.length > 0 && (
+                    <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                      {currentMatchIdx + 1}/{msgSearchMatches.length}
+                    </span>
                   )}
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (msgSearchMatches.length === 0) return
+                        setCurrentMatchIdx(prev => prev > 0 ? prev - 1 : msgSearchMatches.length - 1)
+                      }}
+                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg text-slate-500 active:scale-90"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (msgSearchMatches.length === 0) return
+                        setCurrentMatchIdx(prev => prev < msgSearchMatches.length - 1 ? prev + 1 : 0)
+                      }}
+                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg text-slate-500 active:scale-90"
+                    >
+                      ▼
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMsgSearchOpen(false)
+                      setMsgSearchQuery("")
+                    }}
+                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg text-slate-500 hover:text-rose-500 font-bold shrink-0 text-xs"
+                  >
+                    Yopish
+                  </button>
                 </div>
-                <div className="text-left">
-                  <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1">
-                    {activeUser.nickname}
-                    {activeUser.role === 'admin' && <HiCheckBadge className="w-4 h-4 text-blue-500" />}
-                  </h3>
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                    {isPartnerTyping ? (
-                      <span className="text-blue-600 dark:text-blue-400 lowercase italic animate-pulse">yozmoqda...</span>
-                    ) : onlineUserIds.has(activeUser.id) ? (
-                      <span className="text-emerald-500">Muloqotda</span>
-                    ) : (
-                      <span>tarmoqdan tashqarida</span>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative">
-                <button
-                  onClick={() => setIsEllipsisOpen(!isEllipsisOpen)}
-                  className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl text-slate-500 dark:text-slate-400 active:scale-95"
-                >
-                  <HiOutlineEllipsisVertical className="w-5 h-5" />
-                </button>
-
-                {/* Ellipsis Actions Menu */}
-                <AnimatePresence>
-                  {isEllipsisOpen && (
-                    <>
-                      <div className="fixed inset-0 z-45" onClick={() => setIsEllipsisOpen(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: -5 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute right-0 mt-1 w-56 bg-white/95 dark:bg-slate-900/95 border border-slate-100 dark:border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 backdrop-blur-md"
-                      >
-                        {isBlockedByMe ? (
-                          <button
-                            onClick={() => handleBlockAction('unblock')}
-                            className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-blue-600 cursor-pointer"
-                          >
-                            <HiOutlineMinusCircle className="w-4 h-4 text-blue-500" />
-                            <span>Blokdan chiqarish</span>
-                          </button>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button onClick={() => setSelectedChatId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl md:hidden text-slate-700 dark:text-slate-300 active:scale-90 transition-transform">
+                      <HiChevronLeft className="w-6 h-6 stroke-[2.5]" />
+                    </button>
+                    <div className="relative">
+                      <img src={activeUser.avatar_url || FALLBACK_AVATAR} alt="" className="w-10 h-10 object-cover rounded-full" />
+                      {onlineUserIds.has(activeUser.id) && !isBlockedByMe && !isBlockedByPartner && (
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-slate-950" />
+                      )}
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                        {activeUser.nickname}
+                        {activeUser.role === 'admin' && <HiCheckBadge className="w-4 h-4 text-blue-500" />}
+                      </h3>
+                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5 min-h-[14px]">
+                        {isPartnerTyping && !isBlockedByMe && !isBlockedByPartner ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-blue-600 dark:text-blue-400 lowercase italic normal-case">yozmoqda</span>
+                            <span className="flex gap-0.5 items-center justify-center pt-0.5">
+                              <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '0.8s' }} />
+                              <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '200ms', animationDuration: '0.8s' }} />
+                              <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '400ms', animationDuration: '0.8s' }} />
+                            </span>
+                          </div>
+                        ) : onlineUserIds.has(activeUser.id) && !isBlockedByMe && !isBlockedByPartner ? (
+                          <span className="text-emerald-500">Muloqotda</span>
                         ) : (
+                          <span>tarmoqdan tashqarida</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setIsMsgSearchOpen(true)}
+                      className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl text-slate-500 dark:text-slate-400 active:scale-95"
+                      title="Xabarlarni qidirish"
+                    >
+                      <IoSearchOutline className="w-5 h-5" />
+                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setIsEllipsisOpen(!isEllipsisOpen)}
+                        className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl text-slate-500 dark:text-slate-400 active:scale-95"
+                      >
+                        <HiOutlineEllipsisVertical className="w-5 h-5" />
+                      </button>
+
+                      {/* Ellipsis Actions Menu */}
+                      <AnimatePresence>
+                        {isEllipsisOpen && (
                           <>
-                            <button
-                              onClick={() => handleBlockAction('block')}
-                              className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-rose-600 cursor-pointer"
+                            <div className="fixed inset-0 z-45" onClick={() => setIsEllipsisOpen(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              className="absolute right-0 mt-1 w-60 bg-white/95 dark:bg-slate-900/95 border border-slate-100 dark:border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 backdrop-blur-md"
                             >
-                              <HiOutlineMinusCircle className="w-4 h-4 text-rose-500" />
-                              <span>Foydalanuvchini bloklash</span>
-                            </button>
-                            <button
-                              onClick={() => handleBlockAction('spam')}
-                              className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-amber-600 cursor-pointer"
-                            >
-                              <HiOutlineExclamationTriangle className="w-4 h-4 text-amber-500" />
-                              <span>Spam deb belgilash</span>
-                            </button>
+                              {isBlockedByMe ? (
+                                <button
+                                  onClick={() => handleBlockAction('unblock')}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-blue-600 cursor-pointer"
+                                >
+                                  <HiOutlineMinusCircle className="w-4 h-4 text-blue-500" />
+                                  <span className="whitespace-nowrap">Blokdan chiqarish</span>
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleBlockAction('block')}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl text-rose-600 dark:text-rose-400 cursor-pointer"
+                                  >
+                                    <HiOutlineMinusCircle className="w-4 h-4 text-rose-500" />
+                                    <span className="whitespace-nowrap">Foydalanuvchini bloklash</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleBlockAction('spam')}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl text-amber-600 dark:text-amber-400 cursor-pointer"
+                                  >
+                                    <HiOutlineExclamationTriangle className="w-4 h-4 text-amber-500" />
+                                    <span className="whitespace-nowrap">Spam deb belgilash</span>
+                                  </button>
+                                </>
+                              )}
+                            </motion.div>
                           </>
                         )}
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* MESSAGES DISPLAY AREA */}
-            <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-1 bg-slate-50/10 dark:bg-slate-950/10 [&::-webkit-scrollbar]:hidden select-text">
+            <div
+              ref={messagesContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 p-4 overflow-y-auto flex flex-col gap-1 bg-slate-50/10 dark:bg-slate-950/10 [&::-webkit-scrollbar]:hidden select-none relative"
+            >
               {isLoadingMessages ? (
                 <div className="flex-1 flex flex-col gap-3 py-2">
                   {[0, 1, 2].map(i => (
@@ -1088,37 +1358,76 @@ function MessagesPageContent() {
                       )}
 
                       {/* MESSAGE LAYOUT WRAPPER */}
-                      <div className={`flex flex-col max-w-[75%] mb-2 ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                      <div
+                        id={`message-${msg.id}`}
+                        className={`flex flex-col max-w-[75%] mb-2 relative transition-all duration-300 rounded-2xl ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
+                      >
+                        {/* Reply Icon Behind Bubble when swiped */}
+                        {!isMe && (
+                          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none select-none z-0 text-blue-500 opacity-60">
+                            <HiOutlineArrowUturnLeft className="w-5 h-5 animate-pulse" />
+                          </div>
+                        )}
 
                         {/* Swipe gesture wrapped message bubble */}
                         <motion.div
-                          drag="x"
-                          dragConstraints={{ left: 0, right: 90 }}
-                          dragElastic={0.3}
+                          drag={!isMe ? "x" : false}
+                          dragConstraints={{ left: 0, right: 80 }}
+                          dragElastic={0.2}
+                          dragSnapToOrigin={true}
                           onDragEnd={(e, info) => {
-                            if (info.offset.x > 60) {
+                            if (info.offset.x > 55) {
                               setReplyingMessage(msg)
                               if (navigator.vibrate) navigator.vibrate(30)
                             }
                           }}
+                          onDoubleClick={() => handleDoubleTap(msg)}
                           onTouchStart={(e) => handleTouchStart(e, msg)}
                           onTouchEnd={handleTouchEnd}
                           onContextMenu={(e) => handleContextMenu(e, msg)}
                           variants={isFresh ? genieVariants : plainVariants}
                           initial="hidden"
                           animate="visible"
-                          style={{ transformOrigin: isMe ? 'bottom right' : 'bottom left' }}
-                          className={`text-sm font-medium leading-relaxed shadow-xs relative select-text cursor-default ${isMe
+                          style={{ transformOrigin: isMe ? 'bottom right' : 'bottom left', touchAction: 'pan-y' }}
+                          className={`text-sm font-medium leading-relaxed shadow-xs relative select-none cursor-default z-10 transition-colors duration-200 ${isMe
                             ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-3xl rounded-tr-none'
-                            : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/5 text-slate-900 dark:text-slate-100 rounded-3xl rounded-tl-none'
+                            : 'bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-100 rounded-3xl rounded-tl-none'
                             } ${msg._pending ? 'opacity-60' : ''}`}
                         >
+                          {/* Heart Burst Overlay Animation */}
+                          <AnimatePresence>
+                            {heartBurstMsgId === msg.id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0, y: 0 }}
+                                animate={{ opacity: 1, scale: [0, 1.6, 1], y: -35 }}
+                                exit={{ opacity: 0, y: -50 }}
+                                transition={{ duration: 0.5, ease: "easeOut" }}
+                                className="absolute inset-0 m-auto flex items-center justify-center pointer-events-none select-none z-20 text-3xl"
+                              >
+                                ❤️
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
                           {/* Replied Snippet Header inside bubble */}
                           {repliedToMsg && (
-                            <div className={`mx-3 mt-2.5 mb-1.5 p-2 rounded-xl text-xs border-l-3 text-left font-semibold flex flex-col gap-0.5 select-none ${isMe
-                                ? 'bg-black/15 border-white/50 text-white/90'
-                                : 'bg-slate-50 dark:bg-slate-950 border-blue-500 text-slate-500 dark:text-slate-400'
-                              }`}>
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const el = document.getElementById(`message-${repliedToMsg.id}`);
+                                if (el) {
+                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  el.classList.add('bg-blue-500/20', 'dark:bg-blue-500/30', 'scale-[1.02]');
+                                  setTimeout(() => {
+                                    el.classList.remove('bg-blue-500/20', 'dark:bg-blue-500/30', 'scale-[1.02]');
+                                  }, 1500);
+                                }
+                              }}
+                              className={`mx-3 mt-2.5 mb-1.5 p-2 rounded-xl text-xs border-l-3 text-left font-semibold flex flex-col gap-0.5 select-none cursor-pointer transition-all ${isMe
+                                ? 'bg-black/15 border-white/50 text-white/90 hover:bg-black/25'
+                                : 'bg-slate-50 dark:bg-slate-950 border-blue-500 text-slate-500 dark:text-slate-400 hover:bg-slate-105 dark:hover:bg-slate-900'
+                                }`}
+                            >
                               <span className="text-[9px] font-black uppercase tracking-wider">
                                 {repliedToMsg.sender_id === currentUserId ? "Siz" : activeUser.nickname}
                               </span>
@@ -1128,7 +1437,7 @@ function MessagesPageContent() {
                             </div>
                           )}
 
-                          <div className="px-4 py-2.5 select-text">
+                          <div className="px-4 py-2.5 select-none">
                             {msg.file_url && (
                               <div className="mb-1.5 overflow-hidden rounded-xl max-w-xs select-none">
                                 {msg.file_type === 'video' ? (
@@ -1162,23 +1471,41 @@ function MessagesPageContent() {
                             )}
 
                             {msg.text && (
-                              <div className={msg.is_deleted ? 'italic text-xs opacity-60' : 'select-text'}>
+                              <div className={msg.is_deleted ? 'italic text-xs opacity-60' : `select-none ${isMe ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>
                                 {msg.text}
                               </div>
                             )}
                           </div>
                         </motion.div>
 
+                        {/* Reactions Pill Display */}
+                        {msg.reactions && (typeof msg.reactions === 'string' ? JSON.parse(msg.reactions) : msg.reactions).length > 0 && (
+                          <div className={`absolute bottom-[-8px] flex gap-0.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 rounded-full px-1.5 py-0.5 shadow-md select-none z-10 text-[10px] font-bold text-slate-505 dark:text-slate-300 cursor-pointer ${isMe ? 'right-4' : 'left-4'}`}>
+                            {(() => {
+                              const reactList = (typeof msg.reactions === 'string' ? JSON.parse(msg.reactions) : msg.reactions) as any[]
+                              const counts: { [emoji: string]: number } = {}
+                              reactList.forEach(r => { counts[r.emoji] = (counts[r.emoji] || 0) + 1 })
+                              return Object.entries(counts).map(([emoji, count]) => (
+                                <span key={emoji} className="flex items-center gap-0.5" onClick={() => handleToggleReaction(msg, emoji)}>
+                                  <span>{emoji}</span>
+                                  {reactList.length > 1 && <span>{count}</span>}
+                                </span>
+                              ))
+                            })()}
+                          </div>
+                        )}
+
                         {/* TIME & STATUS */}
-                        <div className="flex items-center gap-1.5 mt-1 px-1.5 select-none">
-                          <span className="text-[9px] font-bold text-slate-400/80">
+                        <div className="flex items-center gap-1 mt-1.5 px-1.5 select-none">
+                          <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500">
                             {msg._pending ? 'yuborilmoqda...' : new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                           {msg.is_edited && !msg.is_deleted && (
-                            <span className="text-[9px] font-bold text-blue-500/80 dark:text-blue-400/80 italic">
+                            <span className="text-[9px] font-bold text-blue-500 dark:text-blue-400 italic">
                               (tahrirlandi)
                             </span>
                           )}
+                          {isMe && renderCheckmarks(msg)}
                         </div>
 
                       </div>
@@ -1196,7 +1523,31 @@ function MessagesPageContent() {
             </div>
 
             {/* MESSAGE ACTION INPUT HEADER (Edit/Reply bars) */}
-            <div className="shrink-0 select-none bg-white dark:bg-slate-900">
+            <div className="shrink-0 select-none bg-white dark:bg-slate-900 relative">
+              {/* Scroll-to-Bottom Button */}
+              <AnimatePresence>
+                {showScrollBottomBtn && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    type="button"
+                    onClick={() => {
+                      scrollToBottom()
+                      setHasNewMessagesBelow(false)
+                    }}
+                    className="absolute -top-16 right-6 p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 rounded-full shadow-2xl text-slate-650 dark:text-slate-300 hover:scale-105 active:scale-95 transition-all z-35 cursor-pointer flex items-center justify-center"
+                  >
+                    <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                      <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+                    </svg>
+                    {hasNewMessagesBelow && (
+                      <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-blue-505 rounded-full animate-pulse" />
+                    )}
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
               {/* Edit Mode Preview */}
               {editingMessageId && (
                 <div className="px-4 py-2.5 bg-blue-50/50 dark:bg-blue-950/20 border-t border-slate-200 dark:border-white/5 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400">
@@ -1206,7 +1557,7 @@ function MessagesPageContent() {
                   </div>
                   <button
                     onClick={() => { setEditingMessageId(null); setTypedMessage("") }}
-                    className="p-1 hover:bg-blue-100/50 dark:hover:bg-blue-900/50 rounded-lg text-slate-400 hover:text-slate-650 cursor-pointer"
+                    className="p-1 hover:bg-blue-100/50 dark:hover:bg-blue-900/50 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     ✕
                   </button>
@@ -1225,7 +1576,7 @@ function MessagesPageContent() {
                   </div>
                   <button
                     onClick={() => setReplyingMessage(null)}
-                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-650 cursor-pointer"
+                    className="p-1 hover:bg-slate-105 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     ✕
                   </button>
@@ -1319,7 +1670,7 @@ function MessagesPageContent() {
                       type="submit"
                       disabled={!typedMessage.trim() || isUploading}
                       whileTap={{ scale: 0.85 }}
-                      className={`p-3.5 rounded-2xl flex items-center justify-center transition-colors duration-300 border border-transparent dark:border-white/5 cursor-pointer shrink-0 select-none ${typedMessage.trim() && !isUploading ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-650 cursor-not-allowed'
+                      className={`p-3.5 rounded-2xl flex items-center justify-center transition-colors duration-300 border border-transparent dark:border-white/5 cursor-pointer shrink-0 select-none ${typedMessage.trim() && !isUploading ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-900 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                         }`}
                     >
                       <HiPaperAirplane className={`w-4 h-4 transform transition-transform duration-300 -rotate-45 ${typedMessage.trim() ? 'scale-110 translate-x-[1px]' : ''}`} />
@@ -1352,7 +1703,7 @@ function MessagesPageContent() {
       >
         <div className="flex flex-col gap-4 py-2 select-text text-left">
           <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-white/5">
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-350 leading-relaxed whitespace-pre-line">
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-400 leading-relaxed whitespace-pre-line">
               "{selectedTranscriptMsg?.transcription}"
             </p>
           </div>
