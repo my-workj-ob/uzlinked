@@ -184,39 +184,20 @@ function MessagesPageContent() {
     }
   }, [chatParam])
 
-  // Track online users using Supabase Presence
+  // Listen to global online users from layout presence sync
   useEffect(() => {
-    if (!currentUserId || !userIdReady) return
+    const initialList = (window as any).supabaseOnlineUserIds || []
+    setOnlineUserIds(new Set(initialList))
 
-    const presenceChannel = supabase.channel('online-status', {
-      config: {
-        presence: {
-          key: currentUserId,
-        },
-      },
-    })
-
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
-        const state = presenceChannel.presenceState()
-        const onlineIds = new Set<string>()
-        Object.keys(state).forEach((key) => {
-          onlineIds.add(key)
-        })
-        setOnlineUserIds(onlineIds)
-      })
-      .subscribe(async (status: any) => {
-        if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({
-            online_at: new Date().toISOString(),
-          })
-        }
-      })
-
-    return () => {
-      presenceChannel.unsubscribe()
+    const handleOnlineUsersChange = (e: any) => {
+      setOnlineUserIds(new Set(e.detail))
     }
-  }, [currentUserId, userIdReady])
+
+    window.addEventListener('supabase-online-users', handleOnlineUsersChange)
+    return () => {
+      window.removeEventListener('supabase-online-users', handleOnlineUsersChange)
+    }
+  }, [])
 
   // Check Block Status between users
   const checkBlockStatus = useCallback(async () => {

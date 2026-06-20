@@ -94,13 +94,20 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       },
     })
 
-    presenceChannel.subscribe(async (status: any) => {
-      if (status === 'SUBSCRIBED') {
-        await presenceChannel.track({
-          online_at: new Date().toISOString(),
-        })
-      }
-    })
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState()
+        const onlineIds = Object.keys(state)
+        ;(window as any).supabaseOnlineUserIds = onlineIds
+        window.dispatchEvent(new CustomEvent('supabase-online-users', { detail: onlineIds }))
+      })
+      .subscribe(async (status: any) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({
+            online_at: new Date().toISOString(),
+          })
+        }
+      })
 
     return () => {
       presenceChannel.unsubscribe()
