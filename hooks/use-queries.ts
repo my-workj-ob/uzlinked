@@ -199,6 +199,9 @@ export interface SettingsProfile {
   bio: string | null
   is_private: boolean
   is_two_factor_enabled: boolean
+  chat_read_receipts_enabled?: boolean
+  chat_who_can_message?: 'everyone' | 'following' | 'nobody'
+  chat_notifications_enabled?: boolean
 }
 
 export interface SettingsData {
@@ -214,6 +217,9 @@ export interface UpdateSettingsInput {
   is_private?: boolean
   is_two_factor_enabled?: boolean
   password?: string
+  chat_read_receipts_enabled?: boolean
+  chat_who_can_message?: 'everyone' | 'following' | 'nobody'
+  chat_notifications_enabled?: boolean
 }
 
 // Fetch user settings and security logs

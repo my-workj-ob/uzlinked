@@ -17,12 +17,14 @@ import {
   HiCamera,
   HiLockClosed,
   HiCheck,
-  HiArrowPath
+  HiArrowPath,
+  HiChatBubbleLeftRight
 } from "react-icons/hi2";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useUploadThing } from "@/utils/uploadthing/uploadthing";
+import { createClient } from "@/utils/supabase/client";
 
-type SettingsTab = "profile" | "security" | "logs" | "danger";
+type SettingsTab = "profile" | "security" | "logs" | "danger" | "chat";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -40,6 +42,15 @@ export default function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
+
+  // Chat settings states
+  const [chatReadReceiptsEnabled, setChatReadReceiptsEnabled] = useState(true);
+  const [chatWhoCanMessage, setChatWhoCanMessage] = useState<'everyone' | 'following' | 'nobody'>('everyone');
+  const [chatNotificationsEnabled, setChatNotificationsEnabled] = useState(true);
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
+  const [loadingBlocks, setLoadingBlocks] = useState(false);
+
+  const supabase = createClient();
 
   // Password change states
   const [newPassword, setNewPassword] = useState("");
@@ -67,8 +78,63 @@ export default function SettingsPage() {
       setAvatarPreview(settingsData.profile.avatar_url || "");
       setIsPrivate(settingsData.profile.is_private || false);
       setIsTwoFactorEnabled(settingsData.profile.is_two_factor_enabled || false);
+      setChatReadReceiptsEnabled(settingsData.profile.chat_read_receipts_enabled ?? true);
+      setChatWhoCanMessage(settingsData.profile.chat_who_can_message || "everyone");
+      setChatNotificationsEnabled(settingsData.profile.chat_notifications_enabled ?? true);
     }
   }, [settingsData]);
+
+  const fetchBlockedUsers = async () => {
+    setLoadingBlocks(true);
+    try {
+      const { data, error } = await supabase
+        .from("user_blocks")
+        .select(`
+          id,
+          blocked:profiles!blocked_id(id, username, nickname, avatar_url)
+        `);
+      if (error) throw error;
+      setBlockedUsers(data || []);
+    } catch (err) {
+      console.error("Bloklanganlarni yuklashda xatolik:", err);
+    } finally {
+      setLoadingBlocks(false);
+    }
+  };
+
+  const handleUnblock = async (blockId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_blocks")
+        .delete()
+        .eq("id", blockId);
+      if (error) throw error;
+      toast.success("Foydalanuvchi blokdan chiqarildi");
+      fetchBlockedUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Xatolik yuz berdi");
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "chat") {
+      fetchBlockedUsers();
+    }
+  }, [activeTab]);
+
+  const handleSaveChatSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateSettingsMutation.mutateAsync({
+        chat_read_receipts_enabled: chatReadReceiptsEnabled,
+        chat_who_can_message: chatWhoCanMessage,
+        chat_notifications_enabled: chatNotificationsEnabled,
+      });
+      toast.success("Xabarlar sozlamalari muvaffaqiyatli saqlandi");
+    } catch (err: any) {
+      toast.error(err.message || "Saqlashda xatolik yuz berdi");
+    }
+  };
 
   // Clean up avatar preview URL
   useEffect(() => {
@@ -288,6 +354,18 @@ export default function SettingsPage() {
           >
             <HiQueueList className="h-5 w-5" />
             <span>Faollik Tarixi</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("chat")}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all shrink-0 md:w-full ${
+              activeTab === "chat"
+                ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
+                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40 hover:text-slate-950 dark:hover:text-slate-100"
+            }`}
+          >
+            <HiChatBubbleLeftRight className="h-5 w-5" />
+            <span>Xabarlar Sozlamalari</span>
           </button>
 
           <button
@@ -610,6 +688,156 @@ export default function SettingsPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Xabarlar sozlamalari Tab */}
+          {activeTab === "chat" && (
+            <div className="space-y-6">
+              {/* Preferences */}
+              <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
+                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
+                  <HiChatBubbleLeftRight className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  Xabarlar va Chat Sozlamalari
+                </h2>
+
+                <form onSubmit={handleSaveChatSettings} className="space-y-6">
+                  {/* Read Receipts */}
+                  <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-white/5">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        O'qilganlik bildirishnomalari (Read Receipts)
+                      </h4>
+                      <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-1 max-w-md">
+                        Siz yuborgan xabarlarni o'qilganligini boshqalar ko'rishiga ruxsat berish.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setChatReadReceiptsEnabled(!chatReadReceiptsEnabled)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 focus:outline-none cursor-pointer border ${
+                        chatReadReceiptsEnabled 
+                          ? "bg-blue-600 border-blue-600" 
+                          : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform duration-200 ${
+                          chatReadReceiptsEnabled ? "translate-x-5.5" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Who Can Message */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 border-b border-slate-100 dark:border-white/5 gap-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        Kimlar xabar yozishi mumkin
+                      </h4>
+                      <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-1 max-w-md">
+                        Sizga to'g'ridan-to'g'ri xabar yubora oladigan foydalanuvchilar doirasini belgilang.
+                      </p>
+                    </div>
+
+                    <select
+                      value={chatWhoCanMessage}
+                      onChange={(e: any) => setChatWhoCanMessage(e.target.value)}
+                      className="rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-2.5 text-xs font-bold text-slate-850 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer min-w-[150px]"
+                    >
+                      <option value="everyone">Hamma</option>
+                      <option value="following">Faqat men obuna bo'lganlar</option>
+                      <option value="nobody">Hech kim</option>
+                    </select>
+                  </div>
+
+                  {/* Notifications */}
+                  <div className="flex items-center justify-between py-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        Chat bildirishnomalari (Notifications)
+                      </h4>
+                      <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-1 max-w-md">
+                        Yangi xabar kelganda bildirishnoma ko'rsatish.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setChatNotificationsEnabled(!chatNotificationsEnabled)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 focus:outline-none cursor-pointer border ${
+                        chatNotificationsEnabled 
+                          ? "bg-blue-600 border-blue-600" 
+                          : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform duration-200 ${
+                          chatNotificationsEnabled ? "translate-x-5.5" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-white/5">
+                    <button
+                      type="submit"
+                      disabled={updateSettingsMutation.isPending}
+                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all disabled:opacity-75 cursor-pointer flex items-center gap-2"
+                    >
+                      {updateSettingsMutation.isPending && <HiArrowPath className="h-4 w-4 animate-spin" />}
+                      <span>Sozlamalarni saqlash</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Blocked Users Management */}
+              <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
+                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+                  <HiExclamationTriangle className="h-5 w-5 text-rose-500" />
+                  Bloklangan foydalanuvchilar
+                </h2>
+                <p className="text-[11px] text-slate-450 dark:text-slate-500 mb-6">
+                  Siz bloklagan foydalanuvchilar ro'yxati. Ular sizga xabar yubora olmaydi.
+                </p>
+
+                {loadingBlocks ? (
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider animate-pulse py-2">Yuklanmoqda...</p>
+                ) : blockedUsers.length > 0 ? (
+                  <div className="divide-y divide-slate-100 dark:divide-white/5">
+                    {blockedUsers.map((block) => (
+                      <div key={block.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={block.blocked?.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(block.blocked?.nickname || "U")}
+                            alt=""
+                            className="w-9 h-9 object-cover rounded-full bg-slate-150 dark:bg-slate-950"
+                          />
+                          <div className="text-left">
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{block.blocked?.nickname}</h4>
+                            <p className="text-[10px] text-slate-450 dark:text-slate-500 font-semibold">@{block.blocked?.username}</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleUnblock(block.id)}
+                          className="px-3.5 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/20 dark:hover:text-rose-450 text-slate-700 dark:text-slate-350 text-[10px] font-bold rounded-xl transition-all active:scale-95 cursor-pointer border border-transparent dark:border-white/5"
+                        >
+                          Blokdan chiqarish
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 font-medium py-4 text-center">
+                    Siz hech kimni bloklamagansiz
+                  </p>
+                )}
               </div>
             </div>
           )}

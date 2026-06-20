@@ -51,7 +51,10 @@ export async function PUT(request: Request) {
       avatar_url, 
       is_private, 
       is_two_factor_enabled, 
-      password 
+      password,
+      chat_read_receipts_enabled,
+      chat_who_can_message,
+      chat_notifications_enabled
     } = body
 
     // 1. Agar parol jo'natilgan bo'lsa, parolni yangilash
@@ -85,6 +88,9 @@ export async function PUT(request: Request) {
     if (avatar_url !== undefined) updateData.avatar_url = avatar_url
     if (is_private !== undefined) updateData.is_private = is_private
     if (is_two_factor_enabled !== undefined) updateData.is_two_factor_enabled = is_two_factor_enabled
+    if (chat_read_receipts_enabled !== undefined) updateData.chat_read_receipts_enabled = chat_read_receipts_enabled
+    if (chat_who_can_message !== undefined) updateData.chat_who_can_message = chat_who_can_message
+    if (chat_notifications_enabled !== undefined) updateData.chat_notifications_enabled = chat_notifications_enabled
 
     const { error: updateError } = await supabase
       .from('profiles')

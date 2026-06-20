@@ -174,12 +174,13 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   }
 
   const isReelsPage = pathname === '/dashboard/reels'
+  const isMessagesPage = pathname.startsWith('/dashboard/messages')
 
   return (
     <div className="h-svh w-full bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300">
 
-      {/* MOBILE HEADER: Glassmorphism, hidden on Reels page */}
-      {!isReelsPage && (
+      {/* MOBILE HEADER: Glassmorphism, hidden on Reels and Messages pages */}
+      {!isReelsPage && !isMessagesPage && (
         <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 select-none transition-all duration-300 md:hidden">
           <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
             {getPageTitle(pathname)}
@@ -337,9 +338,11 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         {/* MAIN CONTENT AREA */}
         <main className={`flex-1 min-w-0 h-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none ${isReelsPage
             ? 'pt-0 pb-0 md:py-0 bg-black overflow-hidden'
-            : 'pt-16 pb-24 md:py-8 overflow-y-auto'
+            : isMessagesPage
+              ? 'pt-0 pb-0 md:py-0 overflow-hidden'
+              : 'pt-16 pb-24 md:py-8 overflow-y-auto'
           }`}>
-          <div className={`mx-auto ${isReelsPage
+          <div className={`mx-auto ${isReelsPage || isMessagesPage
               ? 'w-full h-full max-w-none px-0'
               : 'w-full max-w-2xl px-4 md:px-6'
             }`}>
@@ -359,39 +362,41 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       )}
 
       {/* MOBILE BOTTOM NAVIGATION: Dynamic adaptations for Reels page */}
-      <nav className={`fixed bottom-0 left-0 right-0 z-50 h-16 md:hidden px-3 flex justify-around items-center pb-[env(safe-area-inset-bottom)] transition-all duration-300 border-t ${isReelsPage
-          ? 'bg-black/60 backdrop-blur-xl border-white/10'
-          : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-100 dark:border-white/5'
-        }`}>
-        {bottomNavItems.map((item) => {
-          const isActive = pathname === item.path
-          const Icon = isActive ? item.IconActive : item.IconOutline
+      {!isMessagesPage && (
+        <nav className={`fixed bottom-0 left-0 right-0 z-50 h-16 md:hidden px-3 flex justify-around items-center pb-[env(safe-area-inset-bottom)] transition-all duration-300 border-t ${isReelsPage
+            ? 'bg-black/60 backdrop-blur-xl border-white/10'
+            : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-100 dark:border-white/5'
+          }`}>
+          {bottomNavItems.map((item) => {
+            const isActive = pathname === item.path
+            const Icon = isActive ? item.IconActive : item.IconOutline
 
-          return (
-            <Link
-              key={item.id}
-              href={item.path}
-              className={`flex items-center justify-center transition-all duration-300 ease-in-out select-none active:scale-95 ${isActive
-                  ? isReelsPage
-                    ? 'bg-white text-black rounded-full px-4 py-2.5'
-                    : 'bg-blue-600 text-white rounded-full px-4 py-2.5'
-                  : isReelsPage
-                    ? 'bg-white/10 text-white/70 p-2.5 rounded-full hover:bg-white/20'
-                    : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-            >
-              <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
+            return (
+              <Link
+                key={item.id}
+                href={item.path}
+                className={`flex items-center justify-center transition-all duration-300 ease-in-out select-none active:scale-95 ${isActive
+                    ? isReelsPage
+                      ? 'bg-white text-black rounded-full px-4 py-2.5'
+                      : 'bg-blue-600 text-white rounded-full px-4 py-2.5'
+                    : isReelsPage
+                      ? 'bg-white/10 text-white/70 p-2.5 rounded-full hover:bg-white/20'
+                      : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+              >
+                <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
 
-              <span className={`overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-semibold ${isActive
-                  ? 'max-w-24 opacity-100 ml-2'
-                  : 'max-w-0 opacity-0 ml-0'
-                }`}>
-                {item.label}
-              </span>
-            </Link>
-          )
-        })}
-      </nav>
+                <span className={`overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-semibold ${isActive
+                    ? 'max-w-24 opacity-100 ml-2'
+                    : 'max-w-0 opacity-0 ml-0'
+                  }`}>
+                  {item.label}
+                </span>
+              </Link>
+            )
+          })}
+        </nav>
+      )}
 
       {/* CREATE MODAL / DRAWER */}
       {isCreateOpen && (
