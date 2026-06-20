@@ -3,43 +3,157 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { 
-  useSettings, 
-  useUpdateSettings, 
+import {
+  useSettings,
+  useUpdateSettings,
   useDeleteAccount,
-  SecurityLog 
+  SecurityLog,
 } from "@/hooks/use-queries";
-import { 
-  HiUser, 
-  HiShieldCheck, 
-  HiQueueList, 
-  HiExclamationTriangle,
-  HiCamera,
-  HiLockClosed,
-  HiCheck,
-  HiArrowPath,
-  HiChatBubbleLeftRight,
-  HiOutlineUserGroup,
-  HiOutlineSpeakerWave,
-  HiOutlineGlobeAlt,
-  HiBell
-} from "react-icons/hi2";
-import { FiEye, FiEyeOff } from "react-icons/fi";
+import {
+  User,
+  ShieldCheck,
+  History,
+  AlertTriangle,
+  Camera,
+  Lock,
+  RotateCw,
+  MessageCircle,
+  Users,
+  Megaphone,
+  Globe2,
+  Bell,
+  Eye,
+  EyeOff,
+  ShieldQuestion,
+  KeyRound,
+  UserX,
+  ChevronRight,
+  Trash2,
+  X,
+  Check,
+} from "lucide-react";
 import { useUploadThing } from "@/utils/uploadthing/uploadthing";
 import { createClient } from "@/utils/supabase/client";
 
 type SettingsTab = "profile" | "security" | "logs" | "danger" | "chat" | "groups";
 
+const NAV_ITEMS: {
+  id: SettingsTab;
+  label: string;
+  icon: React.ElementType;
+  danger?: boolean;
+}[] = [
+    { id: "profile", label: "Profil sozlamalari", icon: User },
+    { id: "security", label: "Xavfsizlik va maxfiylik", icon: ShieldCheck },
+    { id: "logs", label: "Faollik tarixi", icon: History },
+    { id: "chat", label: "Xabarlar sozlamalari", icon: MessageCircle },
+    { id: "groups", label: "Guruh va kanallar", icon: Users },
+    { id: "danger", label: "Xavfli hudud", icon: AlertTriangle, danger: true },
+  ];
+
+function Toggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 cursor-pointer ${checked
+          ? "bg-blue-600"
+          : "bg-slate-200 dark:bg-slate-700"
+        }`}
+    >
+      <span
+        className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${checked ? "translate-x-[22px]" : "translate-x-[3px]"
+          }`}
+      />
+    </button>
+  );
+}
+
+function SettingRow({
+  title,
+  description,
+  control,
+  border = true,
+}: {
+  title: string;
+  description: string;
+  control: React.ReactNode;
+  border?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-6 py-4 ${border ? "border-b border-slate-100 dark:border-slate-800" : ""
+        }`}
+    >
+      <div className="min-w-0">
+        <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          {title}
+        </h4>
+        <p className="mt-0.5 text-[12.5px] leading-relaxed text-slate-500 dark:text-slate-400 max-w-md">
+          {description}
+        </p>
+      </div>
+      <div className="shrink-0">{control}</div>
+    </div>
+  );
+}
+
+function Card({
+  icon: Icon,
+  iconColor,
+  title,
+  subtitle,
+  children,
+}: {
+  icon?: React.ElementType;
+  iconColor?: string;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm shadow-slate-900/[0.02] overflow-hidden">
+      <div className="px-6 pt-6 pb-1">
+        <div className="flex items-center gap-2.5">
+          {Icon && (
+            <span
+              className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconColor || "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                }`}
+            >
+              <Icon className="h-4 w-4" strokeWidth={2.25} />
+            </span>
+          )}
+          <h2 className="text-[15px] font-bold text-slate-900 dark:text-slate-100">
+            {title}
+          </h2>
+        </div>
+        {subtitle && (
+          <p className="mt-1.5 text-[12.5px] text-slate-500 dark:text-slate-400 pl-[42px]">
+            {subtitle}
+          </p>
+        )}
+      </div>
+      <div className="px-6 pb-6 pt-3">{children}</div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
-  // React Query hooks
   const { data: settingsData, isLoading: settingsLoading, refetch } = useSettings();
   const updateSettingsMutation = useUpdateSettings();
   const deleteAccountMutation = useDeleteAccount();
 
-  // Form states
   const [nickname, setNickname] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -47,32 +161,29 @@ export default function SettingsPage() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
 
-  // Chat settings states
   const [chatReadReceiptsEnabled, setChatReadReceiptsEnabled] = useState(true);
-  const [chatWhoCanMessage, setChatWhoCanMessage] = useState<'everyone' | 'following' | 'nobody'>('everyone');
+  const [chatWhoCanMessage, setChatWhoCanMessage] = useState<
+    "everyone" | "following" | "nobody"
+  >("everyone");
   const [chatNotificationsEnabled, setChatNotificationsEnabled] = useState(true);
   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
 
   const supabase = createClient();
 
-  // Password change states
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isPasswordUpdating, setIsPasswordUpdating] = useState(false);
 
-  // Avatar upload
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Delete account confirmation
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-  // Sync data with form fields once loaded
   useEffect(() => {
     if (settingsData?.profile) {
       setNickname(settingsData.profile.nickname || "");
@@ -91,9 +202,7 @@ export default function SettingsPage() {
   const fetchBlockedUsers = async () => {
     setLoadingBlocks(true);
     try {
-      const { data, error } = await supabase
-        .from("user_blocks")
-        .select(`
+      const { data, error } = await supabase.from("user_blocks").select(`
           id,
           blocked:profiles!blocked_id(id, username, nickname, avatar_url)
         `);
@@ -108,10 +217,7 @@ export default function SettingsPage() {
 
   const handleUnblock = async (blockId: string) => {
     try {
-      const { error } = await supabase
-        .from("user_blocks")
-        .delete()
-        .eq("id", blockId);
+      const { error } = await supabase.from("user_blocks").delete().eq("id", blockId);
       if (error) throw error;
       toast.success("Foydalanuvchi blokdan chiqarildi");
       fetchBlockedUsers();
@@ -140,7 +246,6 @@ export default function SettingsPage() {
     }
   };
 
-  // Clean up avatar preview URL
   useEffect(() => {
     return () => {
       if (avatarPreview && avatarPreview.startsWith("blob:")) {
@@ -149,7 +254,6 @@ export default function SettingsPage() {
     };
   }, [avatarPreview]);
 
-  // UploadThing hook
   const { startUpload, isUploading } = useUploadThing("mediaUploader", {
     onClientUploadComplete: (res) => {
       const uploadedUrl = res?.[0]?.url;
@@ -166,7 +270,6 @@ export default function SettingsPage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
   };
@@ -211,9 +314,7 @@ export default function SettingsPage() {
       setIsPrivate(checked);
       await updateSettingsMutation.mutateAsync({ is_private: checked });
       toast.success(
-        checked 
-          ? "Profil maxfiy rejimga o'tkazildi" 
-          : "Profil hammaga ochiq rejimga o'tkazildi"
+        checked ? "Profil maxfiy rejimga o'tkazildi" : "Profil hammaga ochiq rejimga o'tkazildi"
       );
       refetch();
     } catch (err: any) {
@@ -226,11 +327,7 @@ export default function SettingsPage() {
     try {
       setIsTwoFactorEnabled(checked);
       await updateSettingsMutation.mutateAsync({ is_two_factor_enabled: checked });
-      toast.success(
-        checked 
-          ? "Ikki bosqichli faollashtirildi (2FA)" 
-          : "Ikki bosqichli o'chirildi (2FA)"
-      );
+      toast.success(checked ? "Ikki bosqichli faollashtirildi (2FA)" : "Ikki bosqichli o'chirildi (2FA)");
       refetch();
     } catch (err: any) {
       setIsTwoFactorEnabled(!checked);
@@ -254,7 +351,7 @@ export default function SettingsPage() {
       await updateSettingsMutation.mutateAsync({ password: newPassword });
       toast.success("Parol muvaffaqiyatli yangilandi");
       setNewPassword("");
-      confirmPassword && setConfirmPassword("");
+      setConfirmPassword("");
       refetch();
     } catch (err: any) {
       toast.error(err.message || "Parolni o'zgartirishda xatolik yuz berdi");
@@ -278,7 +375,6 @@ export default function SettingsPage() {
     }
   };
 
-  // Helper function to map activity logs types to human-readable text
   const getLogEventLabel = (type: string) => {
     switch (type) {
       case "login":
@@ -300,121 +396,65 @@ export default function SettingsPage() {
 
   if (settingsLoading) {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-slate-400">
-        <HiArrowPath className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-slate-400">
+        <RotateCw className="h-7 w-7 animate-spin text-blue-600 dark:text-blue-400" strokeWidth={2.5} />
         <p className="text-xs font-semibold uppercase tracking-wider">Yuklanmoqda...</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl pb-12 text-slate-800 dark:text-slate-200">
-      
+    <div className="mx-auto w-full max-w-5xl pb-16 text-slate-800 dark:text-slate-200">
       {/* Title */}
-      <div className="mb-6 hidden md:block">
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+      <div className="mb-8 hidden md:block">
+        <h1 className="text-[26px] font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
           Sozlamalar
         </h1>
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
+        <p className="text-[13px] font-medium text-slate-500 dark:text-slate-400 mt-1">
           Profilingiz va hisobingiz xavfsizlik sozlamalarini boshqaring
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-        
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-[220px_1fr]">
         {/* Navigation Sidebar */}
-        <aside className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 scrollbar-none border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/5 pr-0 md:pr-4 shrink-0 col-span-1 select-none">
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all shrink-0 md:w-full ${
-              activeTab === "profile"
-                ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
-                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40 hover:text-slate-950 dark:hover:text-slate-100"
-            }`}
-          >
-            <HiUser className="h-5 w-5" />
-            <span>Profil Sozlamalari</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("security")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all shrink-0 md:w-full ${
-              activeTab === "security"
-                ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
-                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40 hover:text-slate-950 dark:hover:text-slate-100"
-            }`}
-          >
-            <HiShieldCheck className="h-5 w-5" />
-            <span>Xavfsizlik va Maxfiylik</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("logs")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all shrink-0 md:w-full ${
-              activeTab === "logs"
-                ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
-                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40 hover:text-slate-950 dark:hover:text-slate-100"
-            }`}
-          >
-            <HiQueueList className="h-5 w-5" />
-            <span>Faollik Tarixi</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("chat")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all shrink-0 md:w-full ${
-              activeTab === "chat"
-                ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400"
-                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40 hover:text-slate-950 dark:hover:text-slate-100"
-            }`}
-          >
-            <HiChatBubbleLeftRight className="h-5 w-5" />
-            <span>Xabarlar Sozlamalari</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("groups")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all shrink-0 md:w-full ${
-              activeTab === "groups"
-                ? "bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400"
-                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40 hover:text-slate-950 dark:hover:text-slate-100"
-            }`}
-          >
-            <HiOutlineUserGroup className="h-5 w-5" />
-            <span>Guruh va Kanallar</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("danger")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all shrink-0 md:w-full ${
-              activeTab === "danger"
-                ? "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400"
-                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/40 hover:text-red-500"
-            }`}
-          >
-            <HiExclamationTriangle className="h-5 w-5" />
-            <span>Xavfli Hudud</span>
-          </button>
+        <aside className="flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 scrollbar-none shrink-0 select-none">
+          {NAV_ITEMS.map(({ id, label, icon: Icon, danger }) => {
+            const active = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all shrink-0 md:w-full whitespace-nowrap ${active
+                    ? danger
+                      ? "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"
+                      : "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+              >
+                <Icon
+                  className="h-[18px] w-[18px] shrink-0"
+                  strokeWidth={active ? 2.4 : 2}
+                />
+                <span>{label}</span>
+                {active && (
+                  <ChevronRight className="h-3.5 w-3.5 ml-auto hidden md:block opacity-60" strokeWidth={2.5} />
+                )}
+              </button>
+            );
+          })}
         </aside>
 
         {/* Content Section */}
-        <div className="col-span-1 md:col-span-3">
-          
+        <div className="min-w-0">
           {/* 1. Profile Settings Tab */}
           {activeTab === "profile" && (
-            <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
-              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
-                <HiUser className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                Profil Sozlamalari
-              </h2>
-
+            <Card icon={User} title="Profil sozlamalari" subtitle="Ommaviy profilingizda ko'rinadigan ma'lumotlar">
               <form onSubmit={handleProfileSubmit} className="space-y-6">
-                
                 {/* Avatar Section */}
-                <div className="flex flex-col items-center sm:flex-row gap-5 pb-6 border-b border-slate-100 dark:border-white/5">
-                  <div 
+                <div className="flex flex-col items-center sm:flex-row gap-5 pb-6 border-b border-slate-100 dark:border-slate-800">
+                  <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="group relative h-20 w-20 cursor-pointer overflow-hidden rounded-full border-2 border-blue-600 p-0.5 bg-white dark:bg-slate-950 flex-shrink-0"
+                    className="group relative h-20 w-20 cursor-pointer overflow-hidden rounded-full ring-2 ring-offset-2 ring-blue-600 dark:ring-offset-slate-900 flex-shrink-0"
                   >
                     <img
                       src={
@@ -424,8 +464,8 @@ export default function SettingsPage() {
                       alt="avatar preview"
                       className="h-full w-full object-cover rounded-full transition group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
-                      <HiCamera className="h-6 w-6 text-white" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100 rounded-full">
+                      <Camera className="h-5 w-5 text-white" strokeWidth={2} />
                     </div>
                   </div>
 
@@ -441,12 +481,13 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-350 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
                     >
+                      <Camera className="h-3.5 w-3.5" strokeWidth={2.25} />
                       Rasmni o'zgartirish
                     </button>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2">
-                      Tavsiya etiladi: kvadrat tasvir (PNG, JPG yoki WebP formatlarida).
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
+                      Tavsiya etiladi: kvadrat tasvir (PNG, JPG yoki WebP).
                     </p>
                   </div>
                 </div>
@@ -454,7 +495,7 @@ export default function SettingsPage() {
                 {/* Nickname & Username Grid */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1.5 ml-1 block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       Nickname
                     </label>
                     <input
@@ -462,175 +503,128 @@ export default function SettingsPage() {
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
                       placeholder="Taxallusingiz"
-                      className="w-full rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-3.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-3 text-[13px] font-medium text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1.5 ml-1 block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                      Foydalanuvchi nomi (Username)
+                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      Foydalanuvchi nomi
                     </label>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="username"
-                      className="w-full rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-3.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-                      required
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[13px] font-medium select-none">
+                        @
+                      </span>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="username"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-7 pr-3.5 py-3 text-[13px] font-medium text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Bio Section */}
                 <div>
-                  <label className="mb-1.5 ml-1 block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                    O'zingiz haqingizda (Bio)
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    O'zingiz haqingizda
                   </label>
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     placeholder="Qisqacha ma'lumot..."
-                    className="min-h-[100px] w-full resize-none rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-3.5 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                    maxLength={160}
+                    className="min-h-[100px] w-full resize-none rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3.5 py-3 text-[13px] font-medium text-slate-700 dark:text-slate-300 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                   />
+                  <p className="mt-1 text-right text-[11px] text-slate-400">{bio.length}/160</p>
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-1">
                   <button
                     type="submit"
                     disabled={updateSettingsMutation.isPending || isUploading}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all disabled:opacity-75 cursor-pointer flex items-center gap-2"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold rounded-xl active:scale-95 transition-all disabled:opacity-60 disabled:active:scale-100 cursor-pointer shadow-sm shadow-blue-600/20"
                   >
                     {(updateSettingsMutation.isPending || isUploading) && (
-                      <HiArrowPath className="h-4 w-4 animate-spin" />
+                      <RotateCw className="h-4 w-4 animate-spin" strokeWidth={2.5} />
                     )}
-                    <span>Saqlash</span>
+                    Saqlash
                   </button>
                 </div>
               </form>
-            </div>
+            </Card>
           )}
 
           {/* 2. Security & Privacy Tab */}
           {activeTab === "security" && (
             <div className="space-y-6">
-              
-              {/* Privacy settings */}
-              <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
-                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
-                  <HiShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Maxfiylik va Himoya
-                </h2>
-
-                <div className="space-y-6">
-                  
-                  {/* Account Privacy Toggle */}
-                  <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-white/5">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                        Maxfiy hisob (Private Account)
-                      </h4>
-                      <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-1 max-w-md">
-                        Faollashtirilganda, sizning postlaringiz va kontentingizni faqat siz tasdiqlagan obunachilar ko'ra oladi.
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => handleTogglePrivacy(!isPrivate)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 focus:outline-none cursor-pointer border ${
-                        isPrivate 
-                          ? "bg-blue-600 border-blue-600" 
-                          : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform duration-200 ${
-                          isPrivate ? "translate-x-5.5" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* 2FA Toggle */}
-                  <div className="flex items-center justify-between py-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                        Ikki bosqichli kirish (2FA)
-                      </h4>
-                      <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-1 max-w-md">
-                        Tizimga kirish paytida sizning hisobingiz xavfsizligini ta'minlash uchun qo'shimcha tasdiqlashni so'raydi.
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => handleToggle2FA(!isTwoFactorEnabled)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 focus:outline-none cursor-pointer border ${
-                        isTwoFactorEnabled 
-                          ? "bg-blue-600 border-blue-600" 
-                          : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform duration-200 ${
-                          isTwoFactorEnabled ? "translate-x-5.5" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                  </div>
+              <Card icon={ShieldCheck} title="Maxfiylik va himoya">
+                <div>
+                  <SettingRow
+                    title="Maxfiy hisob"
+                    description="Faollashtirilganda, postlaringizni faqat siz tasdiqlagan obunachilar ko'ra oladi."
+                    control={<Toggle checked={isPrivate} onChange={handleTogglePrivacy} />}
+                  />
+                  <SettingRow
+                    border={false}
+                    title="Ikki bosqichli kirish (2FA)"
+                    description="Tizimga kirishda hisobingiz xavfsizligi uchun qo'shimcha tasdiqlash so'raladi."
+                    control={<Toggle checked={isTwoFactorEnabled} onChange={handleToggle2FA} />}
+                  />
                 </div>
-              </div>
+              </Card>
 
-              {/* Password Change */}
-              <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
-                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
-                  <HiLockClosed className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Parolni O'zgartirish
-                </h2>
-
+              <Card icon={KeyRound} title="Parolni o'zgartirish">
                 <form onSubmit={handlePasswordSubmit} className="space-y-4">
                   <div>
-                    <label className="mb-1.5 ml-1 block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                      Yangi Parol
+                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      Yangi parol
                     </label>
                     <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" strokeWidth={2} />
                       <input
                         type={showNewPassword ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Kamida 6 belgi"
-                        className="w-full rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-3.5 pr-10 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-10 pr-10 py-3 text-[13px] font-medium text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-3.5 text-slate-400 dark:text-slate-650 hover:text-slate-600 dark:hover:text-slate-400"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
                       >
-                        {showNewPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                        {showNewPassword ? <EyeOff className="h-4 w-4" strokeWidth={2} /> : <Eye className="h-4 w-4" strokeWidth={2} />}
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <label className="mb-1.5 ml-1 block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       Parolni tasdiqlash
                     </label>
                     <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" strokeWidth={2} />
                       <input
                         type={showConfirmPassword ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Parolni qayta yozing"
-                        className="w-full rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-3.5 pr-10 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 pl-10 pr-10 py-3 text-[13px] font-medium text-slate-900 dark:text-slate-100 transition-all focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-3.5 text-slate-400 dark:text-slate-650 hover:text-slate-600 dark:hover:text-slate-400"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
                       >
-                        {showConfirmPassword ? <FiEyeOff className="h-5 w-5" /> : <FiEye className="h-5 w-5" />}
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" strokeWidth={2} /> : <Eye className="h-4 w-4" strokeWidth={2} />}
                       </button>
                     </div>
                   </div>
@@ -639,52 +633,44 @@ export default function SettingsPage() {
                     <button
                       type="submit"
                       disabled={isPasswordUpdating}
-                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all disabled:opacity-75 cursor-pointer flex items-center gap-2"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold rounded-xl active:scale-95 transition-all disabled:opacity-60 cursor-pointer shadow-sm shadow-blue-600/20"
                     >
-                      {isPasswordUpdating && <HiArrowPath className="h-4 w-4 animate-spin" />}
-                      <span>Parolni yangilash</span>
+                      {isPasswordUpdating && <RotateCw className="h-4 w-4 animate-spin" strokeWidth={2.5} />}
+                      Parolni yangilash
                     </button>
                   </div>
                 </form>
-              </div>
+              </Card>
             </div>
           )}
 
           {/* 3. Security Logs Tab */}
           {activeTab === "logs" && (
-            <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
-              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
-                <HiQueueList className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                Faollik va Tizim Jurnali
-              </h2>
-              <p className="text-[11px] text-slate-450 dark:text-slate-500 mb-6">
-                Hisobingizda amalga oshirilgan oxirgi 10 ta xavfsizlik va kirish amallari tarixi
-              </p>
-
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-xs text-slate-700 dark:text-slate-350">
+            <Card icon={History} title="Faollik va tizim jurnali" subtitle="Hisobingizda amalga oshirilgan oxirgi xavfsizlik va kirish amallari">
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full border-collapse text-left text-xs text-slate-700 dark:text-slate-300">
                   <thead>
-                    <tr className="border-b border-slate-100 dark:border-white/5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                      <th className="pb-3">Amal turi</th>
-                      <th className="pb-3">IP manzil</th>
-                      <th className="pb-3">Qurilma / User-Agent</th>
-                      <th className="pb-3 text-right">Sana / Vaqt</th>
+                    <tr className="text-[10.5px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      <th className="px-2 pb-3">Amal turi</th>
+                      <th className="px-2 pb-3">IP manzil</th>
+                      <th className="px-2 pb-3">Qurilma</th>
+                      <th className="px-2 pb-3 text-right">Sana / Vaqt</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {settingsData?.logs && settingsData.logs.length > 0 ? (
                       settingsData.logs.map((log: SecurityLog) => (
-                        <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
-                          <td className="py-3 font-semibold text-slate-900 dark:text-slate-100">
+                        <tr key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="px-2 py-3 font-semibold text-slate-900 dark:text-slate-100">
                             {getLogEventLabel(log.event_type)}
                           </td>
-                          <td className="py-3 font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                          <td className="px-2 py-3 font-mono text-[11px] text-slate-500 dark:text-slate-400">
                             {log.ip_address || "127.0.0.1"}
                           </td>
-                          <td className="py-3 max-w-[200px] truncate text-slate-500 dark:text-slate-450" title={log.user_agent || ""}>
+                          <td className="px-2 py-3 max-w-[180px] truncate text-slate-500 dark:text-slate-400" title={log.user_agent || ""}>
                             {log.user_agent || "Brauzer"}
                           </td>
-                          <td className="py-3 text-right font-medium text-slate-400 dark:text-slate-500">
+                          <td className="px-2 py-3 text-right font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap">
                             {new Date(log.created_at).toLocaleString("uz-UZ", {
                               day: "2-digit",
                               month: "2-digit",
@@ -697,7 +683,8 @@ export default function SettingsPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400 dark:text-slate-500">
+                        <td colSpan={4} className="py-12 text-center text-slate-400 dark:text-slate-500">
+                          <History className="h-7 w-7 mx-auto mb-2 opacity-40" strokeWidth={1.5} />
                           Hozircha xavfsizlik jurnallari mavjud emas
                         </td>
                       </tr>
@@ -705,209 +692,163 @@ export default function SettingsPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Xabarlar sozlamalari Tab */}
           {activeTab === "chat" && (
             <div className="space-y-6">
-              {/* Preferences */}
-              <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
-                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-2">
-                  <HiChatBubbleLeftRight className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Xabarlar va Chat Sozlamalari
-                </h2>
+              <Card icon={MessageCircle} title="Xabarlar va chat sozlamalari">
+                <form onSubmit={handleSaveChatSettings} className="space-y-0">
+                  <SettingRow
+                    title="O'qilganlik bildirishnomalari"
+                    description="Siz yuborgan xabarlarning o'qilganligini boshqalar ko'rishiga ruxsat berish."
+                    control={<Toggle checked={chatReadReceiptsEnabled} onChange={setChatReadReceiptsEnabled} />}
+                  />
 
-                <form onSubmit={handleSaveChatSettings} className="space-y-6">
-                  {/* Read Receipts */}
-                  <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-white/5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-4 border-b border-slate-100 dark:border-slate-800 gap-3">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                        O'qilganlik bildirishnomalari (Read Receipts)
-                      </h4>
-                      <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-1 max-w-md">
-                        Siz yuborgan xabarlarni o'qilganligini boshqalar ko'rishiga ruxsat berish.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setChatReadReceiptsEnabled(!chatReadReceiptsEnabled)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 focus:outline-none cursor-pointer border ${
-                        chatReadReceiptsEnabled 
-                          ? "bg-blue-600 border-blue-600" 
-                          : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform duration-200 ${
-                          chatReadReceiptsEnabled ? "translate-x-5.5" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Who Can Message */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 border-b border-slate-100 dark:border-white/5 gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                         Kimlar xabar yozishi mumkin
                       </h4>
-                      <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-1 max-w-md">
-                        Sizga to'g'ridan-to'g'ri xabar yubora oladigan foydalanuvchilar doirasini belgilang.
+                      <p className="mt-0.5 text-[12.5px] leading-relaxed text-slate-500 dark:text-slate-400 max-w-md">
+                        Sizga to'g'ridan-to'g'ri xabar yubora oladigan foydalanuvchilar doirasi.
                       </p>
                     </div>
 
                     <select
                       value={chatWhoCanMessage}
                       onChange={(e: any) => setChatWhoCanMessage(e.target.value)}
-                      className="rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-2.5 text-xs font-bold text-slate-850 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer min-w-[150px]"
+                      className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer min-w-[170px]"
                     >
                       <option value="everyone">Hamma</option>
-                      <option value="following">Faqat men obuna bo'lganlar</option>
+                      <option value="following">Faqat obunachilar</option>
                       <option value="nobody">Hech kim</option>
                     </select>
                   </div>
 
-                  {/* Notifications */}
-                  <div className="flex items-center justify-between py-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                        Chat bildirishnomalari (Notifications)
-                      </h4>
-                      <p className="text-[11px] text-slate-450 dark:text-slate-500 mt-1 max-w-md">
-                        Yangi xabar kelganda bildirishnoma ko'rsatish.
-                      </p>
-                    </div>
+                  <SettingRow
+                    border={false}
+                    title="Chat bildirishnomalari"
+                    description="Yangi xabar kelganda bildirishnoma ko'rsatish."
+                    control={<Toggle checked={chatNotificationsEnabled} onChange={setChatNotificationsEnabled} />}
+                  />
 
-                    <button
-                      type="button"
-                      onClick={() => setChatNotificationsEnabled(!chatNotificationsEnabled)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 focus:outline-none cursor-pointer border ${
-                        chatNotificationsEnabled 
-                          ? "bg-blue-600 border-blue-600" 
-                          : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform duration-200 ${
-                          chatNotificationsEnabled ? "translate-x-5.5" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Save Button */}
-                  <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-white/5">
+                  <div className="flex justify-end pt-5 mt-1 border-t border-slate-100 dark:border-slate-800">
                     <button
                       type="submit"
                       disabled={updateSettingsMutation.isPending}
-                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all disabled:opacity-75 cursor-pointer flex items-center gap-2"
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold rounded-xl active:scale-95 transition-all disabled:opacity-60 cursor-pointer shadow-sm shadow-blue-600/20"
                     >
-                      {updateSettingsMutation.isPending && <HiArrowPath className="h-4 w-4 animate-spin" />}
-                      <span>Sozlamalarni saqlash</span>
+                      {updateSettingsMutation.isPending && <RotateCw className="h-4 w-4 animate-spin" strokeWidth={2.5} />}
+                      Sozlamalarni saqlash
                     </button>
                   </div>
                 </form>
-              </div>
+              </Card>
 
-              {/* Blocked Users Management */}
-              <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
-                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-2 flex items-center gap-2">
-                  <HiExclamationTriangle className="h-5 w-5 text-rose-500" />
-                  Bloklangan foydalanuvchilar
-                </h2>
-                <p className="text-[11px] text-slate-450 dark:text-slate-500 mb-6">
-                  Siz bloklagan foydalanuvchilar ro'yxati. Ular sizga xabar yubora olmaydi.
-                </p>
-
+              <Card icon={UserX} iconColor="bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" title="Bloklangan foydalanuvchilar" subtitle="Bloklangan foydalanuvchilar sizga xabar yubora olmaydi">
                 {loadingBlocks ? (
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider animate-pulse py-2">Yuklanmoqda...</p>
+                  <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold uppercase tracking-wide py-2">
+                    <RotateCw className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} />
+                    Yuklanmoqda...
+                  </div>
                 ) : blockedUsers.length > 0 ? (
-                  <div className="divide-y divide-slate-100 dark:divide-white/5">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {blockedUsers.map((block) => (
                       <div key={block.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                         <div className="flex items-center gap-3">
                           <img
-                            src={block.blocked?.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(block.blocked?.nickname || "U")}
+                            src={
+                              block.blocked?.avatar_url ||
+                              "https://ui-avatars.com/api/?name=" + encodeURIComponent(block.blocked?.nickname || "U")
+                            }
                             alt=""
-                            className="w-9 h-9 object-cover rounded-full bg-slate-150 dark:bg-slate-950"
+                            className="w-9 h-9 object-cover rounded-full bg-slate-100 dark:bg-slate-800"
                           />
                           <div className="text-left">
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{block.blocked?.nickname}</h4>
-                            <p className="text-[10px] text-slate-450 dark:text-slate-500 font-semibold">@{block.blocked?.username}</p>
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                              {block.blocked?.nickname}
+                            </h4>
+                            <p className="text-[11px] text-slate-450 dark:text-slate-500 font-medium">
+                              @{block.blocked?.username}
+                            </p>
                           </div>
                         </div>
 
                         <button
                           type="button"
                           onClick={() => handleUnblock(block.id)}
-                          className="px-3.5 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/20 dark:hover:text-rose-450 text-slate-700 dark:text-slate-350 text-[10px] font-bold rounded-xl transition-all active:scale-95 cursor-pointer border border-transparent dark:border-white/5"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 text-slate-700 dark:text-slate-300 text-[11px] font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
                         >
+                          <X className="h-3 w-3" strokeWidth={2.5} />
                           Blokdan chiqarish
                         </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 font-medium py-4 text-center">
-                    Siz hech kimni bloklamagansiz
-                  </p>
+                  <div className="py-8 text-center">
+                    <UserX className="h-7 w-7 mx-auto mb-2 text-slate-300 dark:text-slate-700" strokeWidth={1.5} />
+                    <p className="text-xs text-slate-400 font-medium">Siz hech kimni bloklamagansiz</p>
+                  </div>
                 )}
-              </div>
+              </Card>
             </div>
           )}
 
           {/* Groups & Channels Settings Tab */}
           {activeTab === "groups" && (
             <div className="space-y-6">
-              {/* General Group Settings */}
-              <div className="rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 shadow-sm transition-colors duration-300">
-                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-1 flex items-center gap-2">
-                  <HiOutlineUserGroup className="h-5 w-5 text-violet-500" />
-                  Guruh Sozlamalari
-                </h2>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-6">
-                  Telegramdagi kabi — har bir guruh yoki kanalda alohida sozlamalar mavjud. Guruh/kanal yaratgandan keyin uning sahifasidan sozlamalarni boshqaring.
-                </p>
-
-                <div className="grid grid-cols-1 gap-4">
-                  {/* Feature list */}
+              <Card icon={Users} iconColor="bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400" title="Guruh sozlamalari" subtitle="Telegramdagi kabi — har bir guruh yoki kanalda alohida sozlamalar mavjud">
+                <div className="grid grid-cols-1 gap-3">
                   {[
-                    { icon: HiOutlineUserGroup, color: 'text-blue-500 bg-blue-50 dark:bg-blue-950/40', label: "A\u02BCzolarni boshqarish", desc: "A\u02BCzo qo\u02BCshish, chiqarish va rol berish" },
-                    { icon: HiOutlineSpeakerWave, color: 'text-violet-500 bg-violet-50 dark:bg-violet-950/40', label: 'Kanal ulashish', desc: 'Xabarlarni guruh/kanal uchun ulashish' },
-                    { icon: HiOutlineGlobeAlt, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40', label: 'Ommaviy/Maxfiy rejim', desc: "Kimlar qo\u02BCshila olishini sozlash" },
-                    { icon: HiBell, color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/40', label: 'Bildirishnomalar', desc: 'Guruh xabarlari uchun ovoz sozlamalari' },
-                    { icon: HiLockClosed, color: 'text-rose-500 bg-rose-50 dark:bg-rose-950/40', label: 'Maxfiy sozlamalar', desc: 'Faqat adminga yozish ruxsati' },
+                    { icon: Users, color: "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400", label: "A'zolarni boshqarish", desc: "A'zo qo'shish, chiqarish va rol berish" },
+                    { icon: Megaphone, color: "text-violet-600 bg-violet-50 dark:bg-violet-500/10 dark:text-violet-400", label: "Kanal ulashish", desc: "Xabarlarni guruh/kanal uchun ulashish" },
+                    { icon: Globe2, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400", label: "Ommaviy / Maxfiy rejim", desc: "Kimlar qo'shila olishini sozlash" },
+                    { icon: Bell, color: "text-amber-600 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-400", label: "Bildirishnomalar", desc: "Guruh xabarlari uchun ovoz sozlamalari" },
+                    { icon: Lock, color: "text-rose-600 bg-rose-50 dark:bg-rose-500/10 dark:text-rose-400", label: "Maxfiy sozlamalar", desc: "Faqat adminga yozish ruxsati" },
                   ].map(({ icon: Icon, color, label, desc }) => (
-                    <div key={label} className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-white/5">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-                        <Icon className="w-4.5 h-4.5" />
+                    <div
+                      key={label}
+                      className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800"
+                    >
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                        <Icon className="w-4 h-4" strokeWidth={2.25} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-slate-900 dark:text-slate-100">{label}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500">{desc}</p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500">{desc}</p>
                       </div>
-                      <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/30">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-full">
+                        <Check className="h-2.5 w-2.5" strokeWidth={3} />
                         Mavjud
                       </span>
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
 
-              {/* How to create */}
-              <div className="rounded-2xl border border-violet-100 dark:border-violet-900/20 bg-violet-50/30 dark:bg-violet-950/10 p-6 shadow-sm">
-                <h3 className="text-sm font-black text-violet-700 dark:text-violet-400 mb-3 flex items-center gap-2">
-                  <HiOutlineSpeakerWave className="w-4 h-4" />
-                  Guruh yoki Kanal qanday yaratiladi?
+              <div className="rounded-2xl border border-violet-100 dark:border-violet-500/20 bg-violet-50/40 dark:bg-violet-500/[0.04] p-6">
+                <h3 className="text-sm font-bold text-violet-700 dark:text-violet-400 mb-3 flex items-center gap-2">
+                  <Megaphone className="w-4 h-4" strokeWidth={2.25} />
+                  Guruh yoki kanal qanday yaratiladi?
                 </h3>
-                <ol className="space-y-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">1.</span> Xabarlar sahifasiga o'ting</li>
-                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">2.</span> Yuqori o'ng burchakdagi <strong className="text-slate-800 dark:text-slate-200">👥 guruh</strong> yoki <strong className="text-slate-800 dark:text-slate-200">📣 kanal</strong> tugmasini bosing</li>
-                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">3.</span> Nom, username va tavsif kiriting</li>
-                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">4.</span> Ommaviy yoki maxfiy rejimni tanlang</li>
-                  <li className="flex items-start gap-2"><span className="text-violet-500 font-black shrink-0">5.</span> "Yaratish" tugmasini bosing ✅</li>
+                <ol className="space-y-2.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                  {[
+                    "Xabarlar sahifasiga o'ting",
+                    <>Yuqori o'ng burchakdagi <strong className="text-slate-800 dark:text-slate-200 font-bold">guruh</strong> yoki <strong className="text-slate-800 dark:text-slate-200 font-bold">kanal</strong> tugmasini bosing</>,
+                    "Nom, username va tavsif kiriting",
+                    "Ommaviy yoki maxfiy rejimni tanlang",
+                    "\"Yaratish\" tugmasini bosing",
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-400 text-[10px] font-extrabold">
+                        {i + 1}
+                      </span>
+                      <span className="pt-0.5">{step}</span>
+                    </li>
+                  ))}
                 </ol>
               </div>
             </div>
@@ -915,25 +856,27 @@ export default function SettingsPage() {
 
           {/* 4. Danger Zone Tab */}
           {activeTab === "danger" && (
-            <div className="rounded-2xl border border-rose-200/50 dark:border-rose-950/30 bg-rose-50/20 dark:bg-rose-950/5 p-6 shadow-sm transition-colors duration-300">
+            <div className="rounded-2xl border border-rose-200 dark:border-rose-500/20 bg-rose-50/40 dark:bg-rose-500/[0.04] p-6">
               <div className="flex items-start gap-4">
-                <div className="rounded-xl bg-rose-100 dark:bg-rose-950/40 p-3 text-rose-600 dark:text-rose-400">
-                  <HiExclamationTriangle className="h-6 w-6" />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                  <Trash2 className="h-5 w-5" strokeWidth={2.25} />
                 </div>
-                <div>
-                  <h2 className="text-lg font-black text-rose-700 dark:text-rose-450">
+                <div className="min-w-0">
+                  <h2 className="text-[15px] font-bold text-rose-700 dark:text-rose-400">
                     Hisobni o'chirish
                   </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 max-w-lg leading-relaxed">
-                    Ushbu amal hisobingizni butunlay o'chirib tashlaydi. Sizning barcha ma'lumotlaringiz (postlar, Reels, izohlar va layklar) qayta tiklanmaydigan qilib butunlay o'chiriladi.
+                  <p className="text-[13px] text-slate-600 dark:text-slate-400 mt-2 max-w-lg leading-relaxed">
+                    Ushbu amal hisobingizni butunlay o'chirib tashlaydi. Postlar, Reels, izohlar va layklar
+                    qayta tiklanmaydigan tarzda o'chiriladi.
                   </p>
-                  
-                  <div className="mt-6">
+
+                  <div className="mt-5">
                     <button
                       onClick={() => setShowDeleteModal(true)}
-                      className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl active:scale-95 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-[13px] font-bold rounded-xl active:scale-95 transition-all cursor-pointer shadow-sm shadow-rose-600/20"
                     >
-                      Profilni O'chirish
+                      <Trash2 className="h-4 w-4" strokeWidth={2.25} />
+                      Profilni o'chirish
                     </button>
                   </div>
                 </div>
@@ -945,14 +888,28 @@ export default function SettingsPage() {
 
       {/* Confirmation Account Delete Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in duration-200 select-none">
-          <div className="relative w-full max-w-sm rounded-[2rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 p-6 sm:p-8">
-            <h3 className="mb-2 text-center text-lg font-black text-slate-900 dark:text-slate-100 flex items-center justify-center gap-2">
-              <HiExclamationTriangle className="h-5 w-5 text-rose-500" />
+        <div className="fixed inset-0 z-70 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200 select-none">
+          <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 shadow-xl">
+            <button
+              onClick={() => {
+                setShowDeleteModal(false);
+                setDeleteConfirmText("");
+              }}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+            >
+              <X className="h-4 w-4" strokeWidth={2.25} />
+            </button>
+
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 mx-auto mb-4">
+              <ShieldQuestion className="h-6 w-6" strokeWidth={2} />
+            </div>
+
+            <h3 className="mb-2 text-center text-base font-bold text-slate-900 dark:text-slate-100">
               Ishonchingiz komilmi?
             </h3>
-            <p className="text-center text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-              Hisobingizni o'chirish uchun quyidagi maydonga <strong className="text-rose-500 font-extrabold uppercase">o'chirish</strong> so'zini yozing:
+            <p className="text-center text-[12.5px] text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+              Hisobingizni o'chirish uchun quyidagi maydonga{" "}
+              <strong className="text-rose-500 font-bold">o'chirish</strong> so'zini yozing:
             </p>
 
             <div className="mb-6">
@@ -961,7 +918,7 @@ export default function SettingsPage() {
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                 placeholder="o'chirish"
-                className="w-full text-center rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-950 p-3 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 focus:border-rose-500 dark:focus:border-rose-450 focus:outline-none"
+                className="w-full text-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-3 text-[13px] font-semibold text-slate-900 dark:text-slate-100 focus:border-rose-500 dark:focus:border-rose-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10"
               />
             </div>
 
@@ -972,7 +929,7 @@ export default function SettingsPage() {
                   setShowDeleteModal(false);
                   setDeleteConfirmText("");
                 }}
-                className="flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-350 py-3.5 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                className="flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 py-3 text-xs font-bold transition-all active:scale-95 cursor-pointer"
               >
                 Bekor qilish
               </button>
@@ -981,8 +938,9 @@ export default function SettingsPage() {
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={deleteConfirmText.toLowerCase() !== "o'chirish" || deleteAccountMutation.isPending}
-                className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white py-3.5 text-xs font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white py-3 text-xs font-bold transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 cursor-pointer"
               >
+                {deleteAccountMutation.isPending && <RotateCw className="h-3.5 w-3.5 animate-spin" strokeWidth={2.5} />}
                 {deleteAccountMutation.isPending ? "O'chirilmoqda..." : "Ha, o'chirilsin"}
               </button>
             </div>
