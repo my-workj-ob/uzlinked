@@ -15,6 +15,7 @@ import {
 } from 'react-icons/hi2'
 import { IoSearchOutline } from 'react-icons/io5'
 import { BottomSheet } from '@/components/bottom-sheet'
+import { renderMessageText } from '@/components/link-hover-card'
 
 const supabase = createClient()
 
@@ -117,6 +118,9 @@ export default function ChannelDetailPage() {
     const [contextMenuPos, setContextMenuPos] = useState<{ x: number, y: number }>({ x: 0, y: 0 })
     const longPressTimeoutRef = useRef<any>(null)
 
+    const [showScrollBottom, setShowScrollBottom] = useState(false)
+    const [unreadCountScrolledUp, setUnreadCountScrolledUp] = useState(0)
+
     const fileInputRef = useRef<HTMLInputElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -128,6 +132,22 @@ export default function ChannelDetailPage() {
     const isSubscribed = !!myMembership
     const isAdmin = myMembership?.role === 'admin' || myMembership?.role === 'creator'
     const isCreator = myMembership?.role === 'creator'
+
+    const handleScroll = () => {
+        const el = messagesContainerRef.current
+        if (!el) return
+        const isScrolledUp = el.scrollHeight - el.scrollTop - el.clientHeight > 300
+        setShowScrollBottom(isScrolledUp)
+        if (!isScrolledUp) {
+            setUnreadCountScrolledUp(0)
+        }
+    }
+
+    const scrollToBottomSmooth = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        setUnreadCountScrolledUp(0)
+        setShowScrollBottom(false)
+    }
 
     useEffect(() => {
         const checkUser = async () => {
@@ -216,7 +236,13 @@ export default function ChannelDetailPage() {
                         markFresh([incoming.id])
                         return [...prev, { ...incoming, sender }]
                     })
-                    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+                    const container = messagesContainerRef.current
+                    const isScrolledUp = container ? (container.scrollHeight - container.scrollTop - container.clientHeight > 300) : false
+                    if (isScrolledUp) {
+                        setUnreadCountScrolledUp(prev => prev + 1)
+                    } else {
+                        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+                    }
                 }
             )
             .on('postgres_changes',
@@ -695,7 +721,7 @@ export default function ChannelDetailPage() {
                 </div>
             </div>
 
-            <div ref={messagesContainerRef} className="flex-1 p-4 overflow-y-auto flex flex-col gap-1.5 [&::-webkit-scrollbar]:hidden select-none relative z-10">
+            <div ref={messagesContainerRef} onScroll={handleScroll} className="flex-1 p-4 overflow-y-auto flex flex-col gap-1.5 [&::-webkit-scrollbar]:hidden select-none relative z-10">
                 {isLoadingMessages ? (
                     <div className="flex-1 flex flex-col gap-4 py-2">
                         {[0, 1, 2].map(i => (
@@ -728,6 +754,16 @@ export default function ChannelDetailPage() {
 
                                 <div className="flex flex-col w-full max-w-[85%] md:max-w-[75%] self-start mb-2 relative">
                                     <motion.div
+                                        drag={isAdmin && !msg.is_deleted ? "x" : false}
+                                        dragConstraints={{ left: -100, right: 0 }}
+                                        dragElastic={{ left: 0.5, right: 0 }}
+                                        dragSnapToOrigin
+                                        onDragEnd={(e, info) => {
+                                            if (info.offset.x < -60) {
+                                                setReplyingMessage(msg)
+                                                textareaRef.current?.focus()
+                                            }
+                                        }}
                                         onDoubleClick={() => !msg.is_deleted && isSubscribed && handleToggleReaction(msg, '❤️')}
                                         onTouchStart={(e) => handleTouchStart(e, msg)}
                                         onTouchEnd={handleTouchEnd}
@@ -762,7 +798,7 @@ export default function ChannelDetailPage() {
                                         <div className="px-4 pb-3 pt-1">
                                             {msg.text && (
                                                 <div className={msg.is_deleted ? 'italic text-[13px] opacity-70' : 'text-slate-800 dark:text-slate-100'}>
-                                                    {msg.text}
+                                                    {renderMessageText(msg.text, msg.is_deleted)}
                                                 </div>
                                             )}
                                         </div>
@@ -920,6 +956,26 @@ export default function ChannelDetailPage() {
                     </div>
                 </div>
             </BottomSheet>
+
+            {/* FLOATING SCROLL TO BOTTOM BUTTON */}
+            <AnimatePresence>
+                {showScrollBottom && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        onClick={scrollToBottomSmooth}
+                        className="absolute bottom-24 right-6 z-40 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-full shadow-2xl text-slate-700 dark:text-slate-200 hover:scale-105 active:scale-95 transition-all flex items-center justify-center cursor-pointer"
+                    >
+                        <HiChevronDown className="w-6 h-6 stroke-[2.5]" />
+                        {unreadCountScrolledUp > 0 && (
+                            <span className="absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-md">
+                                {unreadCountScrolledUp}
+                            </span>
+                        )}
+                    </motion.button>
+                )}
+            </AnimatePresence>
         </div>
     )
 }

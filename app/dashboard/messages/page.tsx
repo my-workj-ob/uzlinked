@@ -19,6 +19,7 @@ import {
 } from 'react-icons/hi2'
 import { IoSearchOutline, IoChatbubblesOutline } from 'react-icons/io5'
 import { BottomSheet } from '@/components/bottom-sheet'
+import { renderMessageText } from '@/components/link-hover-card'
 
 const supabase = createClient()
 const { useUploadThing } = generateReactHelpers<OurFileRouter>()
@@ -2124,14 +2125,15 @@ function MessagesPageContent() {
                         )}
 
                         <motion.div
-                          drag={!isMe ? "x" : false}
-                          dragConstraints={{ left: 0, right: 80 }}
-                          dragElastic={0.2}
+                          drag={!msg.is_deleted ? "x" : false}
+                          dragConstraints={{ left: -100, right: 0 }}
+                          dragElastic={{ left: 0.5, right: 0 }}
                           dragSnapToOrigin={true}
                           onDragEnd={(e, info) => {
-                            if (info.offset.x > 55) {
+                            if (info.offset.x < -60) {
                               setReplyingMessage(msg)
                               if (navigator.vibrate) navigator.vibrate(30)
+                              textareaRef.current?.focus()
                             }
                           }}
                           onDoubleClick={() => handleDoubleTap(msg)}
@@ -2223,7 +2225,7 @@ function MessagesPageContent() {
 
                             {msg.text && (
                               <div className={msg.is_deleted ? 'italic text-xs opacity-60' : `select-none ${isMe ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>
-                                {msg.text}
+                                {renderMessageText(msg.text, msg.is_deleted)}
                               </div>
                             )}
                           </div>
