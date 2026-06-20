@@ -631,7 +631,7 @@ function MessagesPageContent() {
       setGcIsPublic(false)
       fetchMyGroupsChannels()
       setSidebarTab('groups')
-      router.push(`/dashboard/groups/${gc.id}`)
+      router.push(`/dashboard/${createModalType}s/${gc.id}`)
     } catch (err: any) {
       toast.error(err.message || 'Yaratishda xatolik yuz berdi')
     } finally {
@@ -1797,7 +1797,7 @@ function MessagesPageContent() {
                 filteredGroups.map((gc) => (
                   <div
                     key={gc.id}
-                    onClick={() => router.push(`/dashboard/groups/${gc.id}`)}
+                    onClick={() => router.push(`/dashboard/${gc.type}s/${gc.id}`)}
                     className="p-3 flex items-center gap-3 cursor-pointer rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200 transition-all duration-200 active:scale-[0.98] group"
                   >
                     <div className="relative shrink-0">
@@ -1880,7 +1880,7 @@ function MessagesPageContent() {
                 filteredChannels.map((gc) => (
                   <div
                     key={gc.id}
-                    onClick={() => router.push(`/dashboard/groups/${gc.id}`)}
+                    onClick={() => router.push(`/dashboard/${gc.type}s/${gc.id}`)}
                     className="p-3 flex items-center gap-3 cursor-pointer rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-900/40 text-slate-800 dark:text-slate-200 transition-all duration-200 active:scale-[0.98] group"
                   >
                     <div className="relative shrink-0">

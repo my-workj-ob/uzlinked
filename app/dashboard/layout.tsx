@@ -206,7 +206,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   }
 
   const isReelsPage = pathname === '/dashboard/reels'
-  const isMessagesPage = pathname.startsWith('/dashboard/messages')
+  const isMessagesPage = pathname.startsWith('/dashboard/messages') || pathname.startsWith('/dashboard/groups') || pathname.startsWith('/dashboard/channels')
 
   return (
     <div className="h-svh w-full bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300">
@@ -383,8 +383,8 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </main>
       </div>
 
-      {/* MOBILE FLOATING ACTION BUTTON: Hidden on Reels, messages, and profile pages */}
-      {user && !isReelsPage && !pathname.startsWith('/dashboard/messages') && !pathname.startsWith('/dashboard/profile') && (
+      {/* MOBILE FLOATING ACTION BUTTON: Hidden on Reels, messages, groups, channels, and profile pages */}
+      {user && !isReelsPage && !isMessagesPage && !pathname.startsWith('/dashboard/profile') && (
         <button
           onClick={handleCreateClick}
           className="fixed bottom-20 right-5 z-40 flex items-center justify-center w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full active:scale-90 md:hidden transition-all duration-200"
