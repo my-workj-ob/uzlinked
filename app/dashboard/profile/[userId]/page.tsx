@@ -161,15 +161,6 @@ export default function UserProfilePage() {
 
     return (
         <div className="pb-20 text-slate-800 dark:text-slate-200">
-            <div className="flex items-center gap-3 pt-2 px-4">
-                <button
-                    onClick={() => router.back()}
-                    className="p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-800/40 rounded-xl active:scale-90 transition-all text-slate-700 dark:text-slate-300"
-                >
-                    <HiArrowLeft className="w-5 h-5" />
-                </button>
-                <span className="text-sm font-black text-slate-900 dark:text-slate-100">Profil</span>
-            </div>
 
             {/* Mesh Gradient Cover (Seamless Blend) */}
             <div className="relative h-32 sm:h-44 w-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 animate-mesh-gradient overflow-hidden sm:rounded-b-2xl mt-3">
