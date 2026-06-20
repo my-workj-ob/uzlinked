@@ -38,7 +38,7 @@ export default function UserProfilePage() {
     const followMutation = useFollowToggle()
     const updatePostMutation = useUpdatePost()
     const deletePostMutation = useDeletePost()
-    
+
     const [followLoading, setFollowLoading] = useState(false)
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [messageLoading, setMessageLoading] = useState(false)
@@ -196,7 +196,7 @@ export default function UserProfilePage() {
                 {/* Nickname, Username and Verify Badge */}
                 <div className="mb-2 flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                        <h2 className="font-black text-lg sm:text-xl text-slate-900 dark:text-slate-100 leading-tight truncate">
+                        <h2 className="font-black text-sm sm:text-sm text-slate-900 dark:text-slate-100 leading-tight truncate">
                             {profile.nickname || profile.username}
                         </h2>
                         {profile.is_premium && (
@@ -285,11 +285,10 @@ export default function UserProfilePage() {
                 <button
                     onClick={handleFollowToggle}
                     disabled={followLoading}
-                    className={`flex-1 py-3 font-bold text-xs rounded-xl active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer ${
-                        isFollowing
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
+                    className={`flex-1 py-3 font-bold text-xs rounded-xl active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer ${isFollowing
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
                 >
                     {isFollowing ? (
                         <><FiUserCheck className="w-3.5 h-3.5" /> Obuna</>
@@ -304,7 +303,7 @@ export default function UserProfilePage() {
                 >
                     <HiOutlineChatBubbleLeftRight className="w-4 h-4" /> {messageLoading ? 'Ochilmoqda...' : 'Xabar'}
                 </button>
-                <button 
+                <button
                     onClick={() => setIsOptionsOpen(true)}
                     className="px-4 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl active:scale-[0.99] transition-all flex items-center justify-center cursor-pointer border border-transparent dark:border-white/5 font-bold text-sm tracking-widest"
                 >
@@ -351,7 +350,7 @@ export default function UserProfilePage() {
 
                         {/* Navigation Options */}
                         <div className="flex flex-col gap-2">
-                            <button 
+                            <button
                                 onClick={async () => {
                                     try {
                                         await navigator.clipboard.writeText(window.location.origin + `/dashboard/profile/${profile.id}`)
@@ -403,7 +402,7 @@ export default function UserProfilePage() {
                                 {posts.map((post) => {
                                     const postTitle = post.content.trim().slice(0, 45) + (post.content.trim().length > 45 ? '...' : '')
                                     const postDate = new Date(post.time).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })
-                                    
+
                                     return (
                                         <div key={post.id} className="group border-b border-slate-100 dark:border-white/5 pb-5 last:border-0 select-text">
                                             {/* URL Breadcrumb */}
