@@ -17,17 +17,22 @@ export default function PricingPage() {
 
     useEffect(() => {
         const fetchUserData = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-                setUser(user)
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('is_premium')
-                    .eq('id', user.id)
-                    .single()
-                if (profile?.is_premium) {
-                    setIsPremium(true)
+            try {
+                const { data } = await supabase.auth.getUser()
+                const user = data?.user
+                if (user) {
+                    setUser(user)
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('is_premium')
+                        .eq('id', user.id)
+                        .single()
+                    if (profile?.is_premium) {
+                        setIsPremium(true)
+                    }
                 }
+            } catch (err) {
+                console.warn('[Pricing] User check error:', err)
             }
         }
         fetchUserData()

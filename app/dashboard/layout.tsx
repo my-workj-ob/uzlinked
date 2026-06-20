@@ -52,17 +52,26 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   // Supabase'dan foydalanuvchi ma'lumotlarini yuklash
   useEffect(() => {
     const getProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUser(user)
+      try {
+        const { data } = await supabase.auth.getUser()
+        const user = data?.user
+        if (user) {
+          setUser(user)
 
-        const userAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture
+          const userAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture
 
-        if (userAvatar) {
-          setAvatarUrl(userAvatar)
+          if (userAvatar) {
+            setAvatarUrl(userAvatar)
+          } else {
+            const name = user.user_metadata?.full_name || user.email || 'U'
+            setAvatarUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff&bold=true`)
+          }
+        }
+      } catch (err: any) {
+        if (err?.message?.includes('Failed to fetch') || err?.message?.includes('fetch')) {
+          console.warn("Profilni yuklashda tarmoq xatoligi:", err)
         } else {
-          const name = user.user_metadata?.full_name || user.email || 'U'
-          setAvatarUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff&bold=true`)
+          console.error("Profilni yuklashda xatolik:", err)
         }
       }
     }

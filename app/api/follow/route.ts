@@ -5,7 +5,8 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
     try {
         const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data } = await supabase.auth.getUser()
+        const user = data?.user
 
         if (!user) {
             return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })

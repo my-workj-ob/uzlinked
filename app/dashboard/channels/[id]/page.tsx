@@ -152,8 +152,13 @@ export default function ChannelDetailPage() {
 
     useEffect(() => {
         const checkUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user && isValidUUID(user.id)) setCurrentUserId(user.id)
+            try {
+                const { data } = await supabase.auth.getUser()
+                const user = data?.user
+                if (user && isValidUUID(user.id)) setCurrentUserId(user.id)
+            } catch (err) {
+                console.warn('[Channel] User check error:', err)
+            }
         }
         checkUser()
     }, [])

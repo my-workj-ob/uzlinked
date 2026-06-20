@@ -5,9 +5,11 @@ import { PostCard, PostType } from '@/components/post-card'
 import { Stories } from '@/components/stories'
 import { FeedSkeleton } from '@/components/skeleton-loader'
 import { usePosts, useUpdatePost, useDeletePost } from '@/hooks/use-queries'
+import { useStories } from '@/hooks/use-stories'
 
 export default function FeedList() {
     const { data: posts = [], isLoading: loading, error } = usePosts()
+    const { otherStoryGroups = [], myProfile } = useStories()
     const updatePostMutation = useUpdatePost()
     const deletePostMutation = useDeletePost()
 
@@ -15,9 +17,22 @@ export default function FeedList() {
     const [showStories, setShowStories] = useState(false)
     const [pullOffset, setPullOffset] = useState(0)
     const [isDragging, setIsDragging] = useState(false)
+    
     const startY = useRef(0)
     const activeDrag = useRef(false)
     const containerRef = useRef<HTMLDivElement>(null)
+
+    // State refs to prevent event listener tearing down during active scroll/drag
+    const showStoriesRef = useRef(showStories)
+    const pullOffsetRef = useRef(pullOffset)
+
+    useEffect(() => {
+        showStoriesRef.current = showStories
+    }, [showStories])
+
+    useEffect(() => {
+        pullOffsetRef.current = pullOffset
+    }, [pullOffset])
 
     // Helper to get actual scroll depth inside the layout container
     const getScrollTop = () => {
@@ -44,7 +59,7 @@ export default function FeedList() {
             const currentY = e.touches[0].clientY
             const diff = currentY - startY.current
 
-            if (showStories) {
+            if (showStoriesRef.current) {
                 // If stories are already shown, dragging UP shrinks it
                 if (diff < 0) {
                     setPullOffset(diff * 0.55)
@@ -69,12 +84,13 @@ export default function FeedList() {
             activeDrag.current = false
             setIsDragging(false)
             
-            if (showStories) {
-                if (pullOffset < -45) {
+            const currentOffset = pullOffsetRef.current
+            if (showStoriesRef.current) {
+                if (currentOffset < -45) {
                     setShowStories(false)
                 }
             } else {
-                if (pullOffset > 75) {
+                if (currentOffset > 75) {
                     setShowStories(true)
                 }
             }
@@ -95,7 +111,7 @@ export default function FeedList() {
             const currentY = e.clientY
             const diff = currentY - startY.current
 
-            if (showStories) {
+            if (showStoriesRef.current) {
                 if (diff < 0) {
                     setPullOffset(diff * 0.55)
                 } else {
@@ -115,12 +131,13 @@ export default function FeedList() {
             activeDrag.current = false
             setIsDragging(false)
 
-            if (showStories) {
-                if (pullOffset < -45) {
+            const currentOffset = pullOffsetRef.current
+            if (showStoriesRef.current) {
+                if (currentOffset < -45) {
                     setShowStories(false)
                 }
             } else {
-                if (pullOffset > 75) {
+                if (currentOffset > 75) {
                     setShowStories(true)
                 }
             }
@@ -144,7 +161,7 @@ export default function FeedList() {
             window.removeEventListener('mousemove', onMouseMove)
             window.removeEventListener('mouseup', onMouseUp)
         }
-    }, [isDragging, showStories, pullOffset])
+    }, [isDragging]) // Bind only on drag state boundaries to minimize re-creation
 
     // Hide stories when scrolling down the page past 100px (capture scroll on nested elements)
     useEffect(() => {
@@ -177,133 +194,68 @@ export default function FeedList() {
         }
     }
 
-    // Teardrop droplet renderer (looks like water pull drop)
-    const renderDroplet = () => {
-        if (!isDragging || showStories || pullOffset <= 8) return null
-
-        const y = Math.min(pullOffset * 0.5, 48)
-        const centerX = 100
-        
-        // Base neck shrinks as it is stretched down
-        const topWidth = Math.max(68 - y * 0.35, 18)
-        // Bubble bubble shrinks as it stretches thin
-        const bottomRadius = Math.max(16 - y * 0.08, 7.5)
-        
-        const x1 = centerX - topWidth / 2
-        const x2 = centerX + topWidth / 2
-        const x3 = centerX - bottomRadius
-        const x4 = centerX + bottomRadius
-        const cy = y + 15
-
-        const pathData = `
-            M ${x1} 15
-            C ${centerX - topWidth / 4.5} 15, ${centerX - bottomRadius - 4} ${cy - bottomRadius}, ${x3} ${cy}
-            A ${bottomRadius} ${bottomRadius} 0 1 0 ${x4} ${cy}
-            C ${centerX + bottomRadius + 4} ${cy - bottomRadius}, ${centerX + topWidth / 4.5} 15, ${x2} 15
-            Z
-        `
-
-        // Glow indicator changes at snaps threshold based on pullOffset
-        const isCloseToSnap = pullOffset > 75
-
-        return (
-            <div className="absolute top-0 left-0 right-0 flex justify-center pointer-events-none z-[999] animate-fade-in">
-                <svg 
-                    width="200" 
-                    height={y + 55} 
-                    viewBox={`0 0 200 ${y + 55}`} 
-                    className="overflow-visible filter drop-shadow-[0_4px_12px_rgba(59,130,246,0.3)]"
-                >
-                    <defs>
-                        <linearGradient id="droplet-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor={isCloseToSnap ? "#EC4899" : "#3B82F6"} />
-                            <stop offset="50%" stopColor={isCloseToSnap ? "#F43F5E" : "#6366F1"} />
-                            <stop offset="100%" stopColor={isCloseToSnap ? "#EF4444" : "#8B5CF6"} />
-                        </linearGradient>
-                    </defs>
-                    <path 
-                        d={`M ${centerX - 45} 15 Q ${centerX} 18 ${centerX + 45} 15`}
-                        fill="none" 
-                        stroke="url(#droplet-grad)" 
-                        strokeWidth="2.5" 
-                        strokeLinecap="round" 
-                        opacity="0.25"
-                    />
-                    <path 
-                        d={pathData} 
-                        fill="url(#droplet-grad)"
-                        className="transition-all duration-75"
-                    />
-                    <circle 
-                        cx={centerX - bottomRadius / 3} 
-                        cy={cy - bottomRadius / 3} 
-                        r={bottomRadius / 4} 
-                        fill="#FFFFFF" 
-                        opacity="0.7" 
-                    />
-                </svg>
-            </div>
-        )
-    }
-
-    if (loading) {
-        return <FeedSkeleton />
-    }
-
-    if (error) {
-        return (
-            <div className="w-full p-4 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold text-center border border-red-100 dark:border-red-900/10">
-                {error instanceof Error ? error.message : String(error)}. Sahifani qayta yangilang.
-            </div>
-        )
-    }
+    // Calculate drag progress (0 to 1) for stories animation
+    const rawProgress = isDragging
+        ? (showStories 
+            ? Math.max(0, 1 + pullOffset / 45) 
+            : Math.min(pullOffset / 75, 1))
+        : (showStories ? 1 : 0)
+    const progress = Math.max(0, Math.min(rawProgress, 1))
 
     return (
         <div
             ref={containerRef}
             className="flex flex-col gap-4 select-none min-h-screen pb-10 relative"
         >
-            {/* Stretching droplet pull indicator */}
-            {renderDroplet()}
-
-            {/* Collapsible Stories Tray */}
-            <div
-                style={{
-                    height: isDragging 
-                        ? (showStories 
-                            ? `${Math.max(104 + pullOffset, 0)}px` 
-                            : `${Math.max(pullOffset, 0)}px`)
-                        : (showStories ? '104px' : '0px'),
-                    opacity: showStories || (isDragging && (showStories ? (104 + pullOffset > 15) : (pullOffset > 15))) ? 1 : 0,
-                    transition: isDragging ? 'none' : 'height 0.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.3s ease-in-out'
-                }}
-                className="w-full overflow-hidden"
-            >
-                <div className="py-2 px-1">
-                    <Stories />
-                </div>
-            </div>
-
-            {posts.length === 0 ? (
-                <div className="w-full py-16 bg-slate-50/50 dark:bg-slate-900/20 border border-dashed border-slate-200 dark:border-white/5 rounded-2xl text-center animate-fade-in-up">
-                    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">Hozircha hech qanday post yo'q 🏜️</p>
+            {loading ? (
+                <FeedSkeleton />
+            ) : error ? (
+                <div className="w-full p-4 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold text-center border border-red-100 dark:border-red-900/10">
+                    {error instanceof Error ? error.message : String(error)}. Sahifani qayta yangilang.
                 </div>
             ) : (
-                <div className="flex flex-col gap-4 relative">
-                    {posts.map((post, idx) => (
-                        <div 
-                            key={post.id} 
-                            className="animate-fade-in-up relative z-10 transition-all duration-300 transform hover:scale-[1.002]"
-                            style={{ animationDelay: `${idx * 80}ms` }}
-                        >
-                            <PostCard
-                                post={post}
-                                onDeletePost={handleDeletePost}
-                                onUpdatePost={handleUpdatePost}
-                            />
+                <>
+                    {/* Collapsible Stories Tray */}
+                    <div
+                        style={{
+                            height: isDragging 
+                                ? (showStories 
+                                    ? `${Math.max(104 + pullOffset, 0)}px` 
+                                    : `${Math.max(pullOffset, 0)}px`)
+                                : (showStories ? '104px' : '0px'),
+                            opacity: showStories || (isDragging && (showStories ? (104 + pullOffset > 15) : (pullOffset > 15))) ? 1 : 0,
+                            overflow: showStories || isDragging ? 'visible' : 'hidden',
+                            transition: isDragging ? 'none' : 'height 0.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.3s ease-in-out'
+                        }}
+                        className="w-full"
+                    >
+                        <div className="py-2 px-1">
+                            <Stories progress={progress} isDragging={isDragging} showStories={showStories} />
                         </div>
-                    ))}
-                </div>
+                    </div>
+
+                    {posts.length === 0 ? (
+                        <div className="w-full py-16 bg-slate-50/50 dark:bg-slate-900/20 border border-dashed border-slate-200 dark:border-white/5 rounded-2xl text-center animate-fade-in-up">
+                            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">Hozircha hech qanday post yo'q 🏜️</p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-4 relative">
+                            {posts.map((post, idx) => (
+                                <div 
+                                    key={post.id} 
+                                    className="animate-fade-in-up relative z-10 transition-all duration-300 transform hover:scale-[1.002]"
+                                    style={{ animationDelay: `${idx * 80}ms` }}
+                                >
+                                    <PostCard
+                                        post={post}
+                                        onDeletePost={handleDeletePost}
+                                        onUpdatePost={handleUpdatePost}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
         </div>
     )

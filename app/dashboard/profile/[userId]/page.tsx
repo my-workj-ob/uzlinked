@@ -48,9 +48,14 @@ export default function UserProfilePage() {
 
     useEffect(() => {
         const fetchUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-                setCurrentUserId(user.id)
+            try {
+                const { data } = await supabase.auth.getUser()
+                const user = data?.user
+                if (user) {
+                    setCurrentUserId(user.id)
+                }
+            } catch (err) {
+                console.warn('[Profile] User check error:', err)
             }
         }
         fetchUser()

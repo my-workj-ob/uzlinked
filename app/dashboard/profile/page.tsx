@@ -407,7 +407,8 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
     const fetchProfileData = useCallback(async () => {
         try {
             setLoading(true)
-            const { data: { user } } = await supabase.auth.getUser()
+            const { data } = await supabase.auth.getUser()
+            const user = data?.user
             if (!user) return
             setCurrentUserId(user.id)
 
@@ -491,8 +492,12 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
             } else {
                 setIsFollowing(false)
             }
-        } catch (error) {
-            console.error('[Profil] Ma\'lumotlarni yuklashda xato:', error)
+        } catch (error: any) {
+            if (error?.message?.includes('Failed to fetch') || error?.message?.includes('fetch')) {
+                console.warn('[Profil] Ma\'lumotlarni yuklashda tarmoq xatoligi:', error)
+            } else {
+                console.error('[Profil] Ma\'lumotlarni yuklashda xato:', error)
+            }
         } finally {
             setLoading(false)
         }

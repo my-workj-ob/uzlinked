@@ -28,7 +28,8 @@ export const useStories = () => {
 
     const fetchStories = useCallback(async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const { data } = await supabase.auth.getUser()
+            const user = data?.user
             if (!user) return
 
             const [storiesRes, profileRes] = await Promise.all([
@@ -44,8 +45,12 @@ export const useStories = () => {
             if (profileRes.data) {
                 setMyProfile(profileRes.data)
             }
-        } catch (e) {
-            console.error('Story\'larni olishda xatolik:', e)
+        } catch (e: any) {
+            if (e?.message?.includes('Failed to fetch') || e?.message?.includes('fetch')) {
+                console.warn('Story\'larni olishda tarmoq xatoligi:', e)
+            } else {
+                console.error('Story\'larni olishda xatolik:', e)
+            }
         } finally {
             setIsLoading(false)
         }
