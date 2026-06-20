@@ -36,7 +36,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     if (path.startsWith('/dashboard/market')) return "E'lonlar"
     return 'VibeGrid'
   }
-  
+
   const [user, setUser] = useState<any>(null)
   const [avatarUrl, setAvatarUrl] = useState<string>('')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -55,9 +55,9 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUser(user)
-        
+
         const userAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture
-        
+
         if (userAvatar) {
           setAvatarUrl(userAvatar)
         } else {
@@ -69,7 +69,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
     getProfile()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       if (session?.user) {
         setUser(session.user)
         setAvatarUrl(session.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user.email || 'U')}`)
@@ -85,7 +85,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   // Circular reveal animatsiyasi bilan dark mode toggle
   const toggleTheme = (e: React.MouseEvent) => {
     const nextDark = !isDark
-    
+
     if (!(document as any).startViewTransition) {
       setIsDark(nextDark)
       if (nextDark) {
@@ -322,7 +322,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{user.user_metadata?.full_name || 'Foydalanuvchi'}</p>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user.email}</p>
                 </div>
-                <button 
+                <button
                   onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
                   className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition-colors text-xs font-semibold"
                   title="Chiqish"
@@ -335,23 +335,21 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className={`flex-1 min-w-0 h-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none ${
-          isReelsPage
+        <main className={`flex-1 min-w-0 h-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none ${isReelsPage
             ? 'pt-0 pb-0 md:py-0 bg-black overflow-hidden'
             : 'pt-16 pb-24 md:py-8 overflow-y-auto'
-        }`}>
-          <div className={`mx-auto ${
-            isReelsPage
+          }`}>
+          <div className={`mx-auto ${isReelsPage
               ? 'w-full h-full max-w-none px-0'
               : 'w-full max-w-2xl px-4 md:px-6'
-          }`}>
+            }`}>
             {children}
           </div>
         </main>
       </div>
 
-      {/* MOBILE FLOATING ACTION BUTTON: Hidden on Reels page */}
-      {user && !isReelsPage && (
+      {/* MOBILE FLOATING ACTION BUTTON: Hidden on Reels, messages, and profile pages */}
+      {user && !isReelsPage && !pathname.startsWith('/dashboard/messages') && !pathname.startsWith('/dashboard/profile') && (
         <button
           onClick={handleCreateClick}
           className="fixed bottom-20 right-5 z-40 flex items-center justify-center w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full active:scale-90 md:hidden transition-all duration-200"
@@ -361,11 +359,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       )}
 
       {/* MOBILE BOTTOM NAVIGATION: Dynamic adaptations for Reels page */}
-      <nav className={`fixed bottom-0 left-0 right-0 z-50 h-16 md:hidden px-3 flex justify-around items-center pb-[env(safe-area-inset-bottom)] transition-all duration-300 border-t ${
-        isReelsPage
+      <nav className={`fixed bottom-0 left-0 right-0 z-50 h-16 md:hidden px-3 flex justify-around items-center pb-[env(safe-area-inset-bottom)] transition-all duration-300 border-t ${isReelsPage
           ? 'bg-black/60 backdrop-blur-xl border-white/10'
           : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-100 dark:border-white/5'
-      }`}>
+        }`}>
         {bottomNavItems.map((item) => {
           const isActive = pathname === item.path
           const Icon = isActive ? item.IconActive : item.IconOutline
@@ -374,23 +371,21 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             <Link
               key={item.id}
               href={item.path}
-              className={`flex items-center justify-center transition-all duration-300 ease-in-out select-none active:scale-95 ${
-                isActive 
+              className={`flex items-center justify-center transition-all duration-300 ease-in-out select-none active:scale-95 ${isActive
                   ? isReelsPage
-                    ? 'bg-white text-black rounded-full px-4 py-2.5' 
-                    : 'bg-blue-600 text-white rounded-full px-4 py-2.5' 
+                    ? 'bg-white text-black rounded-full px-4 py-2.5'
+                    : 'bg-blue-600 text-white rounded-full px-4 py-2.5'
                   : isReelsPage
                     ? 'bg-white/10 text-white/70 p-2.5 rounded-full hover:bg-white/20'
                     : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
+                }`}
             >
               <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
-              
-              <span className={`overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-semibold ${
-                isActive 
-                  ? 'max-w-24 opacity-100 ml-2' 
+
+              <span className={`overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-semibold ${isActive
+                  ? 'max-w-24 opacity-100 ml-2'
                   : 'max-w-0 opacity-0 ml-0'
-              }`}>
+                }`}>
                 {item.label}
               </span>
             </Link>

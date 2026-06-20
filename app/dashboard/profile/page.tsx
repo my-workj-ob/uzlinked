@@ -10,6 +10,7 @@ import { FaHeart, FaBriefcase, FaTelegram, FaGithub, FaGlobe, FaHandshake } from
 import { useRouter } from 'next/navigation'
 import { useUploadThing } from '@/utils/uploadthing/uploadthing';
 import { BottomSheet } from '@/components/bottom-sheet'
+import { ProfileSkeleton } from '@/components/skeleton-loader'
 
 interface EditProfileModalProps {
     profile: any
@@ -468,8 +469,8 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
             setPosts(postsData || [])
             setReels(reelsData || [])
             setListings(listingsData || [])
-            setFollowersList(followersRes?.map(f => f.follower).filter(Boolean) || [])
-            setFollowingList(followingRes?.map(f => f.following).filter(Boolean) || [])
+            setFollowersList(followersRes?.map((f: any) => f.follower).filter(Boolean) || [])
+            setFollowingList(followingRes?.map((f: any) => f.following).filter(Boolean) || [])
 
             setStats([
                 { label: "Followers", count: followersCount || 0 },
@@ -668,7 +669,7 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
         }
     }
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium text-xs">Yuklanmoqda...</div>
+    if (loading) return <ProfileSkeleton />
 
     if (!profile) {
         return (
@@ -954,10 +955,10 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                                 onClick={() => !tab.disabled && selectTab(tab.id)}
                                 disabled={tab.disabled}
                                 className={`flex flex-col items-center justify-center gap-1 py-2.5 text-[9px] sm:text-xs font-bold transition-all border-b-2 ${tab.disabled
-                                        ? 'border-transparent text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-50'
-                                        : isSelected
-                                            ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 cursor-pointer'
-                                            : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer'
+                                    ? 'border-transparent text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-50'
+                                    : isSelected
+                                        ? 'border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 cursor-pointer'
+                                        : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer'
                                     }`}
                             >
                                 <tab.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />

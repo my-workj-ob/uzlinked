@@ -278,13 +278,13 @@ export default function UserProfilePage() {
                     disabled={followLoading}
                     className={`flex-1 py-3 font-bold text-xs rounded-xl active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer ${isFollowing
                         ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-700'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white px-2'
                         }`}
                 >
                     {isFollowing ? (
                         <><FiUserCheck className="w-3.5 h-3.5" /> Obuna</>
                     ) : (
-                        <><FiUserPlus className="w-3.5 h-3.5" /> Obuna bo'lish</>
+                        <><FiUserPlus className="w-3.5 h-3.5 " /> Obuna bo'lish</>
                     )}
                 </button>
                 <button
