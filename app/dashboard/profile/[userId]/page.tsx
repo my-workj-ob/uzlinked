@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { HiArrowLeft, HiOutlineShare, HiOutlineChatBubbleLeftRight, HiMiniCheckBadge } from 'react-icons/hi2'
+import { HiArrowLeft, HiOutlineShare, HiOutlineChatBubbleLeftRight } from 'react-icons/hi2'
+import { VerifiedBadge } from '@/components/verified-badge'
 import { FiUserCheck, FiUserPlus } from 'react-icons/fi'
 import { PostCard, PostType } from '@/components/post-card'
 import { ProfileSkeleton } from '@/components/skeleton-loader'
@@ -191,7 +192,7 @@ export default function UserProfilePage() {
                             {profile.nickname || profile.username}
                         </h2>
                         {profile.is_premium && (
-                            <HiMiniCheckBadge className="w-5 h-5 text-blue-500 dark:text-blue-400 shrink-0" title="Tasdiqlangan PRO hisob" />
+                            <VerifiedBadge className="w-5 h-5 shrink-0" title="Tasdiqlangan PRO hisob" />
                         )}
                     </div>
                     <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5 truncate">

@@ -4,9 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
     HiOutlineAdjustmentsHorizontal,
     HiOutlineChatBubbleLeftRight,
-    HiCheckBadge,
     HiOutlinePlusCircle
 } from 'react-icons/hi2'
+import { VerifiedBadge } from '@/components/verified-badge'
 import { IoSearchOutline } from 'react-icons/io5'
 
 interface ListingType {
@@ -319,7 +319,7 @@ export default function MarketPage() {
                                             />
                                             <div className="flex items-center gap-0.5 min-w-0">
                                                 <span className="text-[11px] font-bold text-slate-600 truncate">{product.seller.name}</span>
-                                                <HiCheckBadge className="w-3 h-3 text-blue-500 shrink-0" />
+                                                <VerifiedBadge className="w-3 h-3 shrink-0" />
                                             </div>
                                         </div>
 

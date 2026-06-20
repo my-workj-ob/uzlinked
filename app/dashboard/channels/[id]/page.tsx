@@ -11,8 +11,9 @@ import {
     HiOutlinePencil, HiOutlineTrash, HiOutlineDocumentDuplicate,
     HiOutlineSpeakerWave, HiOutlineUserMinus,
     HiOutlineGlobeAlt, HiLockClosed, HiXMark, HiOutlineShieldCheck,
-    HiOutlineArrowRightOnRectangle, HiChevronDown, HiCheckBadge, HiOutlineLink
+    HiOutlineArrowRightOnRectangle, HiChevronDown, HiOutlineLink
 } from 'react-icons/hi2'
+import { VerifiedBadge } from '@/components/verified-badge'
 import { IoSearchOutline } from 'react-icons/io5'
 import { BottomSheet } from '@/components/bottom-sheet'
 import { renderMessageText } from '@/components/link-hover-card'
@@ -782,7 +783,7 @@ export default function ChannelDetailPage() {
                                                 </div>
                                             )}
                                             <span className="text-[12px] font-black text-violet-600 dark:text-violet-400 flex items-center gap-1">
-                                                {channel.name} <HiCheckBadge className="w-3.5 h-3.5" />
+                                                {channel.name} <VerifiedBadge className="w-3.5 h-3.5" />
                                             </span>
                                         </div>
 

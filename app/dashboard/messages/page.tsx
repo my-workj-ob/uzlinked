@@ -9,14 +9,15 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   HiPaperAirplane, HiOutlinePaperClip, HiOutlineFaceSmile,
-  HiChevronLeft, HiOutlineEllipsisVertical, HiCheckBadge,
+  HiChevronLeft, HiOutlineEllipsisVertical,
   HiOutlineMicrophone, HiOutlineArrowUturnLeft, HiOutlinePencil,
   HiOutlineTrash, HiOutlineDocumentDuplicate, HiOutlineEye,
   HiOutlineExclamationTriangle, HiOutlineMinusCircle,
   HiOutlineUserGroup, HiOutlineSpeakerWave, HiOutlineMapPin,
   HiOutlineNoSymbol, HiMapPin, HiXMark,
-  HiOutlineGlobeAlt, HiLockClosed, HiCheckBadge as HiBadge
+  HiOutlineGlobeAlt, HiLockClosed
 } from 'react-icons/hi2'
+import { VerifiedBadge } from '@/components/verified-badge'
 import { IoSearchOutline, IoChatbubblesOutline } from 'react-icons/io5'
 import { BottomSheet } from '@/components/bottom-sheet'
 import { renderMessageText } from '@/components/link-hover-card'
@@ -1164,7 +1165,7 @@ function MessagesPageContent() {
   const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0)
 
   return (
-    <div className="bg-white dark:bg-slate-950 w-full h-full flex overflow-hidden border-none rounded-none select-none relative">
+    <div className="bg-white dark:bg-slate-950 w-full max-w-[100dvw] h-full flex overflow-hidden border-none rounded-none select-none relative">
 
       {/* LIGHTBOX FOR IMAGE PREVIEW */}
       <AnimatePresence>
@@ -1921,7 +1922,7 @@ function MessagesPageContent() {
       </div>
 
       {/* MAIN: CHAT WINDOW */}
-      <div className={`flex-1 flex flex-col bg-slate-50/20 dark:bg-slate-950/40 h-full ${!selectedChatId ? 'hidden md:flex items-center justify-center text-center p-8' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col bg-slate-50/20 dark:bg-slate-950/40 h-full max-w-full md:max-w-none ${!selectedChatId ? 'hidden md:flex items-center justify-center text-center p-8' : 'flex'}`}>
         {activeChat && activeUser ? (
           <motion.div
             key={selectedChatId}
@@ -1984,35 +1985,40 @@ function MessagesPageContent() {
               ) : (
                 <>
                   <div className="flex items-center gap-3 min-w-0">
-                    <button onClick={() => setSelectedChatId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl md:hidden text-slate-700 dark:text-slate-300 active:scale-90 transition-transform">
+                    <button onClick={() => setSelectedChatId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl md:hidden text-slate-700 dark:text-slate-300 active:scale-90 transition-transform shrink-0">
                       <HiChevronLeft className="w-6 h-6 stroke-[2.5]" />
                     </button>
-                    <div className="relative">
-                      <img src={activeUser.avatar_url || FALLBACK_AVATAR} alt="" className="w-10 h-10 object-cover rounded-full" />
-                      {onlineUserIds.has(activeUser.id) && !isBlockedByMe && !isBlockedByPartner && (
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-slate-950" />
-                      )}
-                    </div>
-                    <div className="text-left">
-                      <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1">
-                        {activeUser.nickname}
-                        {activeUser.role === 'admin' && <HiCheckBadge className="w-4 h-4 text-blue-500" />}
-                      </h3>
-                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5 min-h-[14px]">
-                        {isPartnerTyping && !isBlockedByMe && !isBlockedByPartner ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-blue-600 dark:text-blue-400 lowercase italic normal-case">yozmoqda</span>
-                            <span className="flex gap-0.5 items-center justify-center pt-0.5">
-                              <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '0.8s' }} />
-                              <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '200ms', animationDuration: '0.8s' }} />
-                              <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '400ms', animationDuration: '0.8s' }} />
-                            </span>
-                          </div>
-                        ) : onlineUserIds.has(activeUser.id) && !isBlockedByMe && !isBlockedByPartner ? (
-                          <span className="text-emerald-500">Muloqotda</span>
-                        ) : (
-                          <span>tarmoqdan tashqarida</span>
+                    <div 
+                      onClick={() => router.push(`/dashboard/profile/${activeUser.id}`)}
+                      className="flex items-center gap-3 min-w-0 cursor-pointer group"
+                    >
+                      <div className="relative group-hover:opacity-80 transition-opacity shrink-0">
+                        <img src={activeUser.avatar_url || FALLBACK_AVATAR} alt="" className="w-10 h-10 object-cover rounded-full" />
+                        {onlineUserIds.has(activeUser.id) && !isBlockedByMe && !isBlockedByPartner && (
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-slate-950" />
                         )}
+                      </div>
+                      <div className="text-left min-w-0">
+                        <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                          {activeUser.nickname}
+                          {activeUser.role === 'admin' && <VerifiedBadge className="w-4 h-4 shrink-0" />}
+                        </h3>
+                        <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5 min-h-[14px]">
+                          {isPartnerTyping && !isBlockedByMe && !isBlockedByPartner ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-blue-600 dark:text-blue-400 lowercase italic normal-case">yozmoqda</span>
+                              <span className="flex gap-0.5 items-center justify-center pt-0.5">
+                                <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '0.8s' }} />
+                                <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '200ms', animationDuration: '0.8s' }} />
+                                <span className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '400ms', animationDuration: '0.8s' }} />
+                              </span>
+                            </div>
+                          ) : onlineUserIds.has(activeUser.id) && !isBlockedByMe && !isBlockedByPartner ? (
+                            <span className="text-emerald-500">Muloqotda</span>
+                          ) : (
+                            <span>tarmoqdan tashqarida</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2398,7 +2404,7 @@ function MessagesPageContent() {
                       </div>
                     </div>
                   ) : (
-                    <div className="relative flex-1 flex items-end group">
+                    <div className="relative flex-1 flex items-end group min-w-0">
                       <textarea
                         ref={textareaRef}
                         rows={1}

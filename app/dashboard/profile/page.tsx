@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { get } from 'lodash'
 import { createClient } from '@/utils/supabase/client'
-import { HiMiniSquares2X2, HiOutlineShare, HiOutlineChatBubbleLeftRight, HiOutlineShoppingBag, HiMiniCheckBadge } from 'react-icons/hi2'
+import { HiMiniSquares2X2, HiOutlineShare, HiOutlineChatBubbleLeftRight, HiOutlineShoppingBag } from 'react-icons/hi2'
+import { VerifiedBadge } from '@/components/verified-badge'
 import { BsFilm, BsStar, BsCameraFill } from 'react-icons/bs'
 import { FiUserPlus, FiUserCheck } from 'react-icons/fi'
 import { FaHeart, FaBriefcase, FaTelegram, FaGithub, FaGlobe, FaHandshake } from 'react-icons/fa'
@@ -722,7 +723,7 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                             {get(profile, 'nickname', 'Foydalanuvchi')}
                         </h2>
                         {profile?.is_premium && (
-                            <HiMiniCheckBadge className="w-5 h-5 text-blue-500 dark:text-blue-400 shrink-0" title="Tasdiqlangan PRO hisob" />
+                            <VerifiedBadge className="w-5 h-5 shrink-0" title="Tasdiqlangan PRO hisob" />
                         )}
                     </div>
                     <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5 truncate">
@@ -814,7 +815,7 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                                 disabled
                                 className="flex-1 py-3 bg-slate-50 dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-white/5 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5"
                             >
-                                <HiMiniCheckBadge className="w-4 h-4 text-blue-500" /> PRO Faol
+                                <VerifiedBadge className="w-4 h-4" /> PRO Faol
                             </button>
                         ) : (
                             <button

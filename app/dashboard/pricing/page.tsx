@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { HiArrowLeft, HiCheck } from 'react-icons/hi2'
-import { HiMiniCheckBadge } from 'react-icons/hi2'
+import { VerifiedBadge } from '@/components/verified-badge'
 import { FaRocket, FaBriefcase, FaStar } from 'react-icons/fa'
 import { createClient } from '@/utils/supabase/client'
 
@@ -135,7 +135,7 @@ export default function PricingPage() {
                                 <li className="flex items-center gap-2">
                                     <HiCheck className="w-4 h-4 text-blue-500 shrink-0" />
                                     <span className="flex items-center gap-1">
-                                        Ko'k tasdiqlash belgisi <HiMiniCheckBadge className="w-4 h-4 text-blue-500" />
+                                        Ko'k tasdiqlash belgisi <VerifiedBadge className="w-4 h-4" />
                                     </span>
                                 </li>
                                 <li className="flex items-center gap-2">
@@ -183,7 +183,7 @@ export default function PricingPage() {
                     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowSuccess(false)} />
                     <div className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 max-w-sm w-full p-6 rounded-2xl text-center shadow-2xl animate-drawer-slide-up">
                         <div className="w-16 h-16 bg-blue-50 dark:bg-blue-950/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100/10">
-                            <HiMiniCheckBadge className="w-10 h-10 text-blue-500" />
+                            <VerifiedBadge className="w-10 h-10" />
                         </div>
                         <h3 className="text-base font-black text-slate-900 dark:text-white">Tabriklaymiz!</h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">

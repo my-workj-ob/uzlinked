@@ -276,10 +276,7 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
         setStep('menu')
     }
 
-    return (
-        <div className="w-full max-w-md mx-auto bg-white rounded-3xl overflow-hidden pb-4 px-1">
-            <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mt-3 mb-1 shrink-0" />
-
+    return (        <div className="w-full max-w-md mx-auto bg-transparent overflow-hidden pb-4 px-0">
             <AnimatePresence mode="wait">
                 <motion.div
                     key={step}
@@ -290,41 +287,41 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                 >
                     {/* Step: Menu */}
                     {step === 'menu' && (
-                        <div className="flex flex-col gap-3 p-2">
+                        <div className="flex flex-col gap-2.5 p-0.5">
                             <div className="flex items-center justify-between px-1 pb-1">
-                                <span className="text-sm font-black text-slate-900">Yangi yaratish</span>
-                                <button onClick={onClose} className="p-1.5 -mr-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg active:scale-90 transition-all">
+                                <span className="text-sm font-black text-slate-900 dark:text-white">Yangi yaratish</span>
+                                <button onClick={onClose} className="p-1.5 -mr-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg active:scale-90 transition-all">
                                     <HiXMark className="w-5 h-5" />
                                 </button>
                             </div>
 
-                            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('post')} className="w-full p-4 flex items-center gap-4 bg-slate-50/70 hover:bg-emerald-50/60 border border-slate-100 rounded-2xl text-left transition-colors group">
-                                <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
+                            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('post')} className="w-full p-3.5 flex items-center gap-3.5 bg-slate-50/80 dark:bg-slate-950/50 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/10 border border-slate-100/50 dark:border-white/5 rounded-2xl text-left transition-colors group">
+                                <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
                                     <HiOutlineDocumentText className="w-5 h-5" />
                                 </div>
                                 <div className="flex-1">
-                                    <h4 className="text-sm font-bold text-slate-800">Yangi Post yozish</h4>
-                                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">Tasmaga rasm va fikrlaringizni joylang</p>
+                                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Yangi Post yozish</h4>
+                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Tasmaga rasm va fikrlaringizni joylang</p>
                                 </div>
                             </motion.button>
 
-                            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('reel')} className="w-full p-4 flex items-center gap-4 bg-slate-50/70 hover:bg-rose-50/60 border border-slate-100 rounded-2xl text-left transition-colors group">
-                                <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition-all shrink-0">
+                            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('reel')} className="w-full p-3.5 flex items-center gap-3.5 bg-slate-50/80 dark:bg-slate-950/50 hover:bg-rose-50/60 dark:hover:bg-rose-950/10 border border-slate-100/50 dark:border-white/5 rounded-2xl text-left transition-colors group">
+                                <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition-all shrink-0">
                                     <HiOutlineCamera className="w-5 h-5" />
                                 </div>
                                 <div className="flex-1">
-                                    <h4 className="text-sm font-bold text-slate-800">Reels yuklash</h4>
-                                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">Qisqa video yuklang</p>
+                                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Reels yuklash</h4>
+                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Qisqa video yuklang</p>
                                 </div>
                             </motion.button>
 
-                            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('market')} className="w-full p-4 flex items-center gap-4 bg-slate-50/70 hover:bg-amber-50/60 border border-slate-100 rounded-2xl text-left transition-colors group">
-                                <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-all shrink-0">
+                            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('market')} className="w-full p-3.5 flex items-center gap-3.5 bg-slate-50/80 dark:bg-slate-950/50 hover:bg-amber-50/60 dark:hover:bg-amber-950/10 border border-slate-100/50 dark:border-white/5 rounded-2xl text-left transition-colors group">
+                                <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-all shrink-0">
                                     <HiOutlineShoppingBag className="w-5 h-5" />
                                 </div>
                                 <div className="flex-1">
-                                    <h4 className="text-sm font-bold text-slate-800">E'lon joylashtirish (Market)</h4>
-                                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">Mahsulot yoki xizmatlarni sotuvga qo'ying</p>
+                                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">E'lon joylashtirish (Market)</h4>
+                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Mahsulot yoki xizmatlarni sotuvga qo'ying</p>
                                 </div>
                             </motion.button>
                         </div>

@@ -209,7 +209,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const isMessagesPage = pathname.startsWith('/dashboard/messages') || pathname.startsWith('/dashboard/groups') || pathname.startsWith('/dashboard/channels')
 
   return (
-    <div className="h-svh w-full bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300">
+    <div className="h-[100dvh] w-full max-w-[100dvw] bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300">
 
       {/* MOBILE HEADER: Glassmorphism, hidden on Reels and Messages pages */}
       {!isReelsPage && !isMessagesPage && (
@@ -229,19 +229,6 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
             {user && (
               <>
-                {/* Xabarlar link */}
-                <div className="relative">
-                  <button
-                    onClick={() => router.push('/dashboard/messages')}
-                    className="p-2 rounded-full active:scale-90 transition-all duration-150 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer"
-                  >
-                    <HiOutlineEnvelope className="w-6 h-6" />
-                    {messages.some(m => m.unread) && (
-                      <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 animate-pulse"></span>
-                    )}
-                  </button>
-                </div>
-
                 {/* Bildirishnomalar link */}
                 <div className="relative">
                   <button
@@ -260,11 +247,14 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             )}
 
             {user ? (
-              <Link href="/dashboard/profile" className="w-9 h-9 ml-1 overflow-hidden rounded-full ring-2 ring-blue-500/20 hover:ring-blue-500/50 cursor-pointer active:scale-95 transition-all block relative">
-                {avatarUrl && <img src={avatarUrl} alt="Avatar" className="object-cover w-full h-full" />}
-              </Link>
+              <button
+                onClick={handleCreateClick}
+                className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 active:scale-90 transition-all cursor-pointer"
+              >
+                <HiPlus className="w-6 h-6" />
+              </button>
             ) : (
-              <Link href="/login" className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl active:scale-95 transition-all">
+              <Link href="/login" className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl active:scale-95 transition-all shrink-0">
                 Kirish
               </Link>
             )}
@@ -383,22 +373,11 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </main>
       </div>
 
-      {/* MOBILE FLOATING ACTION BUTTON: Hidden on Reels, messages, groups, channels, and profile pages */}
-      {user && !isReelsPage && !isMessagesPage && !pathname.startsWith('/dashboard/profile') && (
-        <button
-          onClick={handleCreateClick}
-          className="fixed bottom-20 right-5 z-40 flex items-center justify-center w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full active:scale-90 md:hidden transition-all duration-200"
-        >
-          <HiPlus className="w-7 h-7" />
-        </button>
-      )}
+      {/* MOBILE FLOATING ACTION BUTTON: Moved to mobile header, no longer rendered here */}
 
-      {/* MOBILE BOTTOM NAVIGATION: Dynamic adaptations for Reels page */}
+      {/* MOBILE BOTTOM NAVIGATION */}
       {!isMessagesPage && (
-        <nav className={`fixed bottom-0 left-0 right-0 z-50 h-16 md:hidden px-3 flex justify-around items-center pb-[env(safe-area-inset-bottom)] transition-all duration-300 border-t ${isReelsPage
-            ? 'bg-black/60 backdrop-blur-xl border-white/10'
-            : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-100 dark:border-white/5'
-          }`}>
+        <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 md:hidden px-3 flex justify-around items-center pb-[env(safe-area-inset-bottom)] transition-all duration-300 border-t bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-100 dark:border-white/5">
           {bottomNavItems.map((item) => {
             const isActive = pathname === item.path
             const Icon = isActive ? item.IconActive : item.IconOutline
@@ -408,15 +387,21 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                 key={item.id}
                 href={item.path}
                 className={`flex items-center justify-center transition-all duration-300 ease-in-out select-none active:scale-95 ${isActive
-                    ? isReelsPage
-                      ? 'bg-white text-black rounded-full px-4 py-2.5'
-                      : 'bg-blue-600 text-white rounded-full px-4 py-2.5'
-                    : isReelsPage
-                      ? 'bg-white/10 text-white/70 p-2.5 rounded-full hover:bg-white/20'
-                      : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-blue-600 text-white rounded-full px-4 py-2.5'
+                    : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
               >
-                <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
+                {item.id === 'profile' && user && avatarUrl ? (
+                  <div className={`w-5 h-5 overflow-hidden rounded-full ring-1 ${
+                    isActive 
+                      ? 'ring-white' 
+                      : 'ring-slate-350 dark:ring-slate-700'
+                  } shrink-0`}>
+                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
+                )}
 
                 <span className={`overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-semibold ${isActive
                     ? 'max-w-24 opacity-100 ml-2'
@@ -442,7 +427,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             style={{
               animation: 'androidSlideUp 0.35s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards'
             }}
-            className="bg-white dark:bg-slate-900 w-full md:max-w-md rounded-t-[28px] md:rounded-2xl p-6 pb-8 relative z-10 border border-neutral-100 dark:border-white/5 max-h-[85vh] overflow-y-auto select-none"
+            className="bg-white dark:bg-slate-900 w-full md:max-w-md rounded-t-[28px] md:rounded-2xl px-4 py-6 pb-8 md:p-6 md:pb-8 relative z-10 border border-neutral-100 dark:border-white/5 max-h-[85vh] overflow-y-auto select-none"
           >
             <div
               className="absolute top-3 left-0 right-0 flex justify-center md:hidden cursor-grab active:cursor-grabbing py-2"

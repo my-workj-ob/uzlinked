@@ -91,6 +91,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
   useEffect(() => {
     setMounted(true)
+    loadComments()
     return () => {
       if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current)
     }
@@ -416,7 +417,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none">
-              {loadingComments ? (
+              {loadingComments && comments.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>

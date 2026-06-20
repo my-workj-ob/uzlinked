@@ -668,7 +668,7 @@ function ReelCard({
                     muted={isMuted}
                     preload={preloadAttr}
                     onClick={handleVideoClick}
-                    className="absolute inset-0 w-full h-full object-cover cursor-pointer"
+                    className="absolute inset-0 w-full h-full object-contain bg-black cursor-pointer"
                 />
 
                 {/* Double-tap Heart (No shadows!) */}
