@@ -174,3 +174,107 @@ begin
     end if;
   end if;
 end $$;
+
+-- ==========================================================
+-- 12. Fixes for Group/Channel messaging, Realtime and Joining
+-- ==========================================================
+
+-- Make chat_id nullable for group/channel messages
+ALTER TABLE public.messages ALTER COLUMN chat_id DROP NOT NULL;
+
+-- Enable Realtime for messages table
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    if not exists (
+      select 1 from pg_publication_tables 
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'
+    ) then
+      alter publication supabase_realtime add table public.messages;
+    end if;
+  end if;
+end $$;
+
+-- Open SELECT access for groups_channels to all authenticated users (to allow viewing metadata via join link)
+DROP POLICY IF EXISTS "Anyone can view public groups or channels" ON public.groups_channels;
+CREATE POLICY "Anyone can view groups or channels" ON public.groups_channels
+    FOR SELECT TO authenticated USING (true);
+
+-- Allow authenticated users to self-join groups and channels
+DROP POLICY IF EXISTS "Admins and creators can add members" ON public.group_members;
+CREATE POLICY "Users can join groups or channels" ON public.group_members
+    FOR INSERT TO authenticated WITH CHECK (
+        (auth.uid() = user_id AND role = 'member')
+        OR
+        auth.uid() IN (
+            SELECT user_id FROM public.group_members 
+            WHERE group_id = group_members.group_id AND role IN ('creator', 'admin')
+        )
+        OR
+        auth.uid() = (SELECT creator_id FROM public.groups_channels WHERE id = group_members.group_id)
+    );
+
+-- RLS policies for messages table to support groups and channels
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view messages they are part of" ON public.messages;
+DROP POLICY IF EXISTS "Users can view messages" ON public.messages;
+CREATE POLICY "Users can view messages" ON public.messages
+    FOR SELECT USING (
+        (chat_id IS NOT NULL AND chat_id IN (
+            SELECT id FROM public.chats 
+            WHERE user_one = auth.uid() OR user_two = auth.uid()
+        ))
+        OR
+        (group_id IS NOT NULL AND (
+            (SELECT is_public FROM public.groups_channels WHERE id = group_id) = true
+            OR
+            auth.uid() IN (SELECT user_id FROM public.group_members WHERE group_id = messages.group_id)
+        ))
+    );
+
+DROP POLICY IF EXISTS "Users can insert messages" ON public.messages;
+CREATE POLICY "Users can insert messages" ON public.messages
+    FOR INSERT WITH CHECK (
+        auth.uid() = sender_id
+        AND (
+            (chat_id IS NOT NULL AND chat_id IN (
+                SELECT id FROM public.chats 
+                WHERE user_one = auth.uid() OR user_two = auth.uid()
+            ))
+            OR
+            (group_id IS NOT NULL AND (
+                -- Group: any member can send
+                (
+                    (SELECT type FROM public.groups_channels WHERE id = group_id) = 'group'
+                    AND auth.uid() IN (SELECT user_id FROM public.group_members WHERE group_id = messages.group_id)
+                )
+                OR
+                -- Channel: only admins/creators can send
+                (
+                    (SELECT type FROM public.groups_channels WHERE id = group_id) = 'channel'
+                    AND auth.uid() IN (
+                        SELECT user_id FROM public.group_members 
+                        WHERE group_id = messages.group_id AND role IN ('creator', 'admin')
+                    )
+                )
+            ))
+        )
+    );
+
+DROP POLICY IF EXISTS "Users can update messages" ON public.messages;
+CREATE POLICY "Users can update messages" ON public.messages
+    FOR UPDATE TO authenticated USING (
+        auth.uid() = sender_id
+        OR
+        (chat_id IS NOT NULL AND chat_id IN (
+            SELECT id FROM public.chats 
+            WHERE user_one = auth.uid() OR user_two = auth.uid()
+        ))
+        OR
+        (group_id IS NOT NULL AND (
+            (SELECT is_public FROM public.groups_channels WHERE id = group_id) = true
+            OR
+            auth.uid() IN (SELECT user_id FROM public.group_members WHERE group_id = messages.group_id)
+        ))
+    );

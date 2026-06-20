@@ -851,15 +851,9 @@ export default function GroupDetailPage() {
 
             <div className="p-3 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-white/10 shrink-0 z-30 relative">
                 {!userIdReady ? null : !isMember ? (
-                    group.is_public ? (
-                        <button onClick={handleJoinGroup} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wide shadow-lg shadow-blue-500/25">
-                            <HiOutlineUserPlus className="w-5 h-5" /> Guruhga qo'shilish
-                        </button>
-                    ) : (
-                        <div className="p-4 bg-slate-100/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-sm font-semibold rounded-2xl text-center border border-slate-200/50 dark:border-white/5">
-                            Bu guruh maxfiy. Xabar yozish uchun taklif qilinishingiz kerak.
-                        </div>
-                    )
+                    <button onClick={handleJoinGroup} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wide shadow-lg shadow-blue-500/25">
+                        <HiOutlineUserPlus className="w-5 h-5" /> Guruhga qo'shilish
+                    </button>
                 ) : (
                     <form onSubmit={handleSendMessage} className="flex items-end gap-2 text-left max-w-4xl mx-auto w-full">
                         <input type="file" accept="image/*,video/*" ref={fileInputRef} className="hidden" />

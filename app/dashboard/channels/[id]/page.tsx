@@ -868,14 +868,10 @@ export default function ChannelDetailPage() {
                     <div className="p-4 bg-slate-100/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-sm font-semibold rounded-2xl text-center border border-slate-200/50 dark:border-white/5">
                         Faqat administratorlar kanalga post yuborishi mumkin
                     </div>
-                ) : channel.is_public ? (
+                ) : (
                     <button onClick={handleSubscribe} className="w-full py-3.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wide shadow-lg shadow-violet-500/25">
                         <HiOutlineSpeakerWave className="w-5 h-5" /> Obuna bo'lish
                     </button>
-                ) : (
-                    <div className="p-4 bg-slate-100/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-sm font-semibold rounded-2xl text-center border border-slate-200/50 dark:border-white/5">
-                        Bu kanal maxfiy. Obuna bo'lish uchun taklif qilinishingiz kerak.
-                    </div>
                 )}
             </div>
 
