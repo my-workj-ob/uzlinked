@@ -11,13 +11,19 @@ export default function FeedList() {
     const updatePostMutation = useUpdatePost()
     const deletePostMutation = useDeletePost()
 
-    // Stories tray visibility state (initially open for beautiful arrival UX)
-    const [showStories, setShowStories] = useState(true)
+    // Stories tray visibility state (initially hidden by default)
+    const [showStories, setShowStories] = useState(false)
     const [pullOffset, setPullOffset] = useState(0)
     const [isDragging, setIsDragging] = useState(false)
     const startY = useRef(0)
     const activeDrag = useRef(false)
     const containerRef = useRef<HTMLDivElement>(null)
+
+    // Helper to get actual scroll depth inside the layout container
+    const getScrollTop = () => {
+        const main = containerRef.current?.closest('main')
+        return main ? main.scrollTop : window.scrollY
+    }
 
     // Gesture & Programmatic Drag Binding
     useEffect(() => {
@@ -25,8 +31,8 @@ export default function FeedList() {
         if (!container) return
 
         const onTouchStart = (e: TouchEvent) => {
-            // Drag only starts if we are at the very top of the page
-            if (window.scrollY === 0) {
+            // Drag only starts if we are at the very top of the scrolling parent
+            if (getScrollTop() === 0) {
                 startY.current = e.touches[0].clientY
                 activeDrag.current = true
                 setIsDragging(true)
@@ -77,7 +83,7 @@ export default function FeedList() {
 
         // Programmatic Mouse Events (Desktop dragging support)
         const onMouseDown = (e: MouseEvent) => {
-            if (window.scrollY === 0) {
+            if (getScrollTop() === 0) {
                 startY.current = e.clientY
                 activeDrag.current = true
                 setIsDragging(true)
@@ -140,15 +146,19 @@ export default function FeedList() {
         }
     }, [isDragging, showStories, pullOffset])
 
-    // Hide stories when scrolling down the page past 100px
+    // Hide stories when scrolling down the page past 100px (capture scroll on nested elements)
     useEffect(() => {
-        const handleScroll = () => {
-            if (window.scrollY > 100) {
-                setShowStories(false)
+        const handleScroll = (e: Event) => {
+            const target = e.target as HTMLElement
+            if (target && target.tagName === 'MAIN') {
+                const scrollTop = target.scrollTop
+                if (scrollTop > 100) {
+                    setShowStories(false)
+                }
             }
         }
-        window.addEventListener('scroll', handleScroll, { passive: true })
-        return () => window.removeEventListener('scroll', handleScroll)
+        window.addEventListener('scroll', handleScroll, true) // capture phase is required for nested main tag
+        return () => window.removeEventListener('scroll', handleScroll, true)
     }, [])
 
     const handleUpdatePost = async (id: string | number, newContent: string) => {
@@ -171,7 +181,7 @@ export default function FeedList() {
     const renderDroplet = () => {
         if (!isDragging || showStories || pullOffset <= 8) return null
 
-        const y = Math.min(pullOffset, 120)
+        const y = Math.min(pullOffset * 0.5, 48)
         const centerX = 100
         
         // Base neck shrinks as it is stretched down
@@ -193,8 +203,8 @@ export default function FeedList() {
             Z
         `
 
-        // Glow indicator changes at snaps threshold
-        const isCloseToSnap = y > 75
+        // Glow indicator changes at snaps threshold based on pullOffset
+        const isCloseToSnap = pullOffset > 75
 
         return (
             <div className="absolute top-0 left-0 right-0 flex justify-center pointer-events-none z-[999] animate-fade-in">
