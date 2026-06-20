@@ -267,9 +267,9 @@ export default function FeedList() {
                     opacity: showStories || (isDragging && (showStories ? (104 + pullOffset > 15) : (pullOffset > 15))) ? 1 : 0,
                     transition: isDragging ? 'none' : 'height 0.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.3s ease-in-out'
                 }}
-                className="w-full overflow-hidden bg-white/70 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm"
+                className="w-full overflow-hidden"
             >
-                <div className="p-3">
+                <div className="py-2 px-1">
                     <Stories />
                 </div>
             </div>

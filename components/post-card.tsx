@@ -8,6 +8,7 @@ import { useLikeToggle } from '@/hooks/use-queries'
 import { FaHeart } from 'react-icons/fa'
 import { HiEllipsisHorizontal, HiXMark } from 'react-icons/hi2'
 import { BottomSheet } from '@/components/bottom-sheet'
+import { motion, useScroll, useTransform } from 'framer-motion'
 
 export interface CommentType {
   id: string | number
@@ -245,11 +246,18 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
     }
   }
 
+  const cardRef = useRef<HTMLDivElement>(null)
+
   return (
     <>
-      <div 
+      <motion.div 
+        ref={cardRef}
         onClick={handleCardClick}
-        className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden relative transition-all duration-300 ${showMenu ? 'z-50' : 'z-10'} ${isDetailPage ? '' : 'cursor-pointer hover:shadow-md hover:border-slate-200 dark:hover:border-white/10'}`}
+        initial={isDetailPage ? {} : { opacity: 0, y: 35, scale: 0.96 }}
+        whileInView={isDetailPage ? {} : { opacity: 1, y: 0, scale: 1 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{ type: "spring", stiffness: 120, damping: 16, mass: 0.8 }}
+        className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden relative transition-colors duration-300 ${showMenu ? 'z-50' : 'z-10'} ${isDetailPage ? '' : 'cursor-pointer hover:shadow-md hover:border-slate-200 dark:hover:border-white/10'}`}
       >
         <div className="flex items-center justify-between p-4 relative">
           <div
@@ -394,7 +402,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           <span>Fikr bildiring...</span>
           <FiSend className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />
         </div>
-      </div>
+      </motion.div>
 
       {/* PORTALS UCHUN KODLAR: DOMning eng tepasida (body ichida) chiqadi */}
       {mounted && showComments && createPortal(
