@@ -124,33 +124,62 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     }
   }, [user?.id, supabase])
 
-  // Fetch real unread notifications count from Supabase
+  // Fetch real unread notifications count + unread DMs count from Supabase
   useEffect(() => {
     if (!user?.id) return
 
-    const fetchUnreadCount = async () => {
+    const fetchUnreadCounts = async () => {
       try {
-        const { count, error } = await supabase
+        // 1. Fetch unread notifications
+        const { count: notifCount, error: notifErr } = await supabase
           .from('notifications')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .eq('is_read', false)
 
-        if (!error && count !== null) {
-          setUnreadNotifCount(count)
+        let totalUnread = 0
+        if (!notifErr && notifCount !== null) {
+          totalUnread += notifCount
         }
+
+        // 2. Fetch unread chat messages
+        const { data: myChats, error: chatsErr } = await supabase
+          .from('chats')
+          .select('id')
+          .or(`user_one.eq.${user.id},user_two.eq.${user.id}`)
+
+        if (!chatsErr && myChats && myChats.length > 0) {
+          const myChatIds = myChats.map((c: any) => c.id)
+          const { count: msgCount, error: msgErr } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .in('chat_id', myChatIds)
+            .neq('sender_id', user.id)
+            .eq('is_read', false)
+
+          if (!msgErr && msgCount !== null) {
+            totalUnread += msgCount
+          }
+        }
+
+        setUnreadNotifCount(totalUnread)
       } catch (err) {
-        console.warn('Error fetching unread notification count:', err)
+        console.warn('Error fetching unread counts:', err)
       }
     }
 
-    fetchUnreadCount()
+    fetchUnreadCounts()
 
+    // Subscribe to both notifications and messages changes for realtime updates
     const notifChannel = supabase
-      .channel(`notifications-count:${user.id}`)
+      .channel(`global-unread-count:${user.id}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => fetchUnreadCount()
+        () => fetchUnreadCounts()
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        () => fetchUnreadCounts()
       )
       .subscribe()
 

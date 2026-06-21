@@ -529,6 +529,25 @@ function MessagesPageContent() {
     fetchChats()
   }, [fetchChats])
 
+  // Realtime subscription for global messages to update chat list in sidebar
+  useEffect(() => {
+    if (!currentUserId || !userIdReady) return
+
+    const messagesChannel = supabase
+      .channel('sidebar-messages-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        () => {
+          fetchChats()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(messagesChannel)
+    }
+  }, [currentUserId, userIdReady, fetchChats])
+
   // Fetch groups/channels current user belongs to
   const fetchMyGroupsChannels = useCallback(async () => {
     if (!userIdReady) {

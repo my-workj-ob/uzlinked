@@ -278,3 +278,27 @@ CREATE POLICY "Users can update messages" ON public.messages
             auth.uid() IN (SELECT user_id FROM public.group_members WHERE group_id = messages.group_id)
         ))
     );
+
+-- ==========================================================
+-- 13. Enable Realtime publication for notifications and chats
+-- ==========================================================
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    -- notifications
+    if not exists (
+      select 1 from pg_publication_tables 
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications'
+    ) then
+      alter publication supabase_realtime add table public.notifications;
+    end if;
+
+    -- chats
+    if not exists (
+      select 1 from pg_publication_tables 
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'chats'
+    ) then
+      alter publication supabase_realtime add table public.chats;
+    end if;
+  end if;
+end $$;
