@@ -29,6 +29,10 @@ DROP POLICY IF EXISTS "Users can delete their own push subscriptions" ON public.
 CREATE POLICY "Users can delete their own push subscriptions" ON public.push_subscriptions
     FOR DELETE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own push subscriptions" ON public.push_subscriptions;
+CREATE POLICY "Users can update their own push subscriptions" ON public.push_subscriptions
+    FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
 -- Create index on user_id for faster lookups
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON public.push_subscriptions(user_id);
 

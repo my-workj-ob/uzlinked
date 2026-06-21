@@ -4,8 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
     }
 
@@ -18,19 +18,40 @@ export async function POST(request: Request) {
 
     const { endpoint, keys: { p256dh, auth } } = subscription
 
-    // Upsert subscription (unique endpoint per user)
-    const { error } = await supabase
+    // 1. Check if this subscription already exists
+    const { data: existing, error: fetchError } = await supabase
       .from('push_subscriptions')
-      .upsert({
-        user_id: session.user.id,
+      .select('id, user_id')
+      .eq('endpoint', endpoint)
+      .maybeSingle()
+
+    if (fetchError) throw fetchError
+
+    if (existing) {
+      if (existing.user_id === user.id) {
+        // Subscription already exists and belongs to the current user. No need to update.
+        return NextResponse.json({ success: true })
+      } else {
+        // Belongs to a different user, delete it first to avoid duplicate endpoint conflicts
+        const { error: deleteError } = await supabase
+          .from('push_subscriptions')
+          .delete()
+          .eq('endpoint', endpoint)
+        if (deleteError) throw deleteError
+      }
+    }
+
+    // 2. Insert new subscription (safe insert under RLS)
+    const { error: insertError } = await supabase
+      .from('push_subscriptions')
+      .insert({
+        user_id: user.id,
         endpoint,
         p256dh,
         auth
-      }, {
-        onConflict: 'endpoint'
       })
 
-    if (error) throw error
+    if (insertError) throw insertError
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
@@ -42,8 +63,8 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
     }
 
@@ -58,7 +79,7 @@ export async function DELETE(request: Request) {
       .from('push_subscriptions')
       .delete()
       .eq('endpoint', endpoint)
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
 
     if (error) throw error
 

@@ -5,8 +5,8 @@ import { sendPushNotification } from '@/utils/push'
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
     }
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       const { data: senderProfile } = await supabase
         .from('profiles')
         .select('nickname')
-        .eq('id', session.user.id)
+        .eq('id', user.id)
         .single()
       const senderName = senderProfile?.nickname || 'Foydalanuvchi'
       finalTitle = `${senderName} dan yangi xabar 💬`
