@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/components/query-provider";
 import PWARegister from "@/components/pwa-register";
+import Script from "next/script";
 
 // 1. Asosiy shrift (Inter - Lotin va Kirill uchun)
 const inter = Inter({
@@ -27,6 +28,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1, // Muqaddas qoida: iOS'da inputga bosganda ekran zoom bo'lib ketmasligini ta'minlaydi
+  interactiveWidget: "resizes-content",
 };
 
 // DUNYODAGI ENG KUCHLI SEO METADATA TO'PLAMI
@@ -114,22 +116,20 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var storedTheme = localStorage.getItem('theme');
-                  if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                  }
-                } catch (e) {}
-              })();
-            `
-          }}
-        />
+        <Script id="theme-script" strategy="beforeInteractive">
+          {`
+            (function() {
+              try {
+                var storedTheme = localStorage.getItem('theme');
+                if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (e) {}
+            })();
+          `}
+        </Script>
       </head>
       <body className={`${inter.className} min-h-full flex flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans selection:bg-blue-600 selection:text-white`}>
         <QueryProvider>

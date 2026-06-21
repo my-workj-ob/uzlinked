@@ -123,6 +123,39 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     }
   }, [user?.id, supabase])
 
+  // Dynamic height handling for mobile keyboard to prevent header shift
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleResize = () => {
+      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+      document.body.style.height = `${vh}px`
+      document.body.style.overflow = 'hidden'
+      window.scrollTo(0, 0)
+    }
+
+    handleResize()
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize)
+      window.visualViewport.addEventListener('scroll', handleResize)
+    } else {
+      window.addEventListener('resize', handleResize)
+    }
+
+    return () => {
+      document.body.style.height = ''
+      document.body.style.overflow = ''
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize)
+        window.visualViewport.removeEventListener('scroll', handleResize)
+      } else {
+        window.removeEventListener('resize', handleResize)
+      }
+    }
+  }, [])
+
   // Circular reveal animatsiyasi bilan dark mode toggle
   const toggleTheme = (e: React.MouseEvent) => {
     const nextDark = !isDark
@@ -218,7 +251,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const isMessagesPage = pathname.startsWith('/dashboard/messages') || pathname.startsWith('/dashboard/groups') || pathname.startsWith('/dashboard/channels')
 
   return (
-    <div className="h-[100dvh] w-full max-w-[100dvw] bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300">
+    <div 
+      style={{ height: 'var(--vh, 100dvh)' }}
+      className="w-full max-w-[100dvw] bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300"
+    >
 
       {/* MOBILE HEADER: Glassmorphism, hidden on Reels and Messages pages */}
       {!isReelsPage && !isMessagesPage && (
