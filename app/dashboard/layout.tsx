@@ -285,18 +285,36 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
   // Touch Swipe handlers for tab switching
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (isMessagesPage || isReelsPage) return
+    const hasActiveChat = typeof window !== 'undefined' && (
+      window.location.search.includes('chat=') || 
+      window.location.search.includes('partner=')
+    )
+    const disableSwipe = pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
+    
+    if (disableSwipe) return
     setTouchEnd(null)
     setTouchStart(e.targetTouches[0].clientX)
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (isMessagesPage || isReelsPage || touchStart === null) return
+    const hasActiveChat = typeof window !== 'undefined' && (
+      window.location.search.includes('chat=') || 
+      window.location.search.includes('partner=')
+    )
+    const disableSwipe = pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
+    
+    if (disableSwipe || touchStart === null) return
     setTouchEnd(e.targetTouches[0].clientX)
   }
 
   const handleTouchEnd = () => {
-    if (isMessagesPage || isReelsPage || touchStart === null || touchEnd === null) return
+    const hasActiveChat = typeof window !== 'undefined' && (
+      window.location.search.includes('chat=') || 
+      window.location.search.includes('partner=')
+    )
+    const disableSwipe = pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
+    
+    if (disableSwipe || touchStart === null || touchEnd === null) return
     const distance = touchStart - touchEnd
     const minSwipeDistance = 65 // minimum swipe distance in px
 

@@ -7,7 +7,7 @@ import {
     HiUserGroup, HiMegaphone, HiCheck, HiXMark,
     HiArrowRightOnRectangle, HiHashtag
 } from 'react-icons/hi2'
-import { FiHeart, FiEye, FiUserPlus, FiUserCheck, FiArrowRight } from 'react-icons/fi'
+import { FiHeart, FiEye, FiUserPlus, FiUserCheck, FiArrowRight, FiPlay } from 'react-icons/fi'
 import { createClient } from '@/utils/supabase/client'
 
 interface ExplorePost {
@@ -17,6 +17,7 @@ interface ExplorePost {
     author: string
     avatar: string
     likes: number
+    type?: 'post' | 'reel'
 }
 
 interface ExploreProfile {
@@ -48,6 +49,59 @@ const sizePatterns = [
 function ExploreSkeleton({ tab }: { tab: string }) {
     const pulseClass = "animate-pulse bg-slate-200 dark:bg-slate-800/80"
     
+    if (tab === 'all') {
+        return (
+            <div className="space-y-6">
+                {/* Creators Section Skeleton */}
+                <div className="space-y-2">
+                    <div className={`h-4 w-32 rounded-md ${pulseClass}`} />
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                        <div className="flex items-center gap-3 flex-1">
+                            <div className={`w-12 h-12 rounded-xl shrink-0 ${pulseClass}`} />
+                            <div className="flex-1 space-y-2">
+                                <div className={`h-4 w-28 rounded-md ${pulseClass}`} />
+                                <div className={`h-3 w-16 rounded-md ${pulseClass}`} />
+                            </div>
+                        </div>
+                        <div className={`w-24 h-8 rounded-xl shrink-0 ${pulseClass}`} />
+                    </div>
+                </div>
+
+                {/* Groups Section Skeleton */}
+                <div className="space-y-2">
+                    <div className={`h-4 w-32 rounded-md ${pulseClass}`} />
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                            <div className={`w-12 h-12 rounded-xl shrink-0 ${pulseClass}`} />
+                            <div className="flex-1 space-y-2">
+                                <div className={`h-4 w-32 rounded-md ${pulseClass}`} />
+                                <div className={`h-3 w-20 rounded-md ${pulseClass}`} />
+                            </div>
+                        </div>
+                        <div className={`w-20 h-8 rounded-xl shrink-0 ${pulseClass}`} />
+                    </div>
+                </div>
+
+                {/* Posts Section Skeleton */}
+                <div className="space-y-2">
+                    <div className={`h-4 w-32 rounded-md ${pulseClass}`} />
+                    <div className="grid grid-cols-3 gap-2 auto-rows-[120px]">
+                        {[
+                            'col-span-2 row-span-2',
+                            'col-span-1 row-span-1',
+                            'col-span-1 row-span-1',
+                        ].map((pattern, index) => (
+                            <div
+                                key={index}
+                                className={`rounded-2xl border border-slate-200/10 dark:border-white/5 ${pattern} ${pulseClass}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     if (tab === 'guruhlar' || tab === 'kanallar') {
         return (
             <div className="space-y-3">
@@ -119,7 +173,7 @@ function ExploreContent() {
     const searchParams = useSearchParams()
     const supabase = createClient()
 
-    const [activeTab, setActiveTab] = useState('guruhlar') // Default to guruhlar for public groups/channels search
+    const [activeTab, setActiveTab] = useState('all') // Default to unified "All" tab
     const [searchQuery, setSearchQuery] = useState('')
     const [posts, setPosts] = useState<ExplorePost[]>([])
     const [profiles, setProfiles] = useState<ExploreProfile[]>([])
@@ -169,7 +223,11 @@ function ExploreContent() {
             if (!res.ok) throw new Error()
 
             const result = await res.json()
-            if (result.type === 'profiles') {
+            if (result.type === 'all') {
+                setProfiles(result.data.profiles || [])
+                setGroups(result.data.groups || [])
+                setPosts(result.data.posts || [])
+            } else if (result.type === 'profiles') {
                 setProfiles(result.data)
                 setPosts([])
                 setGroups([])
@@ -415,6 +473,7 @@ function ExploreContent() {
             {/* Premium Category Tabs */}
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-slate-100 dark:border-white/5 pb-2">
                 {[
+                    { id: 'all', label: 'Barchasi', Icon: HiMagnifyingGlass },
                     { id: 'guruhlar', label: 'Guruhlar', Icon: HiUserGroup },
                     { id: 'kanallar', label: 'Kanallar', Icon: HiMegaphone },
                     { id: 'ijodkorlar', label: 'Ijodkorlar', Icon: HiArrowTrendingUp },
@@ -444,13 +503,28 @@ function ExploreContent() {
             )}
 
             {/* Groups & Channels Rendering */}
-            {!loading && groups.length > 0 && (
+            {!loading && groups.length > 0 && (activeTab === 'guruhlar' || activeTab === 'kanallar' || activeTab === 'all') && (
                 <div className="space-y-3 animate-slide-up">
-                    <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight pl-1">
-                        {searchQuery ? `"${searchQuery}" bo'yicha topilganlar` : `Ommaviy ${activeTab === 'guruhlar' ? 'guruhlar' : 'kanallar'}`}
-                    </h3>
+                    <div className="flex items-center justify-between pl-1 pr-1">
+                        <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight">
+                            {activeTab === 'all'
+                                ? 'Tavsiya etilgan guruh va kanallar'
+                                : searchQuery
+                                    ? `"${searchQuery}" bo'yicha topilganlar`
+                                    : `Ommaviy ${activeTab === 'guruhlar' ? 'guruhlar' : 'kanallar'}`
+                            }
+                        </h3>
+                        {activeTab === 'all' && (
+                            <button
+                                onClick={() => setActiveTab('guruhlar')}
+                                className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 active:scale-95 transition-all"
+                            >
+                                Barchasi <FiArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                    </div>
                     <div className="grid grid-cols-1 gap-3">
-                        {groups.map((group) => {
+                        {(activeTab === 'all' ? groups.slice(0, 3) : groups).map((group) => {
                             const isMember = group.isMember
                             const isGroup = group.type === 'group'
                             const avatarLetters = group.name ? group.name.substring(0, 2).toUpperCase() : 'GC'
@@ -547,15 +621,28 @@ function ExploreContent() {
             )}
 
             {/* Profiles (Creators) and Mutaxassislar (Professionals) Rendering */}
-            {!loading && profiles.length > 0 && (
+            {!loading && profiles.length > 0 && (activeTab === 'ijodkorlar' || activeTab === 'hamjamiyat' || activeTab === 'all') && (
                 <div className="space-y-3 animate-slide-up">
-                    <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight pl-1">
-                        {activeTab === 'hamjamiyat'
-                            ? (searchQuery ? `"${searchQuery}" bo'yicha mutaxassislar` : 'Faol hamjamiyat a\'zolari')
-                            : (searchQuery ? `"${searchQuery}" bo'yicha ijodkorlar` : 'Tavsiya etilgan ijodkorlar')}
-                    </h3>
+                    <div className="flex items-center justify-between pl-1 pr-1">
+                        <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight">
+                            {activeTab === 'all'
+                                ? 'Tavsiya etilgan ijodkorlar'
+                                : activeTab === 'hamjamiyat'
+                                    ? (searchQuery ? `"${searchQuery}" bo'yicha mutaxassislar` : 'Faol hamjamiyat a\'zolari')
+                                    : (searchQuery ? `"${searchQuery}" bo'yicha ijodkorlar` : 'Tavsiya etilgan ijodkorlar')
+                            }
+                        </h3>
+                        {activeTab === 'all' && (
+                            <button
+                                onClick={() => setActiveTab('ijodkorlar')}
+                                className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 active:scale-95 transition-all"
+                            >
+                                Barchasi <FiArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                    </div>
                     <div className="space-y-2.5">
-                        {profiles.map((profile) => (
+                        {(activeTab === 'all' ? profiles.slice(0, 3) : profiles).map((profile) => (
                             <div
                                 key={profile.id}
                                 className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3.5 group hover:border-slate-200 dark:hover:border-white/10 transition-all cursor-pointer"
@@ -639,19 +726,47 @@ function ExploreContent() {
             )}
 
             {/* Bento Grid Posts Rendering */}
-            {!loading && posts.length > 0 && (
+            {!loading && posts.length > 0 && (activeTab === 'trendlar' || activeTab === 'all') && (
                 <div className="space-y-3 animate-slide-up">
-                    <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight pl-1">
-                        {searchQuery ? `"${searchQuery}" bo'yicha postlar` : 'Siz uchun tavsiyalar'}
-                    </h3>
+                    <div className="flex items-center justify-between pl-1 pr-1">
+                        <h3 className="font-black text-sm text-slate-900 dark:text-slate-100 tracking-tight">
+                            {activeTab === 'all'
+                                ? 'Trenddagi postlar va reelslar'
+                                : searchQuery
+                                    ? `"${searchQuery}" bo'yicha postlar`
+                                    : 'Siz uchun tavsiyalar'
+                            }
+                        </h3>
+                        {activeTab === 'all' && (
+                            <button
+                                onClick={() => setActiveTab('trendlar')}
+                                className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 active:scale-95 transition-all"
+                            >
+                                Barchasi <FiArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                    </div>
 
                     <div className="grid grid-cols-3 gap-2 auto-rows-[120px]">
-                        {posts.map((item, index) => (
+                        {(activeTab === 'all' ? posts.slice(0, 6) : posts).map((item, index) => (
                             <div
                                 key={item.id}
-                                onClick={() => router.push(`/dashboard/post/${item.id}`)}
+                                onClick={() => {
+                                    if (item.type === 'reel') {
+                                        router.push(`/dashboard/reels?id=${item.id}`)
+                                    } else {
+                                        router.push(`/dashboard/post/${item.id}`)
+                                    }
+                                }}
                                 className={`relative rounded-2xl overflow-hidden group bg-slate-100 dark:bg-slate-900 cursor-pointer border border-slate-200/10 dark:border-white/5 ${sizePatterns[index % sizePatterns.length]}`}
                             >
+                                {/* Reels Overlay Icon */}
+                                {item.type === 'reel' && (
+                                    <div className="absolute top-2.5 right-2.5 z-10 flex items-center justify-center w-6 h-6 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-xs">
+                                        <FiPlay className="w-3 h-3 fill-current ml-0.5" />
+                                    </div>
+                                )}
+
                                 {item.image ? (
                                     <img
                                         src={item.image}
