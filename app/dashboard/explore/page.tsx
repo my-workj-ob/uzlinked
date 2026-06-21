@@ -45,6 +45,75 @@ const sizePatterns = [
     'col-span-1 row-span-1',
 ]
 
+function ExploreSkeleton({ tab }: { tab: string }) {
+    const pulseClass = "animate-pulse bg-slate-200 dark:bg-slate-800/80"
+    
+    if (tab === 'guruhlar' || tab === 'kanallar') {
+        return (
+            <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                            <div className={`w-12 h-12 rounded-xl shrink-0 ${pulseClass}`} />
+                            <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className={`h-4 w-32 rounded-md ${pulseClass}`} />
+                                    <div className={`h-3 w-12 rounded-md ${pulseClass}`} />
+                                </div>
+                                <div className={`h-3 w-20 rounded-md ${pulseClass}`} />
+                                <div className={`h-3 w-full max-w-[240px] rounded-md ${pulseClass}`} />
+                            </div>
+                        </div>
+                        <div className={`w-20 h-8 rounded-xl shrink-0 ${pulseClass}`} />
+                    </div>
+                ))}
+            </div>
+        )
+    }
+
+    if (tab === 'ijodkorlar' || tab === 'hamjamiyat') {
+        return (
+            <div className="space-y-2.5">
+                {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                        <div className="flex items-center gap-3 flex-1">
+                            <div className={`w-12 h-12 rounded-xl shrink-0 ${pulseClass}`} />
+                            <div className="flex-1 space-y-2">
+                                <div className={`h-4 w-28 rounded-md ${pulseClass}`} />
+                                <div className={`h-3 w-16 rounded-md ${pulseClass}`} />
+                                <div className={`h-3.5 w-40 rounded-md ${pulseClass}`} />
+                            </div>
+                        </div>
+                        <div className="flex gap-2 self-end sm:self-center shrink-0">
+                            <div className={`w-24 h-8 rounded-xl ${pulseClass}`} />
+                            <div className={`w-24 h-8 rounded-xl ${pulseClass}`} />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )
+    }
+
+    // Trendlar (Grid)
+    return (
+        <div className="grid grid-cols-3 gap-2 auto-rows-[120px]">
+            {[
+                'col-span-2 row-span-2',
+                'col-span-1 row-span-1',
+                'col-span-1 row-span-1',
+                'col-span-1 row-span-2',
+                'col-span-2 row-span-1',
+                'col-span-1 row-span-1',
+            ].map((pattern, index) => (
+                <div
+                    key={index}
+                    className={`rounded-2xl border border-slate-200/10 dark:border-white/5 ${pattern} ${pulseClass}`}
+                />
+            ))}
+        </div>
+    )
+}
+
 function ExploreContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -369,12 +438,9 @@ function ExploreContent() {
                 })}
             </div>
 
-            {/* Loading Spinner */}
+            {/* Skeleton Loading */}
             {loading && (
-                <div className="flex flex-col items-center justify-center py-16 gap-3">
-                    <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">Natijalar yuklanmoqda...</span>
-                </div>
+                <ExploreSkeleton tab={activeTab} />
             )}
 
             {/* Groups & Channels Rendering */}

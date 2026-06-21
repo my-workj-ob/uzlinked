@@ -908,9 +908,61 @@ export default function ReelsPage() {
 
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] gap-3">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                <p className="text-xs font-semibold text-slate-400">Reellar yuklanmoqda...</p>
+            <div className="relative w-full h-svh bg-slate-950 md:max-w-[450px] md:mx-auto md:border-x md:border-white/10 overflow-hidden animate-pulse select-none">
+                {/* Simulated Video Placeholder */}
+                <div className="absolute inset-0 bg-slate-900/40" />
+                
+                {/* Simulated Right Action Buttons */}
+                <div className="absolute right-4 bottom-24 md:bottom-28 z-20 flex flex-col items-center gap-5">
+                    {/* Like button skeleton */}
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="w-8 h-8 bg-slate-800 rounded-full" />
+                        <div className="w-6 h-2 bg-slate-800 rounded-md" />
+                    </div>
+                    {/* Comment button skeleton */}
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="w-8 h-8 bg-slate-800 rounded-full" />
+                        <div className="w-5 h-2 bg-slate-800 rounded-md" />
+                    </div>
+                    {/* Bookmark button skeleton */}
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="w-8 h-8 bg-slate-800 rounded-full" />
+                        <div className="w-7 h-2 bg-slate-800 rounded-md" />
+                    </div>
+                    {/* Share button skeleton */}
+                    <div className="flex flex-col items-center gap-1">
+                        <div className="w-8 h-8 bg-slate-800 rounded-full" />
+                        <div className="w-6 h-2 bg-slate-800 rounded-md" />
+                    </div>
+                    {/* Mute button skeleton */}
+                    <div className="w-9 h-9 bg-slate-800 rounded-full" />
+                </div>
+
+                {/* Simulated Bottom Info */}
+                <div className="absolute bottom-20 md:bottom-8 left-4 right-16 z-20 space-y-3">
+                    <div className="flex items-center gap-3">
+                        {/* Avatar skeleton */}
+                        <div className="w-10 h-10 rounded-full bg-slate-800 ring-2 ring-white/10" />
+                        <div className="space-y-1.5 flex-1">
+                            {/* Author name skeleton */}
+                            <div className="w-24 h-3 bg-slate-800 rounded-md" />
+                            {/* Username skeleton */}
+                            <div className="w-16 h-2 bg-slate-800 rounded-md" />
+                        </div>
+                    </div>
+                    {/* Description skeleton lines */}
+                    <div className="w-3/4 h-3 bg-slate-800 rounded-md" />
+                    <div className="w-1/2 h-3 bg-slate-800 rounded-md" />
+                </div>
+
+                {/* Progress bar skeleton */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-slate-800/40" />
+
+                {/* Tab switcher skeleton */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center bg-slate-900/60 rounded-full p-0.5 border border-white/5 gap-1.5">
+                    <div className="w-16 h-6 bg-slate-800 rounded-full" />
+                    <div className="w-16 h-6 bg-slate-850 rounded-full" />
+                </div>
             </div>
         )
     }
