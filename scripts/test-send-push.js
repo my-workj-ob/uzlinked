@@ -1,8 +1,7 @@
-import { sendPushNotification } from '../utils/push.js'
 import fs from 'fs'
 import path from 'path'
 
-// Read env variables manually
+// Read env variables manually BEFORE importing push utility
 const envPath = path.resolve(process.cwd(), '.env')
 if (fs.existsSync(envPath)) {
   const envFile = fs.readFileSync(envPath, 'utf8')
@@ -19,6 +18,9 @@ if (fs.existsSync(envPath)) {
 }
 
 async function testSend() {
+  // Now dynamically import the push utility so it reads the env variables
+  const { sendPushNotification } = await import('../utils/push.js')
+
   console.log('Sending test push to user c26efb31-eadc-4398-b678-6b9672028e19...')
   try {
     const result = await sendPushNotification(
@@ -37,3 +39,5 @@ async function testSend() {
 }
 
 testSend()
+
+
