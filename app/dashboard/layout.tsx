@@ -553,7 +553,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                     <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
                   )}
                   {badgeCount > 0 && !isActive && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 flex items-center justify-center bg-blue-650 text-white text-[8px] font-black rounded-full ring-1 ring-white dark:ring-slate-900 animate-scale-in">
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 flex items-center justify-center bg-blue-600 text-white text-[8px] font-black rounded-full ring-1 ring-white dark:ring-slate-900 animate-scale-in">
                       {badgeCount}
                     </span>
                   )}
