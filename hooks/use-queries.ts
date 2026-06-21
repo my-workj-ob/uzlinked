@@ -202,6 +202,7 @@ export interface SettingsProfile {
   chat_read_receipts_enabled?: boolean
   chat_who_can_message?: 'everyone' | 'following' | 'nobody'
   chat_notifications_enabled?: boolean
+  notification_settings?: any
 }
 
 export interface SettingsData {
@@ -220,6 +221,7 @@ export interface UpdateSettingsInput {
   chat_read_receipts_enabled?: boolean
   chat_who_can_message?: 'everyone' | 'following' | 'nobody'
   chat_notifications_enabled?: boolean
+  notification_settings?: any
 }
 
 // Fetch user settings and security logs

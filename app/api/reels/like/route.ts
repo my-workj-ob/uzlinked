@@ -86,6 +86,25 @@ export async function POST(request: Request) {
                         type: 'like',
                         reel_id: reelId
                     })
+
+                    // Push yuborish
+                    const { data: likerProfile } = await supabase
+                        .from('profiles')
+                        .select('nickname')
+                        .eq('id', session.user.id)
+                        .single()
+                    const likerName = likerProfile?.nickname || 'Foydalanuvchi'
+
+                    const { sendPushNotification } = await import('@/utils/push')
+                    await sendPushNotification(
+                        reel.user_id,
+                        {
+                            title: 'Yangi layk! ❤️',
+                            body: `${likerName} sizning videongizga layk bosdi.`,
+                            url: `/dashboard/notifications`,
+                        },
+                        'like'
+                    )
                 }
             } catch (err) {
                 console.error("Like notification yuborishda xatolik:", err)

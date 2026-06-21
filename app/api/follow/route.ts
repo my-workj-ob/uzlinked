@@ -68,6 +68,25 @@ export async function POST(request: Request) {
                     actor_id: user.id,
                     type: 'follow'
                 })
+
+                // Push yuborish
+                const { data: followerProfile } = await supabase
+                    .from('profiles')
+                    .select('nickname')
+                    .eq('id', user.id)
+                    .single()
+                const followerName = followerProfile?.nickname || 'Foydalanuvchi'
+
+                const { sendPushNotification } = await import('@/utils/push')
+                await sendPushNotification(
+                    targetUserId,
+                    {
+                        title: "Yangi obunachi! 👤",
+                        body: `${followerName} sizni kuzatishni boshladi.`,
+                        url: `/dashboard/profile/${user.id}`,
+                    },
+                    'follow'
+                )
             } catch (err) {
                 console.error("Notification yuborishda xatolik:", err)
             }

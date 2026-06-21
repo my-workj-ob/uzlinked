@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { HiArrowLeft, HiCheck } from 'react-icons/hi2'
+import { ArrowLeft, Check, Heart, MessageCircle, UserPlus, AtSign, Share2, Bookmark } from 'lucide-react'
 
 interface NotificationActor {
   id: string
@@ -160,6 +160,50 @@ const MOCK_NOTIFICATIONS: NotificationType[] = [
   }
 ]
 
+const getNotificationBadge = (type: string) => {
+  switch (type) {
+    case 'like':
+      return (
+        <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-rose-500 flex items-center justify-center text-white border border-white dark:border-slate-900 shadow-sm animate-scale-in">
+          <Heart className="w-2 h-2 fill-current" />
+        </div>
+      )
+    case 'comment':
+    case 'reply':
+      return (
+        <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-blue-500 flex items-center justify-center text-white border border-white dark:border-slate-900 shadow-sm animate-scale-in">
+          <MessageCircle className="w-2 h-2 fill-current" />
+        </div>
+      )
+    case 'follow':
+      return (
+        <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-emerald-500 flex items-center justify-center text-white border border-white dark:border-slate-900 shadow-sm animate-scale-in">
+          <UserPlus className="w-2 h-2" />
+        </div>
+      )
+    case 'mention':
+      return (
+        <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-purple-500 flex items-center justify-center text-white border border-white dark:border-slate-900 shadow-sm animate-scale-in">
+          <AtSign className="w-2 h-2" />
+        </div>
+      )
+    case 'share':
+      return (
+        <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-indigo-500 flex items-center justify-center text-white border border-white dark:border-slate-900 shadow-sm animate-scale-in">
+          <Share2 className="w-2 h-2" />
+        </div>
+      )
+    case 'save':
+      return (
+        <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full bg-amber-500 flex items-center justify-center text-white border border-white dark:border-slate-900 shadow-sm animate-scale-in">
+          <Bookmark className="w-2 h-2 fill-current" />
+        </div>
+      )
+    default:
+      return null
+  }
+}
+
 export default function NotificationsPage() {
   const router = useRouter()
   const [notifications, setNotifications] = useState<NotificationType[]>([])
@@ -265,20 +309,24 @@ export default function NotificationsPage() {
     }
   }
 
-  // Get action texts matching screenshot
   const getNotificationText = (type: string) => {
     switch (type) {
       case 'follow':
-        return 'Set a Request.'
+        return "sizga obuna bo'lish so'rovini yubordi."
       case 'like':
-        return 'Like your post.'
+        return 'postingizga layk bosdi.'
       case 'comment':
+        return 'postingizga izoh qoldirdi.'
       case 'mention':
-        return 'Mentioned you in a post.'
+        return 'postda sizni belgilab ketdi.'
       case 'reply':
-        return 'Replied to your comment.'
+        return 'izohingizga javob qaytardi.'
+      case 'share':
+        return 'postingizni ulashdi.'
+      case 'save':
+        return 'postingizni saqladi.'
       default:
-        return 'Sent a request.'
+        return 'sizga bildirishnoma yubordi.'
     }
   }
 
@@ -350,17 +398,17 @@ export default function NotificationsPage() {
           onClick={() => router.back()}
           className="w-10 h-10 rounded-full flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-850 active:scale-90 transition-all text-slate-700 dark:text-slate-350 cursor-pointer"
         >
-          <HiArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" />
         </button>
 
-        <h1 className="text-base font-black text-slate-900 dark:text-slate-100">
-          Notification
+        <h1 className="text-base font-extrabold text-slate-900 dark:text-slate-100">
+          Bildirishnomalar
         </h1>
 
         <div className="flex items-center gap-2">
           {requestsCount > 0 ? (
             <span className="text-xs font-black text-blue-600 dark:text-blue-400 select-none animate-fade-in">
-              {requestsCount} Requests
+              {requestsCount} ta So'rovlar
             </span>
           ) : (
             <div className="w-10" /> // Spacer for layout centering balance
@@ -373,10 +421,10 @@ export default function NotificationsPage() {
         <div className="flex justify-end -mt-2">
           <button
             onClick={handleMarkAllRead}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-full border border-transparent dark:border-white/5 active:scale-95 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-xl border border-transparent dark:border-white/5 active:scale-95 transition-all cursor-pointer"
           >
-            <HiCheck className="w-3.5 h-3.5" />
-            <span>Mark all read</span>
+            <Check className="w-3.5 h-3.5" />
+            <span>Hammasini o'qilgan deb belgilash</span>
           </button>
         </div>
       )}
@@ -390,7 +438,7 @@ export default function NotificationsPage() {
         ) : notifications.length === 0 ? (
           <div className="py-16 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl flex flex-col items-center justify-center text-center p-6 transition-colors">
             <p className="text-xs font-bold text-slate-400 dark:text-slate-500">
-              No notifications yet
+              Bildirishnomalar mavjud emas
             </p>
           </div>
         ) : (
@@ -398,7 +446,7 @@ export default function NotificationsPage() {
             <div key={groupKey} className="space-y-4">
               {/* Date Header */}
               <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1">
-                {groupKey}
+                {groupKey === 'Today' ? 'Bugun' : groupKey === 'Yesterday' ? 'Kecha' : groupKey}
               </h3>
               
               <div className="space-y-3.5">
@@ -409,18 +457,21 @@ export default function NotificationsPage() {
                   return (
                     <div
                       key={notif.id}
-                      className={`flex items-center justify-between p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl transition-all ${
-                        !notif.isRead ? 'ring-1 ring-blue-500/15 dark:ring-blue-400/10' : ''
+                      className={`flex items-center justify-between p-3.5 bg-white dark:bg-slate-900/40 backdrop-blur-md border border-slate-100 dark:border-white/5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-all ${
+                        !notif.isRead ? 'border-l-4 border-l-blue-600 dark:border-l-blue-500 bg-blue-50/5 dark:bg-blue-950/[0.02] shadow-sm shadow-blue-500/5' : ''
                       } ${isDeclined ? 'opacity-40 scale-95 transition-all duration-300' : ''}`}
                     >
                       {/* Left: User Avatar & text details */}
                       <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                        <img
-                          src={notif.actor.avatar}
-                          alt={notif.actor.nickname}
-                          onClick={() => router.push(`/dashboard/profile/${notif.actor.id}`)}
-                          className="w-11 h-11 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-800 cursor-pointer hover:scale-105 active:scale-95 transition-all"
-                        />
+                        <div className="relative shrink-0">
+                          <img
+                            src={notif.actor.avatar}
+                            alt={notif.actor.nickname}
+                            onClick={() => router.push(`/dashboard/profile/${notif.actor.id}`)}
+                            className="w-11 h-11 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-800 cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                          />
+                          {getNotificationBadge(notif.type)}
+                        </div>
                         
                         <div className="text-left min-w-0 flex-1">
                           <p className="text-xs text-slate-700 dark:text-slate-350 leading-snug">

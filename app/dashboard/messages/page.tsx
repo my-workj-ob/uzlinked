@@ -301,7 +301,7 @@ function MessagesPageContent() {
             if (uploadRes && uploadRes[0]) {
               const uploadedFile = uploadRes[0]
 
-              await supabase.from('messages').insert([{
+              const { data: audioData, error: audioErr } = await supabase.from('messages').insert([{
                 chat_id: selectedChatId,
                 sender_id: currentUserId,
                 text: null,
@@ -309,7 +309,21 @@ function MessagesPageContent() {
                 file_type: 'audio',
                 transcription: finalTranscript || null,
                 reply_to_id: replyingMessage?.id || null
-              }])
+              }]).select().single()
+
+              if (!audioErr && audioData && activeUser) {
+                fetch('/api/push/send', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    recipientId: activeUser.id,
+                    title: 'Yangi xabar',
+                    body: '🎙️ Ovozli xabar yubordi',
+                    url: `/dashboard/messages?chat=${selectedChatId}`,
+                    type: 'dm'
+                  })
+                }).catch(err => console.error('Push error:', err))
+              }
               setReplyingMessage(null)
             }
           } catch (err) {
@@ -418,14 +432,28 @@ function MessagesPageContent() {
 
         if (isAudio) return
 
-        await supabase.from('messages').insert([{
+        const { data: fileData, error: fileErr } = await supabase.from('messages').insert([{
           chat_id: selectedChatId,
           sender_id: currentUserId,
           text: null,
           file_url: uploadedFile.url,
           file_type: isVideo ? 'video' : 'image',
           reply_to_id: replyingMessage?.id || null
-        }])
+        }]).select().single()
+
+        if (!fileErr && fileData && activeUser) {
+          fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipientId: activeUser.id,
+              title: 'Yangi xabar',
+              body: isVideo ? '🎥 Video xabar yubordi' : '📷 Rasm yubordi',
+              url: `/dashboard/messages?chat=${selectedChatId}`,
+              type: 'dm'
+            })
+          }).catch(err => console.error('Push error:', err))
+        }
         setReplyingMessage(null)
       }
     },
@@ -929,6 +957,20 @@ function MessagesPageContent() {
     if (data) {
       freshMessageIds.current.add(data.id)
       setMessages(prev => prev.map(m => (m.id === tempId ? data : m)))
+
+      if (activeUser) {
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipientId: activeUser.id,
+            title: 'Yangi xabar',
+            body: text,
+            url: `/dashboard/messages?chat=${selectedChatId}`,
+            type: 'dm'
+          })
+        }).catch(err => console.error('Push error:', err))
+      }
     }
   }
 

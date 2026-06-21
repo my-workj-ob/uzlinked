@@ -54,7 +54,8 @@ export async function PUT(request: Request) {
       password,
       chat_read_receipts_enabled,
       chat_who_can_message,
-      chat_notifications_enabled
+      chat_notifications_enabled,
+      notification_settings
     } = body
 
     // 1. Agar parol jo'natilgan bo'lsa, parolni yangilash
@@ -91,6 +92,7 @@ export async function PUT(request: Request) {
     if (chat_read_receipts_enabled !== undefined) updateData.chat_read_receipts_enabled = chat_read_receipts_enabled
     if (chat_who_can_message !== undefined) updateData.chat_who_can_message = chat_who_can_message
     if (chat_notifications_enabled !== undefined) updateData.chat_notifications_enabled = chat_notifications_enabled
+    if (notification_settings !== undefined) updateData.notification_settings = notification_settings
 
     const { error: updateError } = await supabase
       .from('profiles')

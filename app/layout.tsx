@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/components/query-provider";
+import PWARegister from "@/components/pwa-register";
 
 // 1. Asosiy shrift (Inter - Lotin va Kirill uchun)
 const inter = Inter({
@@ -94,6 +95,11 @@ export const metadata: Metadata = {
     shortcut: "/favicon-16x16.png",
     apple: "/apple-touch-icon.png",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "snapline",
+  },
 };
 
 export default function RootLayout({
@@ -126,7 +132,10 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} min-h-full flex flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 font-sans selection:bg-blue-600 selection:text-white`}>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <PWARegister />
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

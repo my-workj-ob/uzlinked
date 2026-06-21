@@ -35,7 +35,7 @@ import {
 import { useUploadThing } from "@/utils/uploadthing/uploadthing";
 import { createClient } from "@/utils/supabase/client";
 
-type SettingsTab = "profile" | "security" | "logs" | "danger" | "chat" | "groups";
+type SettingsTab = "profile" | "security" | "logs" | "danger" | "chat" | "groups" | "notifications";
 
 const NAV_ITEMS: {
   id: SettingsTab;
@@ -46,6 +46,7 @@ const NAV_ITEMS: {
     { id: "profile", label: "Profil sozlamalari", icon: User },
     { id: "security", label: "Xavfsizlik va maxfiylik", icon: ShieldCheck },
     { id: "logs", label: "Faollik tarixi", icon: History },
+    { id: "notifications", label: "Bildirishnomalar", icon: Bell },
     { id: "chat", label: "Xabarlar sozlamalari", icon: MessageCircle },
     { id: "groups", label: "Guruh va kanallar", icon: Users },
     { id: "danger", label: "Xavfli hudud", icon: AlertTriangle, danger: true },
@@ -169,6 +170,16 @@ export default function SettingsPage() {
   const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [loadingBlocks, setLoadingBlocks] = useState(false);
 
+  const [notificationSettings, setNotificationSettings] = useState<any>({
+    interactions: { likes: true, comments: true, shares: true, mentions: true },
+    social: { followers: true, requests: true, friend_activity: true },
+    chat: { direct_messages: true, group_mentions: true },
+    content: { stories: true, live: true },
+    monetization: { tips: true, marketplace: true },
+    retention: { daily_goals: true, reminders: true },
+    system: { security_alerts: true, billing: true },
+  });
+
   const supabase = createClient();
 
   const [newPassword, setNewPassword] = useState("");
@@ -196,6 +207,19 @@ export default function SettingsPage() {
       setChatReadReceiptsEnabled(settingsData.profile.chat_read_receipts_enabled ?? true);
       setChatWhoCanMessage(settingsData.profile.chat_who_can_message || "everyone");
       setChatNotificationsEnabled(settingsData.profile.chat_notifications_enabled ?? true);
+
+      if (settingsData.profile.notification_settings) {
+        const ns = settingsData.profile.notification_settings;
+        setNotificationSettings((prev: any) => ({
+          interactions: { ...prev.interactions, ...ns.interactions },
+          social: { ...prev.social, ...ns.social },
+          chat: { ...prev.chat, ...ns.chat },
+          content: { ...prev.content, ...ns.content },
+          monetization: { ...prev.monetization, ...ns.monetization },
+          retention: { ...prev.retention, ...ns.retention },
+          system: { ...prev.system, ...ns.system },
+        }));
+      }
     }
   }, [settingsData]);
 
@@ -244,6 +268,28 @@ export default function SettingsPage() {
     } catch (err: any) {
       toast.error(err.message || "Saqlashda xatolik yuz berdi");
     }
+  };
+
+  const handleSaveNotificationSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateSettingsMutation.mutateAsync({
+        notification_settings: notificationSettings,
+      });
+      toast.success("Bildirishnoma sozlamalari muvaffaqiyatli saqlandi");
+    } catch (err: any) {
+      toast.error(err.message || "Saqlashda xatolik yuz berdi");
+    }
+  };
+
+  const handleToggleNotification = (category: string, key: string, val: boolean) => {
+    setNotificationSettings((prev: any) => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [key]: val,
+      },
+    }));
   };
 
   useEffect(() => {
@@ -852,6 +898,153 @@ export default function SettingsPage() {
                 </ol>
               </div>
             </div>
+          )}
+
+          {/* 3.1 PWA & Push Notifications Settings Tab */}
+          {activeTab === "notifications" && (
+            <Card icon={Bell} title="Bildirishnomalar sozlamalari" subtitle="Push-bildirishnomalarni qabul qilish va boshqarish">
+              <form onSubmit={handleSaveNotificationSettings} className="space-y-6">
+                
+                {/* 1. O'zaro aloqa (Interactions) */}
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <h3 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">O'zaro aloqalar</h3>
+                  <SettingRow
+                    title="Layklar va reaksiyalar"
+                    description="Postlaringiz, rasmlaringiz yoki Reels videolaringizga kimdir layk bossa."
+                    control={<Toggle checked={notificationSettings.interactions.likes} onChange={(v) => handleToggleNotification('interactions', 'likes', v)} />}
+                  />
+                  <SettingRow
+                    title="Izohlar"
+                    description="Kontentingizga yangi izoh yozilsa yoki izohingizga javob berilsa."
+                    control={<Toggle checked={notificationSettings.interactions.comments} onChange={(v) => handleToggleNotification('interactions', 'comments', v)} />}
+                  />
+                  <SettingRow
+                    title="Ulashishlar"
+                    description="Kontentingiz boshqalar tomonidan ulashilsa yoki repost qilinsa."
+                    control={<Toggle checked={notificationSettings.interactions.shares} onChange={(v) => handleToggleNotification('interactions', 'shares', v)} />}
+                  />
+                  <SettingRow
+                    title="Belgilashlar va teglar"
+                    description="Matnlar yoki izohlarda sizning foydalanuvchi nomingiz (@username) belgilansa."
+                    control={<Toggle checked={notificationSettings.interactions.mentions} onChange={(v) => handleToggleNotification('interactions', 'mentions', v)} />}
+                    border={false}
+                  />
+                </div>
+
+                {/* 2. Obunachilar va faollik (Social) */}
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <h3 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-2">Obunachilar va Tarmoq</h3>
+                  <SettingRow
+                    title="Yangi obunachilar"
+                    description="Profilingizga yangi foydalanuvchi obuna bo'lganda."
+                    control={<Toggle checked={notificationSettings.social.followers} onChange={(v) => handleToggleNotification('social', 'followers', v)} />}
+                  />
+                  <SettingRow
+                    title="Obuna so'rovlari"
+                    description="Maxfiy profilingizga obuna bo'lish so'rovlari kelganda."
+                    control={<Toggle checked={notificationSettings.social.requests} onChange={(v) => handleToggleNotification('social', 'requests', v)} />}
+                  />
+                  <SettingRow
+                    title="Do'stlar faolligi"
+                    description="Yaqin do'stlaringiz uzoq vaqtdan keyin yangi post yoki story qo'shganda."
+                    control={<Toggle checked={notificationSettings.social.friend_activity} onChange={(v) => handleToggleNotification('social', 'friend_activity', v)} />}
+                    border={false}
+                  />
+                </div>
+
+                {/* 3. Xabarlar (Chat) */}
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <h3 className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-2">Shaxsiy xabarlar</h3>
+                  <SettingRow
+                    title="Yangi xabarlar (DMs)"
+                    description="Shaxsiy chatda biron foydalanuvchidan yangi xabar kelganda."
+                    control={<Toggle checked={notificationSettings.chat.direct_messages} onChange={(v) => handleToggleNotification('chat', 'direct_messages', v)} />}
+                  />
+                  <SettingRow
+                    title="Guruh chatlarida belgilashlar"
+                    description="Guruhda kimdir sizga murojaat qilganda yoki @all buyrug'i berilganda."
+                    control={<Toggle checked={notificationSettings.chat.group_mentions} onChange={(v) => handleToggleNotification('chat', 'group_mentions', v)} />}
+                    border={false}
+                  />
+                </div>
+
+                {/* 4. Kontent va Efirlar */}
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <h3 className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Kontent va translyatsiyalar</h3>
+                  <SettingRow
+                    title="Hikoyalar (Stories)"
+                    description="Sevimli yoki yaqin ijodkorlaringiz yangi story qo'shganda."
+                    control={<Toggle checked={notificationSettings.content.stories} onChange={(v) => handleToggleNotification('content', 'stories', v)} />}
+                  />
+                  <SettingRow
+                    title="Jonli efirlar"
+                    description="Kuzatayotgan sahifangiz jonli efir (Live) boshlagan lahzada."
+                    control={<Toggle checked={notificationSettings.content.live} onChange={(v) => handleToggleNotification('content', 'live', v)} />}
+                    border={false}
+                  />
+                </div>
+
+                {/* 5. Monetizatsiya va Savdo */}
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">Monetizatsiya va Savdo</h3>
+                  <SettingRow
+                    title="Moddiy rag'batlar (Tips)"
+                    description="Sizga pul yoki platformaning ichki tangalari (coins) hadya qilinganda."
+                    control={<Toggle checked={notificationSettings.monetization.tips} onChange={(v) => handleToggleNotification('monetization', 'tips', v)} />}
+                  />
+                  <SettingRow
+                    title="E'lonlar paneli (Marketplace)"
+                    description="Sotuvga qo'ygan mahsulot yoki xizmatlaringiz yuzasidan xaridor bog'lansa."
+                    control={<Toggle checked={notificationSettings.monetization.marketplace} onChange={(v) => handleToggleNotification('monetization', 'marketplace', v)} />}
+                    border={false}
+                  />
+                </div>
+
+                {/* 6. Faollik va Gamifikatsiya */}
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <h3 className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2">Kunlik faollik</h3>
+                  <SettingRow
+                    title="Kunlik maqsadlar"
+                    description="Kunlik norma yoki maqsadlaringiz bajarilganda va mukofotlarni yig'ish vaqti kelganda."
+                    control={<Toggle checked={notificationSettings.retention.daily_goals} onChange={(v) => handleToggleNotification('retention', 'daily_goals', v)} />}
+                  />
+                  <SettingRow
+                    title="Faollik eslatmalari"
+                    description="Bir necha kun faol bo'lmaganingizda do'stlaringiz sizni sog'ingani haqida eslatmalar."
+                    control={<Toggle checked={notificationSettings.retention.reminders} onChange={(v) => handleToggleNotification('retention', 'reminders', v)} />}
+                    border={false}
+                  />
+                </div>
+
+                {/* 7. Xavfsizlik va Tizim */}
+                <div className="pb-4">
+                  <h3 className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-2">Tizim va Xavfsizlik</h3>
+                  <SettingRow
+                    title="Xavfsizlik ogohlantirishlari"
+                    description="Yangi qurilmadan kirilganda, parol o'zgartirilganda yoki xavfsizlik loglari yangilanganda."
+                    control={<Toggle checked={notificationSettings.system.security_alerts} onChange={(v) => handleToggleNotification('system', 'security_alerts', v)} />}
+                  />
+                  <SettingRow
+                    title="Hisob holati va tariflar"
+                    description="Tarif muddatlari, PRO obunalar yoki tizim qoidalari buzilishi bo'yicha bildirishnomalar."
+                    control={<Toggle checked={notificationSettings.system.billing} onChange={(v) => handleToggleNotification('system', 'billing', v)} />}
+                    border={false}
+                  />
+                </div>
+
+                {/* Save button */}
+                <div className="flex justify-end pt-5 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="submit"
+                    disabled={updateSettingsMutation.isPending}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-bold rounded-xl active:scale-95 transition-all disabled:opacity-60 cursor-pointer shadow-sm shadow-blue-600/20"
+                  >
+                    {updateSettingsMutation.isPending && <RotateCw className="h-4 w-4 animate-spin" strokeWidth={2.5} />}
+                    Sozlamalarni saqlash
+                  </button>
+                </div>
+              </form>
+            </Card>
           )}
 
           {/* 4. Danger Zone Tab */}

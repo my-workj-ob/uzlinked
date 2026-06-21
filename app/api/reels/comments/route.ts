@@ -155,6 +155,14 @@ export async function POST(request: Request) {
                 .eq('id', reelId)
                 .single()
 
+            const { data: commenterProfile } = await supabase
+                .from('profiles')
+                .select('nickname')
+                .eq('id', session.user.id)
+                .single()
+            const commenterName = commenterProfile?.nickname || 'Foydalanuvchi'
+            const { sendPushNotification } = await import('@/utils/push')
+
             if (reel && reel.user_id !== session.user.id) {
                 await supabase.from('notifications').insert({
                     user_id: reel.user_id,
@@ -163,6 +171,18 @@ export async function POST(request: Request) {
                     reel_id: reelId,
                     comment_id: newComment.id,
                 })
+
+                await sendPushNotification(
+                    reel.user_id,
+                    {
+                        title: parentId ? 'Izohingizga javob! 💬' : 'Yangi izoh! 💬',
+                        body: parentId 
+                            ? `${commenterName} sizning videongizdagi izohga javob qaytardi.`
+                            : `${commenterName} sizning videongizga izoh yozdi.`,
+                        url: `/dashboard/notifications`,
+                    },
+                    parentId ? 'reply' : 'comment'
+                )
             }
 
             // Agar bu reply bo'lsa — parent komment egasiga ham notification
@@ -181,10 +201,20 @@ export async function POST(request: Request) {
                         reel_id: reelId,
                         comment_id: newComment.id,
                     })
+
+                    await sendPushNotification(
+                        parentComment.user_id,
+                        {
+                            title: 'Izohingizga javob! 💬',
+                            body: `${commenterName} siz qoldirgan izohga javob qaytardi.`,
+                            url: `/dashboard/notifications`,
+                        },
+                        'reply'
+                    )
                 }
             }
-        } catch {
-            // Notification xatosi asosiy javobni bloklamamasligi kerak
+        } catch (err) {
+            console.error("Comment/Reply notification yuborishda xatolik:", err)
         }
 
         const profile = Array.isArray(newComment.profiles) ? newComment.profiles[0] : newComment.profiles
