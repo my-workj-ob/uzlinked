@@ -44,6 +44,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const [isMsgOpen, setIsMsgOpen] = useState(false)
   const [isDark, setIsDark] = useState(false)
   const [unreadNotifCount, setUnreadNotifCount] = useState(0)
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0)
 
   // Mavzuni boshlang'ich yuklash
   useEffect(() => {
@@ -124,25 +125,47 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     }
   }, [user?.id, supabase])
 
-  // Fetch real unread notifications count + unread DMs count from Supabase
+  // Fetch real unread notifications count from Supabase
   useEffect(() => {
     if (!user?.id) return
 
-    const fetchUnreadCounts = async () => {
+    const fetchUnreadNotifCount = async () => {
       try {
-        // 1. Fetch unread notifications
-        const { count: notifCount, error: notifErr } = await supabase
+        const { count, error } = await supabase
           .from('notifications')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .eq('is_read', false)
 
-        let totalUnread = 0
-        if (!notifErr && notifCount !== null) {
-          totalUnread += notifCount
+        if (!error && count !== null) {
+          setUnreadNotifCount(count)
         }
+      } catch (err) {
+        console.warn('Error fetching unread notifications count:', err)
+      }
+    }
 
-        // 2. Fetch unread chat messages
+    fetchUnreadNotifCount()
+
+    const notifChannel = supabase
+      .channel(`notifications-count:${user.id}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => fetchUnreadNotifCount()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(notifChannel)
+    }
+  }, [user?.id, supabase])
+
+  // Fetch unread direct messages count from Supabase
+  useEffect(() => {
+    if (!user?.id) return
+
+    const fetchUnreadMsgCount = async () => {
+      try {
         const { data: myChats, error: chatsErr } = await supabase
           .from('chats')
           .select('id')
@@ -150,41 +173,36 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
         if (!chatsErr && myChats && myChats.length > 0) {
           const myChatIds = myChats.map((c: any) => c.id)
-          const { count: msgCount, error: msgErr } = await supabase
+          const { count, error: msgErr } = await supabase
             .from('messages')
             .select('*', { count: 'exact', head: true })
             .in('chat_id', myChatIds)
             .neq('sender_id', user.id)
             .eq('is_read', false)
 
-          if (!msgErr && msgCount !== null) {
-            totalUnread += msgCount
+          if (!msgErr && count !== null) {
+            setUnreadMsgCount(count)
           }
+        } else {
+          setUnreadMsgCount(0)
         }
-
-        setUnreadNotifCount(totalUnread)
       } catch (err) {
-        console.warn('Error fetching unread counts:', err)
+        console.warn('Error fetching unread messages count:', err)
       }
     }
 
-    fetchUnreadCounts()
+    fetchUnreadMsgCount()
 
-    // Subscribe to both notifications and messages changes for realtime updates
-    const notifChannel = supabase
-      .channel(`global-unread-count:${user.id}`)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => fetchUnreadCounts()
-      )
+    const msgChannel = supabase
+      .channel(`messages-count:${user.id}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'messages' },
-        () => fetchUnreadCounts()
+        () => fetchUnreadMsgCount()
       )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(notifChannel)
+      supabase.removeChannel(msgChannel)
     }
   }, [user?.id, supabase])
 
@@ -384,17 +402,33 @@ const DashboardLayout = ({ children }: LayoutProps) => {
               const isActive = pathname === item.path
               const Icon = isActive ? item.IconActive : item.IconOutline
 
+              let badgeCount = 0
+              if (item.id === 'messages') {
+                badgeCount = unreadMsgCount
+              } else if (item.id === 'notifications') {
+                badgeCount = unreadNotifCount
+              }
+
               return (
                 <Link
                   key={item.id}
                   href={item.path}
-                  className={`flex items-center gap-4 px-4 py-3.5 rounded-xl font-medium transition-all duration-200 active:scale-[0.98] text-left ${isActive
+                  className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-medium transition-all duration-200 active:scale-[0.98] text-left ${isActive
                     ? 'text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 font-bold'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                     }`}
                 >
-                  <Icon className={`w-6 h-6 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
-                  <span className="text-sm">{item.label}</span>
+                  <div className="flex items-center gap-4">
+                    <Icon className={`w-6 h-6 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
+                    <span className="text-sm">{item.label}</span>
+                  </div>
+                  {badgeCount > 0 && (
+                    <span className={`min-w-[18px] h-4.5 px-1.5 flex items-center justify-center text-[10px] font-black rounded-full text-white ${
+                      item.id === 'messages' ? 'bg-blue-600' : 'bg-rose-500'
+                    }`}>
+                      {badgeCount}
+                    </span>
+                  )}
                 </Link>
               )
             })}
@@ -492,6 +526,11 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             const isActive = pathname === item.path
             const Icon = isActive ? item.IconActive : item.IconOutline
 
+            let badgeCount = 0
+            if (item.id === 'messages') {
+              badgeCount = unreadMsgCount
+            }
+
             return (
               <Link
                 key={item.id}
@@ -501,23 +540,35 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                     : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
               >
-                {item.id === 'profile' && user && avatarUrl ? (
-                  <div className={`w-5 h-5 overflow-hidden rounded-full ring-1 ${
-                    isActive 
-                      ? 'ring-white' 
-                      : 'ring-slate-350 dark:ring-slate-700'
-                  } shrink-0`}>
-                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                  </div>
-                ) : (
-                  <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
-                )}
+                <div className="relative">
+                  {item.id === 'profile' && user && avatarUrl ? (
+                    <div className={`w-5 h-5 overflow-hidden rounded-full ring-1 ${
+                      isActive 
+                        ? 'ring-white' 
+                        : 'ring-slate-350 dark:ring-slate-700'
+                    } shrink-0`}>
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
+                  )}
+                  {badgeCount > 0 && !isActive && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 flex items-center justify-center bg-blue-650 text-white text-[8px] font-black rounded-full ring-1 ring-white dark:ring-slate-900 animate-scale-in">
+                      {badgeCount}
+                    </span>
+                  )}
+                </div>
 
                 <span className={`overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-semibold ${isActive
                     ? 'max-w-24 opacity-100 ml-2'
                     : 'max-w-0 opacity-0 ml-0'
                   }`}>
                   {item.label}
+                  {badgeCount > 0 && isActive && (
+                    <span className="ml-1 px-1.5 py-0.5 bg-white text-blue-600 text-[8px] font-black rounded-full">
+                      {badgeCount}
+                    </span>
+                  )}
                 </span>
               </Link>
             )
