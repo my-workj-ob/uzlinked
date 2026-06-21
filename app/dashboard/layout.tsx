@@ -26,6 +26,26 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const router = useRouter()
   const supabase = createClient()
 
+  const sidebarItems = [
+    { id: 'home', path: '/dashboard', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
+    { id: 'explore', path: '/dashboard/explore', label: 'Qidiruv', IconActive: HiMagnifyingGlass, IconOutline: HiOutlineMagnifyingGlass },
+    { id: 'reels', path: '/dashboard/reels', label: 'Reels', IconActive: HiVideoCamera, IconOutline: HiOutlineVideoCamera },
+    { id: 'messages', path: '/dashboard/messages', label: 'Xabarlar', IconActive: HiChatBubbleLeftRight, IconOutline: HiOutlineChatBubbleLeftRight },
+    { id: 'notifications', path: '/dashboard/notifications', label: 'Bildirishnomalar', IconActive: HiBell, IconOutline: HiOutlineBell },
+    { id: 'profile', path: '/dashboard/profile', label: 'Profil', IconActive: HiCog6Tooth, IconOutline: HiOutlineCog6Tooth },
+  ]
+
+  const bottomNavItems = [
+    { id: 'home', path: '/dashboard', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
+    { id: 'explore', path: '/dashboard/explore', label: 'Qidiruv', IconActive: HiMagnifyingGlass, IconOutline: HiOutlineMagnifyingGlass },
+    { id: 'reels', path: '/dashboard/reels', label: 'Reels', IconActive: HiVideoCamera, IconOutline: HiOutlineVideoCamera },
+    { id: 'messages', path: '/dashboard/messages', label: 'Xabarlar', IconActive: HiChatBubbleLeftRight, IconOutline: HiOutlineChatBubbleLeftRight },
+    { id: 'profile', path: '/dashboard/profile', label: 'Profil', IconActive: HiCog6Tooth, IconOutline: HiOutlineCog6Tooth },
+  ]
+
+  const isReelsPage = pathname === '/dashboard/reels'
+  const isMessagesPage = pathname.startsWith('/dashboard/messages') || pathname.startsWith('/dashboard/groups') || pathname.startsWith('/dashboard/channels')
+
   const getPageTitle = (path: string) => {
     if (path === '/dashboard') return 'Bosh sahifa'
     if (path.startsWith('/dashboard/explore')) return 'Kashf eting'
@@ -240,6 +260,61 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     }
   }, [])
 
+  // Swipe and slide transitions state
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left')
+  const [prevPathname, setPrevPathname] = useState(pathname)
+
+  // Automatically compute slide direction on pathname change
+  useEffect(() => {
+    if (pathname !== prevPathname) {
+      const oldIndex = bottomNavItems.findIndex(item => prevPathname === item.path)
+      const newIndex = bottomNavItems.findIndex(item => pathname === item.path)
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        if (newIndex > oldIndex) {
+          setSlideDirection('left')
+        } else if (newIndex < oldIndex) {
+          setSlideDirection('right')
+        }
+      }
+      setPrevPathname(pathname)
+    }
+  }, [pathname, prevPathname, bottomNavItems])
+
+  // Touch Swipe handlers for tab switching
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isMessagesPage || isReelsPage) return
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isMessagesPage || isReelsPage || touchStart === null) return
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (isMessagesPage || isReelsPage || touchStart === null || touchEnd === null) return
+    const distance = touchStart - touchEnd
+    const minSwipeDistance = 65 // minimum swipe distance in px
+
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe || isRightSwipe) {
+      const currentIndex = bottomNavItems.findIndex(item => pathname === item.path)
+      if (currentIndex !== -1) {
+        if (isLeftSwipe && currentIndex < bottomNavItems.length - 1) {
+          router.push(bottomNavItems[currentIndex + 1].path)
+        } else if (isRightSwipe && currentIndex > 0) {
+          router.push(bottomNavItems[currentIndex - 1].path)
+        }
+      }
+    }
+  }
+
   // Circular reveal animatsiyasi bilan dark mode toggle
   const toggleTheme = (e: React.MouseEvent) => {
     const nextDark = !isDark
@@ -306,22 +381,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     { id: 2, user: "Zilola Ergasheva", text: "Yuborgan faylingiz ochilmadi.", time: "Kecha", unread: false },
   ]
 
-  const sidebarItems = [
-    { id: 'home', path: '/dashboard', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
-    { id: 'explore', path: '/dashboard/explore', label: 'Qidiruv', IconActive: HiMagnifyingGlass, IconOutline: HiOutlineMagnifyingGlass },
-    { id: 'reels', path: '/dashboard/reels', label: 'Reels', IconActive: HiVideoCamera, IconOutline: HiOutlineVideoCamera },
-    { id: 'messages', path: '/dashboard/messages', label: 'Xabarlar', IconActive: HiChatBubbleLeftRight, IconOutline: HiOutlineChatBubbleLeftRight },
-    { id: 'notifications', path: '/dashboard/notifications', label: 'Bildirishnomalar', IconActive: HiBell, IconOutline: HiOutlineBell },
-    { id: 'profile', path: '/dashboard/profile', label: 'Profil', IconActive: HiCog6Tooth, IconOutline: HiOutlineCog6Tooth },
-  ]
 
-  const bottomNavItems = [
-    { id: 'home', path: '/dashboard', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
-    { id: 'explore', path: '/dashboard/explore', label: 'Qidiruv', IconActive: HiMagnifyingGlass, IconOutline: HiOutlineMagnifyingGlass },
-    { id: 'reels', path: '/dashboard/reels', label: 'Reels', IconActive: HiVideoCamera, IconOutline: HiOutlineVideoCamera },
-    { id: 'messages', path: '/dashboard/messages', label: 'Xabarlar', IconActive: HiChatBubbleLeftRight, IconOutline: HiOutlineChatBubbleLeftRight },
-    { id: 'profile', path: '/dashboard/profile', label: 'Profil', IconActive: HiCog6Tooth, IconOutline: HiOutlineCog6Tooth },
-  ]
 
   const handleCreateClick = () => {
     if (!user) {
@@ -331,8 +391,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     }
   }
 
-  const isReelsPage = pathname === '/dashboard/reels'
-  const isMessagesPage = pathname.startsWith('/dashboard/messages') || pathname.startsWith('/dashboard/groups') || pathname.startsWith('/dashboard/channels')
+
 
   return (
     <div 
@@ -402,7 +461,12 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       )}
 
       {/* DESKTOP SIDEBAR */}
-      <div className="flex w-full max-w-[1440px] mx-auto h-full relative">
+      <div 
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="flex w-full max-w-[1440px] mx-auto h-full relative"
+      >
         <aside className="sticky top-0 h-screen hidden w-64 p-6 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-white/5 md:flex flex-col z-30 flex-shrink-0 transition-colors duration-300">
           <Link href="/dashboard" className="mb-10 text-2xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent block">
             VibeGrid
@@ -523,7 +587,14 @@ const DashboardLayout = ({ children }: LayoutProps) => {
               ? 'w-full h-full max-w-none px-0'
               : 'w-full max-w-2xl px-4 md:px-6'
             }`}>
-            {children}
+            <div 
+              key={pathname} 
+              className={`w-full h-full ${
+                slideDirection === 'left' ? 'animate-slide-from-right' : 'animate-slide-from-left'
+              }`}
+            >
+              {children}
+            </div>
           </div>
         </main>
       </div>
@@ -617,6 +688,22 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             @keyframes androidSlideUp {
               from { transform: translateY(100%); }
               to { transform: translateY(0); }
+            }
+            @keyframes slideFromRight {
+              from { transform: translateX(100%); opacity: 0.95; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideFromLeft {
+              from { transform: translateX(-100%); opacity: 0.95; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+            .animate-slide-from-right {
+              animation: slideFromRight 0.32s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
+              will-change: transform, opacity;
+            }
+            .animate-slide-from-left {
+              animation: slideFromLeft 0.32s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
+              will-change: transform, opacity;
             }
           `}</style>
         </div>
