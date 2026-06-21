@@ -33,6 +33,52 @@ export async function GET(request: Request) {
         const { data: { session } } = await supabase.auth.getSession()
         const currentUserId = session?.user?.id
 
+        if (tab === 'guruhlar' || tab === 'kanallar') {
+            const targetType = tab === 'guruhlar' ? 'group' : 'channel'
+            let groupQuery = supabase
+                .from('groups_channels')
+                .select('id, name, username, avatar_url, description, type, creator_id, created_at')
+                .eq('is_public', true)
+                .eq('type', targetType)
+                .limit(30)
+
+            if (query) {
+                groupQuery = groupQuery.or(`name.ilike.%${query}%,username.ilike.%${query}%,description.ilike.%${query}%`)
+            }
+
+            const { data: groups, error } = await groupQuery
+            if (error) throw error
+
+            const enrichedGroups = await Promise.all(
+                (groups || []).map(async (group: any) => {
+                    const { count: memberCount } = await supabase
+                        .from('group_members')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('group_id', group.id)
+
+                    let isMember = false
+                    if (currentUserId) {
+                        const { data: memberData } = await supabase
+                            .from('group_members')
+                            .select('id')
+                            .eq('group_id', group.id)
+                            .eq('user_id', currentUserId)
+                            .maybeSingle()
+                        isMember = !!memberData
+                    }
+
+                    return {
+                        ...group,
+                        avatar: group.avatar_url || '/default-avatar.png',
+                        memberCount: memberCount || 0,
+                        isMember,
+                    }
+                })
+            )
+
+            return NextResponse.json({ type: 'groups_channels', data: enrichedGroups })
+        }
+
         if (tab === 'ijodkorlar' || tab === 'hamjamiyat' || query) {
             // Foydalanuvchilarni qidirish
             let profileQuery = supabase

@@ -11,7 +11,8 @@ import {
   HiPlus, HiBell, HiOutlineBell, HiOutlineEnvelope,
   HiVideoCamera, HiOutlineVideoCamera,
   HiSun, HiMoon,
-  HiUser, HiOutlineUser
+  HiUser, HiOutlineUser,
+  HiMagnifyingGlass, HiOutlineMagnifyingGlass
 } from 'react-icons/hi2'
 import { CreateWizard } from '@/components/create-wizard'
 import { createClient } from '@/utils/supabase/client'
@@ -307,7 +308,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
   const sidebarItems = [
     { id: 'home', path: '/dashboard', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
-    { id: 'explore', path: '/dashboard/explore', label: 'Kashf eting', IconActive: HiRss, IconOutline: HiOutlineRss },
+    { id: 'explore', path: '/dashboard/explore', label: 'Qidiruv', IconActive: HiMagnifyingGlass, IconOutline: HiOutlineMagnifyingGlass },
     { id: 'reels', path: '/dashboard/reels', label: 'Reels', IconActive: HiVideoCamera, IconOutline: HiOutlineVideoCamera },
     { id: 'messages', path: '/dashboard/messages', label: 'Xabarlar', IconActive: HiChatBubbleLeftRight, IconOutline: HiOutlineChatBubbleLeftRight },
     { id: 'notifications', path: '/dashboard/notifications', label: 'Bildirishnomalar', IconActive: HiBell, IconOutline: HiOutlineBell },
@@ -316,7 +317,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
   const bottomNavItems = [
     { id: 'home', path: '/dashboard', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
-    { id: 'explore', path: '/dashboard/explore', label: 'Kashf eting', IconActive: HiRss, IconOutline: HiOutlineRss },
+    { id: 'explore', path: '/dashboard/explore', label: 'Qidiruv', IconActive: HiMagnifyingGlass, IconOutline: HiOutlineMagnifyingGlass },
     { id: 'reels', path: '/dashboard/reels', label: 'Reels', IconActive: HiVideoCamera, IconOutline: HiOutlineVideoCamera },
     { id: 'messages', path: '/dashboard/messages', label: 'Xabarlar', IconActive: HiChatBubbleLeftRight, IconOutline: HiOutlineChatBubbleLeftRight },
     { id: 'profile', path: '/dashboard/profile', label: 'Profil', IconActive: HiCog6Tooth, IconOutline: HiOutlineCog6Tooth },
@@ -354,6 +355,16 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             >
               {isDark ? <HiSun className="w-5 h-5 text-amber-500" /> : <HiMoon className="w-5 h-5" />}
             </button>
+
+            {/* Qidiruv (Search) Button */}
+            {!pathname.startsWith('/dashboard/explore') && (
+              <button
+                onClick={() => router.push('/dashboard/explore?focus=true')}
+                className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 active:scale-90 transition-all cursor-pointer"
+              >
+                <HiOutlineMagnifyingGlass className="w-6 h-6" />
+              </button>
+            )}
 
             {user && (
               <>
