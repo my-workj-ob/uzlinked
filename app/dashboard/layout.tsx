@@ -43,6 +43,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [isMsgOpen, setIsMsgOpen] = useState(false)
   const [isDark, setIsDark] = useState(false)
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0)
 
   // Mavzuni boshlang'ich yuklash
   useEffect(() => {
@@ -120,6 +121,41 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
     return () => {
       presenceChannel.unsubscribe()
+    }
+  }, [user?.id, supabase])
+
+  // Fetch real unread notifications count from Supabase
+  useEffect(() => {
+    if (!user?.id) return
+
+    const fetchUnreadCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false)
+
+        if (!error && count !== null) {
+          setUnreadNotifCount(count)
+        }
+      } catch (err) {
+        console.warn('Error fetching unread notification count:', err)
+      }
+    }
+
+    fetchUnreadCount()
+
+    const notifChannel = supabase
+      .channel(`notifications-count:${user.id}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => fetchUnreadCount()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(notifChannel)
     }
   }, [user?.id, supabase])
 
@@ -281,9 +317,9 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                     className="p-2 rounded-full active:scale-90 transition-all duration-150 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer"
                   >
                     <HiOutlineBell className="w-6 h-6" />
-                    {notifications.filter(n => n.unread).length > 0 && (
+                    {unreadNotifCount > 0 && (
                       <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-rose-500 text-white text-[9px] font-bold rounded-full ring-2 ring-white dark:ring-slate-900">
-                        {notifications.filter(n => n.unread).length}
+                        {unreadNotifCount}
                       </span>
                     )}
                   </button>

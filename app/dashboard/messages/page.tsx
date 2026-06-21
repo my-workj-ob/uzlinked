@@ -502,7 +502,7 @@ function MessagesPageContent() {
       if (chatIds.length > 0) {
         const { data: msgData } = await supabase
           .from('messages')
-          .select('id, chat_id, text, file_type, created_at, sender_id, is_deleted')
+          .select('id, chat_id, text, file_type, created_at, sender_id, is_deleted, is_read')
           .in('chat_id', chatIds)
           .order('created_at', { ascending: false })
 
