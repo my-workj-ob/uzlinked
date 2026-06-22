@@ -104,7 +104,7 @@ export async function GET(request: Request) {
             // A. Profiles
             let profileQuery = supabase
                 .from('profiles')
-                .select('id, nickname, username, avatar_url, bio, is_professional_mode, headline, tags, open_for_collab, is_private')
+                .select('id, nickname, username, avatar_url, bio, is_professional_mode, headline, tags, open_for_collab, is_private, is_premium')
                 .not('is_private', 'eq', true)
                 .limit(20)
 
@@ -145,6 +145,7 @@ export async function GET(request: Request) {
                         posts: postsCount || 0,
                         isFollowing,
                         isMe: profile.id === currentUserId,
+                        isPremium: profile.is_premium || false,
                     }
                 })
             )
@@ -205,7 +206,7 @@ export async function GET(request: Request) {
                 .from('posts')
                 .select(`
                     id, image_url, content, created_at,
-                    profiles (nickname, avatar_url, is_private),
+                    profiles (nickname, avatar_url, is_private, is_premium),
                     likes (user_id),
                     comments (id)
                 `)
@@ -253,6 +254,7 @@ export async function GET(request: Request) {
                         likes: post.likes ? post.likes.length : 0,
                         comments_count: post.comments ? post.comments.length : 0,
                         created_at: post.created_at,
+                        authorIsPremium: profile?.is_premium || false,
                     }
                 })
 
@@ -371,7 +373,7 @@ export async function GET(request: Request) {
         if (tab === 'ijodkorlar' || tab === 'hamjamiyat' || query) {
             let profileQuery = supabase
                 .from('profiles')
-                .select('id, nickname, username, avatar_url, bio, is_professional_mode, headline, tags, open_for_collab, is_private')
+                .select('id, nickname, username, avatar_url, bio, is_professional_mode, headline, tags, open_for_collab, is_private, is_premium')
                 .not('is_private', 'eq', true)
                 .limit(20)
 
@@ -420,6 +422,7 @@ export async function GET(request: Request) {
                         posts: postsCount || 0,
                         isFollowing,
                         isMe: profile.id === currentUserId,
+                        isPremium: profile.is_premium || false,
                     }
                 })
             )
@@ -440,7 +443,7 @@ export async function GET(request: Request) {
             .from('posts')
             .select(`
                 id, image_url, content, created_at,
-                profiles (nickname, avatar_url, is_private),
+                profiles (nickname, avatar_url, is_private, is_premium),
                 likes (user_id),
                 comments (id)
             `)
@@ -479,6 +482,7 @@ export async function GET(request: Request) {
                     likes: post.likes ? post.likes.length : 0,
                     comments_count: post.comments ? post.comments.length : 0,
                     created_at: post.created_at,
+                    authorIsPremium: profile?.is_premium || false,
                 }
             })
 

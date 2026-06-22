@@ -6,12 +6,35 @@ import { Stories } from '@/components/stories'
 import { FeedSkeleton } from '@/components/skeleton-loader'
 import { usePosts, useUpdatePost, useDeletePost } from '@/hooks/use-queries'
 import { useStories } from '@/hooks/use-stories'
+import { useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/utils/supabase/client'
 
 export default function FeedList() {
     const { data: posts = [], isLoading: loading, error } = usePosts()
     const { otherStoryGroups = [], myProfile } = useStories()
     const updatePostMutation = useUpdatePost()
     const deletePostMutation = useDeletePost()
+    const queryClient = useQueryClient()
+    const supabase = createClient()
+
+    // Realtime subscriptions for posts feed (posts, likes, comments)
+    useEffect(() => {
+        const channel = supabase.channel('dashboard-feed-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
+                queryClient.invalidateQueries({ queryKey: ['posts'] })
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => {
+                queryClient.invalidateQueries({ queryKey: ['posts'] })
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => {
+                queryClient.invalidateQueries({ queryKey: ['posts'] })
+            })
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [supabase, queryClient])
 
     // Stories tray visibility state (initially hidden by default)
     const [showStories, setShowStories] = useState(false)

@@ -85,7 +85,7 @@ export async function GET(request: Request) {
             .from('posts')
             .select(`
                 *,
-                profiles (nickname, avatar_url),
+                profiles (nickname, avatar_url, is_premium),
                 likes (user_id)
             `)
 
@@ -113,7 +113,8 @@ export async function GET(request: Request) {
                 content: post.content,
                 likes: totalLikes,
                 likedByMe: isLikedByMe,
-                isOwner: post.user_id === currentUserId
+                isOwner: post.user_id === currentUserId,
+                authorIsPremium: profile?.is_premium || false
             }
         })
 

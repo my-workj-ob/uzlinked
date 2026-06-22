@@ -3,12 +3,14 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy, FiAlertTriangle, FiUser, FiCornerDownLeft } from 'react-icons/fi'
+import { FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy, FiAlertTriangle, FiUser, FiCornerDownLeft, FiMapPin, FiExternalLink, FiCheckCircle, FiDollarSign } from 'react-icons/fi'
+import { Loader2 } from 'lucide-react'
 import { useLikeToggle } from '@/hooks/use-queries'
 import { FaHeart } from 'react-icons/fa'
 import { HiEllipsisHorizontal, HiXMark } from 'react-icons/hi2'
 import { BottomSheet } from '@/components/bottom-sheet'
 import { motion, useScroll, useTransform } from 'framer-motion'
+import { createClient } from '@/utils/supabase/client'
 
 export interface CommentType {
   id: string | number
@@ -35,6 +37,7 @@ export interface PostType {
   isOwner: boolean
   likedByMe?: boolean // joriy user like bosganmi?
   commentsCount?: number // kommentlar soni
+  authorIsPremium?: boolean
 }
 
 interface PostCardProps {
@@ -72,6 +75,7 @@ function formatTime(timeStr: string) {
 
 export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = false }: PostCardProps) => {
   const router = useRouter()
+  const supabase = createClient()
 
   // Hydration uchun mounted state
   const [mounted, setMounted] = useState(false)
@@ -99,6 +103,56 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const likeMutation = useLikeToggle()
+
+  // Custom states for Tipping and Real-time detail modal
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [isOnline, setIsOnline] = useState(false)
+
+  const [showTipModal, setShowTipModal] = useState(false)
+  const [tipAmount, setTipAmount] = useState('5000')
+  const [customTip, setCustomTip] = useState('')
+  const [isSendingTip, setIsSendingTip] = useState(false)
+  const [tipSuccess, setTipSuccess] = useState(false)
+
+  const handleTipClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!post.authorIsPremium) {
+      alert("Faqat premium ijodkorlarga tip yuborish mumkin!")
+      return
+    }
+    setShowTipModal(true)
+  }
+
+  const handleSendTipSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const amount = customTip.trim() ? Number(customTip) : Number(tipAmount)
+    if (!amount || amount <= 0) return
+
+    setIsSendingTip(true)
+    try {
+      const res = await fetch('/api/posts/tip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: post.id, amount })
+      })
+
+      if (res.ok) {
+        setTipSuccess(true)
+        setTimeout(() => {
+          setTipSuccess(false)
+          setShowTipModal(false)
+          setCustomTip('')
+        }, 2000)
+      } else {
+        const data = await res.json()
+        alert(data.error || "Tip yuborishda xatolik yuz berdi")
+      }
+    } catch {
+      alert("Tip yuborishda xatolik yuz berdi")
+    } finally {
+      setIsSendingTip(false)
+    }
+  }
 
   const renderContentWithHashtags = (content: string) => {
     if (!content) return null
@@ -139,10 +193,23 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   useEffect(() => {
     setMounted(true)
     loadComments()
+
+    if (typeof window !== 'undefined') {
+      const onlineIds = (window as any).supabaseOnlineUserIds || []
+      setIsOnline(onlineIds.includes(post.authorId))
+    }
+
+    const handleOnlineUsersChange = (e: Event) => {
+      const onlineIds = (e as CustomEvent).detail || []
+      setIsOnline(onlineIds.includes(post.authorId))
+    }
+    window.addEventListener('supabase-online-users', handleOnlineUsersChange)
+
     return () => {
       if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current)
+      window.removeEventListener('supabase-online-users', handleOnlineUsersChange)
     }
-  }, [])
+  }, [post.authorId])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -155,15 +222,29 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   }, [])
 
   useEffect(() => {
-    if (showComments) {
+    if (showComments || isDetailModalOpen) {
       loadComments()
-      // Orqa fonni qotirib qo'yish
       document.body.style.overflow = 'hidden'
+
+      const channel = supabase.channel(`post-comments-${post.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'comments',
+          filter: `post_id=eq.${post.id}`
+        }, () => {
+          loadComments()
+        })
+        .subscribe()
+
+      return () => {
+        document.body.style.overflow = 'unset'
+        supabase.removeChannel(channel)
+      }
     } else {
       document.body.style.overflow = 'unset'
     }
-    return () => { document.body.style.overflow = 'unset' }
-  }, [showComments])
+  }, [showComments, isDetailModalOpen, post.id])
 
   const loadComments = async () => {
     try {
@@ -303,7 +384,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const goToProfile = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (post.isOwner) {
-      router.push('/dashboard/profile')
+            router.push('/dashboard/profile')
     } else {
       router.push(`/dashboard/profile/${post.authorId}`)
     }
@@ -329,7 +410,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       clickTimeoutRef.current = setTimeout(() => {
         clickTimeoutRef.current = null
         if (!isDetailPage) {
-          router.push(`/post/${post.id}`)
+          setIsDetailModalOpen(true)
         }
       }, 250)
     }
@@ -337,7 +418,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
   const handleCardClick = () => {
     if (!isDetailPage) {
-      router.push(`/post/${post.id}`)
+      setIsDetailModalOpen(true)
     }
   }
 
@@ -361,7 +442,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
         <div className="flex items-center justify-between p-4 relative z-10">
           <div
-            onClick={(e) => goToProfile(e)}
+            onClick={(e) => { e.stopPropagation(); goToProfile(e); }}
             className="flex items-center gap-3 cursor-pointer group/author"
           >
             <div className="relative">
@@ -370,7 +451,9 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                 className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-800 group-hover/author:ring-blue-500/60 transition-all duration-300"
                 alt=""
               />
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-900" />
+              {isOnline && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -378,9 +461,18 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                 {post.isOwner && (
                   <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
                 )}
+                {post.authorIsPremium && (
+                  <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
+                )}
               </div>
-              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
-                {formatTime(post.time)} {!post.image && post.location && `• ${post.location}`}
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-0.5 mt-0.5">
+                {formatTime(post.time)} {!post.image && post.location && (
+                  <>
+                    <span>•</span>
+                    <FiMapPin className="w-3 h-3 text-blue-500 dark:text-blue-400" />
+                    <span>{post.location}</span>
+                  </>
+                )}
               </span>
             </div>
           </div>
@@ -452,8 +544,9 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               
               {/* Floating location tag inside the image */}
               {post.location && (
-                <div className="absolute bottom-3 left-3 backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-all duration-300 hover:bg-black/60">
-                  <span>📍 {post.location}</span>
+                <div className="absolute bottom-3 left-3 backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-all duration-350 hover:bg-black/60">
+                  <FiMapPin className="w-3.5 h-3.5 text-blue-400" />
+                  <span>{post.location}</span>
                 </div>
               )}
 
@@ -470,10 +563,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           <div className="flex items-center gap-4">
             <button 
               onClick={(e) => { e.stopPropagation(); handleLikeToggle(); }} 
-              className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-450 transition active:scale-90"
+              className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-455 transition active:scale-90"
             >
               {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
-              <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">{likesCount}</span>
+              <span className="text-xs font-semibold text-slate-655 dark:text-slate-400">{likesCount}</span>
             </button>
 
             <button 
@@ -482,14 +575,14 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                 if (isDetailPage) {
                   document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' })
                 } else {
-                  setShowComments(true)
+                  setIsDetailModalOpen(true)
                 }
               }} 
               className={`flex items-center gap-1.5 transition active:scale-90 ${
                 isDetailPage || showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-450'
               }`}>
               <FiMessageSquare className="w-5 h-5" />
-              <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">{commentsCount}</span>
+              <span className="text-xs font-semibold text-slate-655 dark:text-slate-400">{commentsCount}</span>
             </button>
 
             <button 
@@ -500,22 +593,28 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             </button>
           </div>
 
-          {/* Premium Breathing Tip Button */}
+          {/* Premium Tipping Button */}
           <button 
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border border-amber-500/25 shadow-xs hover:shadow-sm"
+            onClick={handleTipClick}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${
+              post.authorIsPremium 
+                ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs shadow-amber-500/5' 
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
+            }`}
           >
-            <span className="relative flex h-1.5 w-1.5 mr-0.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
-            </span>
+            {post.authorIsPremium && (
+              <span className="relative flex h-1.5 w-1.5 mr-0.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+              </span>
+            )}
             Tip
           </button>
         </div>
 
         <div className="px-4 pb-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed border-b border-slate-50 dark:border-white/5 relative z-10 select-text">
           <span
-            onClick={(e) => goToProfile(e)}
+            onClick={(e) => { e.stopPropagation(); goToProfile(e); }}
             className="font-bold text-slate-900 dark:text-slate-100 mr-1.5 cursor-pointer hover:text-blue-600 dark:hover:text-blue-450 transition-colors"
           >
             {post.author}
@@ -525,8 +624,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
         {!isDetailPage && (
           <div
-            onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
-            className="p-3.5 bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-50 dark:border-white/5 flex items-center justify-between cursor-pointer text-xs text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350 transition-colors relative z-10"
+            onClick={(e) => { e.stopPropagation(); setIsDetailModalOpen(true); }}
+            className="p-3.5 bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-50 dark:border-white/5 flex items-center justify-between cursor-pointer text-xs text-slate-400 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350 transition-colors relative z-10"
           >
             <span>Fikr bildiring...</span>
             <FiSend className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700" />
@@ -547,7 +646,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             </div>
 
             <div className="flex items-center justify-between px-4 pt-6 pb-3 border-b border-slate-100 dark:border-white/5">
-              <span className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">Izohlar ({commentsCount})</span>
+              <span className="text-slate-955 dark:text-slate-100 font-extrabold text-sm">Izohlar ({commentsCount})</span>
               <button onClick={closeComments} className="p-1.5 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors">
                 <HiXMark className="w-5 h-5" />
               </button>
@@ -556,7 +655,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none [will-change:scroll-position] overscroll-y-contain -webkit-overflow-scrolling-touch">
               {loadingComments && comments.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
                 </div>
               ) : comments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center text-slate-450">
@@ -630,7 +729,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
             {/* Replying to indicator preview */}
             {replyingTo && (
-              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-white/10 text-xs text-slate-600 dark:text-slate-450 select-none">
+              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-white/10 text-xs text-slate-650 dark:text-slate-450 select-none">
                 <span>
                   <strong>@{replyingTo.user}</strong> ga javob berilmoqda
                 </span>
@@ -698,7 +797,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       <BottomSheet isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Postni o'chirish">
         <div className="flex flex-col gap-4 text-center select-none">
           <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/20 rounded-full flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900/10">
-            <FiTrash2 className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+            <FiTrash2 className="w-5 h-5 text-rose-600 dark:text-rose-455" />
           </div>
            <div>
             <h4 className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">Postni o'chirib tashlaysizmi?</h4>
@@ -725,6 +824,224 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           </div>
         </div>
       </BottomSheet>
+
+      {/* Premium Tipping Modal Bottom Sheet */}
+      <BottomSheet isOpen={showTipModal} onClose={() => setShowTipModal(false)} title="Ijodkorni qo'llab-quvvatlash">
+        {tipSuccess ? (
+          <div className="flex flex-col items-center justify-center py-6 text-center select-none animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-green-50 dark:bg-green-950/20 rounded-full flex items-center justify-center border border-green-150 mb-3">
+              <FiCheckCircle className="w-6 h-6 text-green-500" />
+            </div>
+            <h4 className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">To'lov muvaffaqiyatli yuborildi!</h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-1">Siz @{post.author} ijodini qo'llab-quvvatlash uchun pul yubordingiz. Rahmat!</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSendTipSubmit} className="flex flex-col gap-4 select-none">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/20 rounded-full flex items-center justify-center mx-auto border border-amber-100/30 mb-3">
+                <FiDollarSign className="w-5 h-5 text-amber-500 animate-pulse" />
+              </div>
+              <h4 className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">Ijodkorni rag'batlantirish (Tip)</h4>
+              <p className="text-slate-500 dark:text-slate-400 text-[11px] font-semibold mt-0.5">@{post.author} uchun moddiy rag'bat summasini tanlang</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 my-2">
+              {['1000', '5000', '10000'].map(amount => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => { setTipAmount(amount); setCustomTip(''); }}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    tipAmount === amount && !customTip 
+                      ? 'bg-amber-500 border-amber-500 text-white shadow-xs' 
+                      : 'bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-350 border-slate-200 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-slate-900/60'
+                  }`}
+                >
+                  {Number(amount).toLocaleString('uz-UZ')} UZS
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Boshqa miqdor</label>
+              <input
+                type="number"
+                value={customTip}
+                onChange={(e) => { setCustomTip(e.target.value); setTipAmount(''); }}
+                placeholder="Miqdorni kiriting (UZS)..."
+                className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 outline-none focus:border-amber-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSendingTip || (!customTip && !tipAmount)}
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-650 hover:to-yellow-600 text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+            >
+              {isSendingTip ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Yuborilmoqda...</span>
+                </>
+              ) : (
+                <span>Yuborish</span>
+              )}
+            </button>
+          </form>
+        )}
+      </BottomSheet>
+
+      {/* Quick View Post Details Bottom Sheet */}
+      {isDetailModalOpen && (
+        <BottomSheet isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Post tafsilotlari">
+          <div className="flex flex-col gap-4 select-none pb-2">
+            {/* Top View Full Page action */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5 shrink-0">
+              <span className="text-[10px] text-slate-450 dark:text-slate-550 font-extrabold uppercase tracking-wider">Tezkor ko'rish</span>
+              <button
+                onClick={() => {
+                  setIsDetailModalOpen(false)
+                  router.push(`/post/${post.id}`)
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition active:scale-95 shadow-md shadow-blue-500/15 cursor-pointer"
+              >
+                <FiExternalLink className="w-3.5 h-3.5 mr-0.5" />
+                <span>To'liq ko'rish</span>
+              </button>
+            </div>
+
+            {/* Author Header */}
+            <div className="flex items-center justify-between">
+              <div onClick={() => { setIsDetailModalOpen(false); goToProfile({ stopPropagation: () => {} } as any); }} className="flex items-center gap-3 cursor-pointer group/det">
+                <div className="relative">
+                  <img
+                    src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
+                    className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-850"
+                    alt=""
+                  />
+                  {isOnline && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 leading-none group-hover/det:text-blue-600 transition-colors">{post.author}</h4>
+                    {post.isOwner && (
+                      <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
+                    )}
+                    {post.authorIsPremium && (
+                      <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-0.5 mt-0.5">
+                    {formatTime(post.time)} {post.location && (
+                      <>
+                        <span>•</span>
+                        <FiMapPin className="w-2.5 h-2.5 inline text-slate-400 dark:text-slate-500" />
+                        <span>{post.location}</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Post Image */}
+            {post.image && (
+              <div className="rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950 aspect-4/3 max-h-[35vh]">
+                <img src={post.image} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+
+            {/* Post Content */}
+            <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">
+              {renderContentWithHashtags(post.content)}
+            </p>
+
+            {/* Post Actions */}
+            <div className="flex items-center justify-between py-2 border-y border-slate-100 dark:border-white/5">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={handleLikeToggle} 
+                  className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 transition active:scale-90"
+                >
+                  {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
+                  <span className="text-xs font-semibold">{likesCount}</span>
+                </button>
+                <div className="flex items-center gap-1.5 text-slate-500">
+                  <FiMessageSquare className="w-5 h-5" />
+                  <span className="text-xs font-semibold">{commentsCount}</span>
+                </div>
+              </div>
+
+              {/* Tip Button inside modal */}
+              <button 
+                onClick={handleTipClick}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${
+                  post.authorIsPremium 
+                    ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs' 
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
+                }`}
+              >
+                {post.authorIsPremium && (
+                  <span className="relative flex h-1.5 w-1.5 mr-0.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                  </span>
+                )}
+                Tip
+              </button>
+            </div>
+
+            {/* Quick View Comments List */}
+            <div className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mt-1 shrink-0">Munozaralar ({commentsCount})</div>
+            <div className="max-h-[25vh] overflow-y-auto space-y-3.5 pr-1 scrollbar-none overscroll-y-contain -webkit-overflow-scrolling-touch">
+              {loadingComments && comments.length === 0 ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                </div>
+              ) : comments.length === 0 ? (
+                <p className="text-[11px] text-slate-450 dark:text-slate-500 font-semibold text-center py-4">Birinchi bo'lib fikr bildiring!</p>
+              ) : (
+                <div className="space-y-3.5">
+                  {comments.filter(c => !c.parentId).map((comment) => (
+                    <div key={comment.id} className="flex items-start gap-2.5 text-xs animate-comment-slide-in">
+                      <img src={comment.avatar} className="w-7 h-7 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
+                      <div className="flex-1 min-w-0">
+                        <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3 py-1.5">
+                          <span className="font-bold text-slate-950 dark:text-slate-100 block text-[10px] mb-0.5">{comment.user}</span>
+                          <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">{comment.text}</p>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1.5 ml-1 text-[9px] font-bold text-slate-400 dark:text-slate-550">
+                          <span>{formatTime(comment.createdAt)}</span>
+                          <button onClick={() => handleLikeComment(comment.id)} className={`hover:text-rose-500 flex items-center gap-0.5 ${comment.likedByMe ? 'text-rose-500' : ''}`}>
+                            {comment.likedByMe ? <FaHeart className="w-3.5 h-3.5 text-rose-500" /> : <FiHeart className="w-3.5 h-3.5" />}
+                            {(comment.likesCount || 0) > 0 && <span>{comment.likesCount}</span>}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Comment Input Form */}
+            <form onSubmit={handleAddComment} className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-white/5 shrink-0">
+              <input
+                type="text"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Fikr yozing..."
+                className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
+              />
+              <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl transition active:scale-95 cursor-pointer">
+                <FiSend className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+        </BottomSheet>
+      )}
     </>
   )
 }
