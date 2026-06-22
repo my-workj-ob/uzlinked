@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -66,6 +66,131 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const [isDark, setIsDark] = useState(false)
   const [unreadNotifCount, setUnreadNotifCount] = useState(0)
   const [unreadMsgCount, setUnreadMsgCount] = useState(0)
+
+  // Version update checker
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [latestCommit, setLatestCommit] = useState<{
+    commitSha: string
+    message: string
+    author: string
+    date: string
+  } | null>(null)
+  const [isUpdateDismissed, setIsUpdateDismissed] = useState(false)
+
+  // Drag state for bottom sheet swipe-down to dismiss
+  const [updateDragY, setUpdateDragY] = useState(0)
+  const updateTouchStartRef = useRef<number | null>(null)
+  const isUpdateDraggingRef = useRef(false)
+
+  const handleUpdateTouchStart = (e: React.TouchEvent) => {
+    updateTouchStartRef.current = e.touches[0].clientY
+    isUpdateDraggingRef.current = true
+  }
+
+  const handleUpdateTouchMove = (e: React.TouchEvent) => {
+    if (!isUpdateDraggingRef.current || updateTouchStartRef.current === null) return
+    const currentY = e.touches[0].clientY
+    const deltaY = currentY - updateTouchStartRef.current
+    if (deltaY > 0) {
+      setUpdateDragY(deltaY)
+    } else {
+      setUpdateDragY(0)
+    }
+  }
+
+  const handleUpdateTouchEnd = () => {
+    isUpdateDraggingRef.current = false
+    updateTouchStartRef.current = null
+    if (updateDragY > 80) {
+      setShowUpdateModal(false)
+      setIsUpdateDismissed(true)
+      if (latestCommit?.commitSha) {
+        localStorage.setItem('dismissed_commit_sha', latestCommit.commitSha)
+      }
+    }
+    setUpdateDragY(0)
+  }
+
+  useEffect(() => {
+    const clientSha = process.env.NEXT_PUBLIC_COMMIT_SHA || 'local-dev'
+    const checkUpdate = async () => {
+      if (isUpdateDismissed) return
+      try {
+        const res = await fetch('/api/version')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.commitSha && data.commitSha !== clientSha) {
+            const dismissedSha = localStorage.getItem('dismissed_commit_sha')
+            if (dismissedSha === data.commitSha) {
+              return
+            }
+            setLatestCommit({
+              commitSha: data.commitSha,
+              message: data.message,
+              author: data.author,
+              date: data.date
+            })
+            setShowUpdateModal(true)
+          }
+        }
+      } catch (err) {
+        console.warn('Xatolik yangilanishni tekshirishda:', err)
+      }
+    }
+    checkUpdate()
+    const interval = setInterval(checkUpdate, 60000)
+    return () => clearInterval(interval)
+  }, [isUpdateDismissed, latestCommit])
+
+
+
+  // Pull to Refresh states & handlers
+  const mainRef = useRef<HTMLDivElement>(null)
+  const [pullDistance, setPullDistance] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const pullTouchStartRef = useRef<number | null>(null)
+  const isPullingRef = useRef(false)
+
+  const handleMainTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const disablePull = isReelsPage || isMessagesPage || isRefreshing
+    if (disablePull) return
+
+    if (mainRef.current && mainRef.current.scrollTop === 0) {
+      pullTouchStartRef.current = e.touches[0].clientY
+      isPullingRef.current = true
+    } else {
+      isPullingRef.current = false
+    }
+  }
+
+  const handleMainTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    const disablePull = isReelsPage || isMessagesPage || isRefreshing
+    if (disablePull || !isPullingRef.current || pullTouchStartRef.current === null) return
+
+    const currentY = e.touches[0].clientY
+    const deltaY = currentY - pullTouchStartRef.current
+
+    if (deltaY > 0) {
+      const distance = Math.min(100, Math.pow(deltaY, 0.82))
+      setPullDistance(distance)
+    } else {
+      setPullDistance(0)
+    }
+  }
+
+  const handleMainTouchEnd = () => {
+    isPullingRef.current = false
+    pullTouchStartRef.current = null
+
+    if (pullDistance > 65) {
+      setIsRefreshing(true)
+      setTimeout(() => {
+        window.location.reload()
+      }, 800)
+    } else {
+      setPullDistance(0)
+    }
+  }
 
   // Mavzuni boshlang'ich yuklash
   useEffect(() => {
@@ -289,7 +414,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       window.location.search.includes('chat=') || 
       window.location.search.includes('partner=')
     )
-    const disableSwipe = pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
+    const disableSwipe = pathname === '/dashboard/explore' || pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
     
     if (disableSwipe) return
     setTouchEnd(null)
@@ -301,7 +426,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       window.location.search.includes('chat=') || 
       window.location.search.includes('partner=')
     )
-    const disableSwipe = pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
+    const disableSwipe = pathname === '/dashboard/explore' || pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
     
     if (disableSwipe || touchStart === null) return
     setTouchEnd(e.targetTouches[0].clientX)
@@ -312,7 +437,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       window.location.search.includes('chat=') || 
       window.location.search.includes('partner=')
     )
-    const disableSwipe = pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
+    const disableSwipe = pathname === '/dashboard/explore' || pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
     
     if (disableSwipe || touchStart === null || touchEnd === null) return
     const distance = touchStart - touchEnd
@@ -595,21 +720,59 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className={`flex-1 min-w-0 h-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none ${isReelsPage
-            ? 'pt-0 pb-0 md:py-0 bg-black overflow-hidden'
+        <main 
+          ref={mainRef}
+          onTouchStart={handleMainTouchStart}
+          onTouchMove={handleMainTouchMove}
+          onTouchEnd={handleMainTouchEnd}
+          className={`relative flex-1 min-w-0 h-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none ${isReelsPage
+            ? 'pt-0 pb-0 bg-black overflow-hidden'
             : isMessagesPage
-              ? 'pt-0 pb-0 md:py-0 overflow-hidden'
+              ? 'pt-0 pb-0 overflow-hidden'
               : 'pt-16 pb-24 md:py-8 overflow-y-auto'
-          }`}>
+          }`}
+        >
+          {/* Pull to Refresh Indicator */}
+          {pullDistance > 0 && (
+            <div 
+              style={{ 
+                transform: `translateY(${pullDistance - 55}px)`, 
+                opacity: Math.min(1, pullDistance / 40),
+                transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94), opacity 0.3s'
+              }}
+              className="absolute left-0 right-0 top-0 z-40 flex items-center justify-center pointer-events-none pt-4"
+            >
+              <div className="bg-white/80 dark:bg-slate-900/85 backdrop-blur-md border border-slate-200/40 dark:border-white/10 shadow-lg px-4 py-2 rounded-2xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+                {isRefreshing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <span>Yangilanmoqda...</span>
+                  </>
+                ) : (
+                  <>
+                    <div 
+                      style={{ transform: `rotate(${pullDistance * 4}deg)` }} 
+                      className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full transition-transform duration-100" 
+                    />
+                    <span>{pullDistance > 65 ? "Yuboring yangilash uchun" : "Pastga torting"}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className={`mx-auto ${isReelsPage || isMessagesPage
               ? 'w-full h-full max-w-none px-0'
               : 'w-full max-w-2xl px-4 md:px-6'
             }`}>
             <div 
               key={pathname} 
-              className={`w-full h-full ${
-                slideDirection === 'left' ? 'animate-slide-from-right' : 'animate-slide-from-left'
-              }`}
+              style={{
+                transform: pullDistance > 0 && !isRefreshing ? `translateY(${pullDistance * 0.4}px)` : 'none',
+                transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94)'
+              }}
+              className={`w-full h-full ${!pathname.includes('explore') && (slideDirection === 'left' ? 'animate-slide-from-right' : 'animate-slide-from-left')
+               }`}
             >
               {children}
             </div>
@@ -617,7 +780,95 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </main>
       </div>
 
-      {/* MOBILE FLOATING ACTION BUTTON: Moved to mobile header, no longer rendered here */}
+      {/* UPDATE AVAILABLE BOTTOM SHEET */}
+      {showUpdateModal && latestCommit && (
+        <div className="fixed inset-0 z-70 flex items-end justify-center md:pb-10 p-0 md:p-4 animate-fade-in">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity duration-300"
+            onClick={() => {
+              setShowUpdateModal(false)
+              setIsUpdateDismissed(true)
+              if (latestCommit?.commitSha) {
+                localStorage.setItem('dismissed_commit_sha', latestCommit.commitSha)
+              }
+            }}
+          />
+
+          {/* Bottom Sheet Card */}
+          <div 
+            onTouchStart={handleUpdateTouchStart}
+            onTouchMove={handleUpdateTouchMove}
+            onTouchEnd={handleUpdateTouchEnd}
+            style={{
+              transform: `translateY(${updateDragY}px)`,
+              transition: isUpdateDraggingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94)',
+              animation: 'androidSlideUp 0.4s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards'
+            }}
+            className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t md:border border-slate-200/50 dark:border-white/5 w-full md:max-w-md rounded-t-[32px] md:rounded-[32px] p-6 pb-8 md:pb-6 shadow-2xl relative z-10 flex flex-col select-none"
+          >
+            {/* Drag Handle */}
+            <div className="flex justify-center cursor-grab active:cursor-grabbing pb-4 md:hidden">
+              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full" />
+            </div>
+
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-500/20">
+                <HiOutlineRss className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                  Yangilanish mavjud
+                  <span className="text-[10px] px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-full font-extrabold font-mono">
+                    {latestCommit.commitSha.substring(0, 7)}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">
+                  Tizimning yangi versiyasi tayyor
+                </p>
+              </div>
+            </div>
+            
+            {/* Commit Message Box */}
+            <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-white/5 rounded-2xl p-4 mb-5 text-left">
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                O'zgarishlar tavsifi:
+              </p>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed italic">
+                "{latestCommit.message}"
+              </p>
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-white/5 text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+                <span>Muallif: {latestCommit.author}</span>
+                <span>{new Date(latestCommit.date).toLocaleDateString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full">
+              <button
+                onClick={() => {
+                  setShowUpdateModal(false)
+                  setIsUpdateDismissed(true)
+                  if (latestCommit?.commitSha) {
+                    localStorage.setItem('dismissed_commit_sha', latestCommit.commitSha)
+                  }
+                }}
+                className="flex-1 py-3.5 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-extrabold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 active:scale-95 transition-all"
+              >
+                Shart emas
+              </button>
+              <button
+                onClick={() => {
+                  setShowUpdateModal(false)
+                  window.location.reload()
+                }}
+                className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-extrabold shadow-lg shadow-blue-500/25 active:scale-95 transition-all"
+              >
+                Yangilash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MOBILE BOTTOM NAVIGATION */}
       {!isMessagesPage && (

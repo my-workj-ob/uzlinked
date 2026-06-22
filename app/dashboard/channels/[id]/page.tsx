@@ -94,6 +94,42 @@ export default function ChannelDetailPage() {
     const router = useRouter()
     const channelId = params?.id as string
 
+    // Page-level swipe gestures to go back to messages
+    const [pageTouchStartX, setPageTouchStartX] = useState<number | null>(null)
+    const [pageTouchStartY, setPageTouchStartY] = useState<number | null>(null)
+    const [pageTouchEndX, setPageTouchEndX] = useState<number | null>(null)
+    const [pageTouchEndY, setPageTouchEndY] = useState<number | null>(null)
+
+    const handlePageTouchStart = (e: React.TouchEvent) => {
+        setPageTouchEndX(null)
+        setPageTouchEndY(null)
+        setPageTouchStartX(e.targetTouches[0].clientX)
+        setPageTouchStartY(e.targetTouches[0].clientY)
+    }
+
+    const handlePageTouchMove = (e: React.TouchEvent) => {
+        if (pageTouchStartX === null || pageTouchStartY === null) return
+        setPageTouchEndX(e.targetTouches[0].clientX)
+        setPageTouchEndY(e.targetTouches[0].clientY)
+    }
+
+    const handlePageTouchEnd = () => {
+        if (pageTouchStartX === null || pageTouchStartY === null || pageTouchEndX === null || pageTouchEndY === null) return
+        const deltaX = pageTouchStartX - pageTouchEndX
+        const deltaY = pageTouchStartY - pageTouchEndY
+        const minSwipeDistance = 75
+
+        // Predominantly horizontal swipe to the right (deltaX is negative, meaning startX < endX)
+        if (deltaX < -minSwipeDistance && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+            router.push('/dashboard/messages')
+        }
+        setPageTouchStartX(null)
+        setPageTouchStartY(null)
+        setPageTouchEndX(null)
+        setPageTouchEndY(null)
+    }
+
+
     const [currentUserId, setCurrentUserId] = useState<string | null>(null)
     const [channel, setChannel] = useState<ChannelData | null>(null)
     const [members, setMembers] = useState<Member[]>([])
@@ -529,7 +565,12 @@ export default function ChannelDetailPage() {
     }
 
     return (
-        <div className="bg-slate-50 dark:bg-[#0B1120] w-full h-full flex flex-col overflow-hidden select-none relative">
+        <div 
+            onTouchStart={handlePageTouchStart}
+            onTouchMove={handlePageTouchMove}
+            onTouchEnd={handlePageTouchEnd}
+            className="bg-slate-50 dark:bg-[#0B1120] w-full h-full flex flex-col overflow-hidden select-none relative"
+        >
 
             <AnimatePresence>
                 {activeContextMsg && (

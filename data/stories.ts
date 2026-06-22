@@ -1,3 +1,5 @@
+// ok
+
 export const STORIES_DATA = [
   {
     id: 1,

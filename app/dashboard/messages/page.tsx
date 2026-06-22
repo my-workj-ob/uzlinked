@@ -144,6 +144,90 @@ function MessagesPageContent() {
   const [isPartnerTyping, setIsPartnerTyping] = useState(false)
   const typingTimeoutRef = useRef<any>(null)
 
+  // Swipe gestures for sidebar tabs switching
+  const [sidebarTouchStartX, setSidebarTouchStartX] = useState<number | null>(null)
+  const [sidebarTouchStartY, setSidebarTouchStartY] = useState<number | null>(null)
+  const [sidebarTouchEndX, setSidebarTouchEndX] = useState<number | null>(null)
+  const [sidebarTouchEndY, setSidebarTouchEndY] = useState<number | null>(null)
+
+  const handleSidebarTouchStart = (e: React.TouchEvent) => {
+    setSidebarTouchEndX(null)
+    setSidebarTouchEndY(null)
+    setSidebarTouchStartX(e.targetTouches[0].clientX)
+    setSidebarTouchStartY(e.targetTouches[0].clientY)
+  }
+
+  const handleSidebarTouchMove = (e: React.TouchEvent) => {
+    if (sidebarTouchStartX === null || sidebarTouchStartY === null) return
+    setSidebarTouchEndX(e.targetTouches[0].clientX)
+    setSidebarTouchEndY(e.targetTouches[0].clientY)
+  }
+
+  const handleSidebarTouchEnd = () => {
+    if (sidebarTouchStartX === null || sidebarTouchStartY === null || sidebarTouchEndX === null || sidebarTouchEndY === null) return
+    const deltaX = sidebarTouchStartX - sidebarTouchEndX
+    const deltaY = sidebarTouchStartY - sidebarTouchEndY
+    const minSwipeDistance = 65
+
+    if (Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      if (deltaX > minSwipeDistance) {
+        // Swipe Left -> chats -> groups -> channels
+        if (sidebarTab === 'chats') {
+          setSidebarTab('groups')
+        } else if (sidebarTab === 'groups') {
+          setSidebarTab('channels')
+        }
+      } else if (deltaX < -minSwipeDistance) {
+        // Swipe Right -> channels -> groups -> chats
+        if (sidebarTab === 'channels') {
+          setSidebarTab('groups')
+        } else if (sidebarTab === 'groups') {
+          setSidebarTab('chats')
+        }
+      }
+    }
+    setSidebarTouchStartX(null)
+    setSidebarTouchStartY(null)
+    setSidebarTouchEndX(null)
+    setSidebarTouchEndY(null)
+  }
+
+  // Swipe gestures for chat detail back to list
+  const [chatTouchStartX, setChatTouchStartX] = useState<number | null>(null)
+  const [chatTouchStartY, setChatTouchStartY] = useState<number | null>(null)
+  const [chatTouchEndX, setChatTouchEndX] = useState<number | null>(null)
+  const [chatTouchEndY, setChatTouchEndY] = useState<number | null>(null)
+
+  const handleChatTouchStart = (e: React.TouchEvent) => {
+    setChatTouchEndX(null)
+    setChatTouchEndY(null)
+    setChatTouchStartX(e.targetTouches[0].clientX)
+    setChatTouchStartY(e.targetTouches[0].clientY)
+  }
+
+  const handleChatTouchMove = (e: React.TouchEvent) => {
+    if (chatTouchStartX === null || chatTouchStartY === null) return
+    setChatTouchEndX(e.targetTouches[0].clientX)
+    setChatTouchEndY(e.targetTouches[0].clientY)
+  }
+
+  const handleChatTouchEnd = () => {
+    if (chatTouchStartX === null || chatTouchStartY === null || chatTouchEndX === null || chatTouchEndY === null) return
+    const deltaX = chatTouchStartX - chatTouchEndX
+    const deltaY = chatTouchStartY - chatTouchEndY
+    const minSwipeDistance = 75
+
+    // Predominantly horizontal and swipe right (deltaX is negative, meaning startX < endX)
+    if (deltaX < -minSwipeDistance && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      setSelectedChatId(null)
+    }
+    setChatTouchStartX(null)
+    setChatTouchStartY(null)
+    setChatTouchEndX(null)
+    setChatTouchEndY(null)
+  }
+
+
   const [isBlockedByMe, setIsBlockedByMe] = useState(false)
   const [isBlockedByPartner, setIsBlockedByPartner] = useState(false)
   const [isEllipsisOpen, setIsEllipsisOpen] = useState(false)
@@ -1509,7 +1593,12 @@ function MessagesPageContent() {
         )}
       </AnimatePresence>
 
-      <div className={`w-full md:w-[320px] border-r border-slate-100 dark:border-white/5 flex flex-col bg-white dark:bg-slate-950 shrink-0 h-full ${selectedChatId ? 'hidden md:flex' : 'flex'}`}>
+      <div 
+        onTouchStart={handleSidebarTouchStart}
+        onTouchMove={handleSidebarTouchMove}
+        onTouchEnd={handleSidebarTouchEnd}
+        className={`w-full md:w-[320px] border-r border-slate-100 dark:border-white/5 flex flex-col bg-white dark:bg-slate-950 shrink-0 h-full ${selectedChatId ? 'hidden md:flex' : 'flex'}`}
+      >
 
         {/* Mobile Custom Header */}
         <div className="flex items-center justify-between p-4 md:hidden border-b border-slate-100 dark:border-white/5 select-none shrink-0 bg-white dark:bg-slate-950">
@@ -1988,7 +2077,12 @@ function MessagesPageContent() {
       </div>
 
       {/* MAIN: CHAT WINDOW */}
-      <div className={`flex-1 flex flex-col bg-slate-50/20 dark:bg-slate-950/40 h-full max-w-full md:max-w-none ${!selectedChatId ? 'hidden md:flex items-center justify-center text-center p-8' : 'flex'}`}>
+      <div 
+        onTouchStart={handleChatTouchStart}
+        onTouchMove={handleChatTouchMove}
+        onTouchEnd={handleChatTouchEnd}
+        className={`flex-1 flex flex-col bg-slate-50/20 dark:bg-slate-950/40 h-full max-w-full md:max-w-none ${!selectedChatId ? 'hidden md:flex items-center justify-center text-center p-8' : 'flex'}`}
+      >
         {activeChat && activeUser ? (
           <motion.div
             key={selectedChatId}

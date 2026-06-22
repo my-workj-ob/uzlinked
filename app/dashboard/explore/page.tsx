@@ -36,7 +36,6 @@ interface ExploreProfile {
     open_for_collab?: boolean
 }
 
-// Bento Grid sizes
 const sizePatterns = [
     'col-span-2 row-span-2',
     'col-span-1 row-span-1',
@@ -48,7 +47,7 @@ const sizePatterns = [
 
 function ExploreSkeleton({ tab }: { tab: string }) {
     const pulseClass = "animate-pulse bg-slate-200 dark:bg-slate-800/80"
-    
+
     if (tab === 'all') {
         return (
             <div className="space-y-6">
@@ -187,7 +186,50 @@ function ExploreContent() {
 
     const inputRef = useRef<HTMLInputElement>(null)
 
-    // Load search history & current user
+    const exploreTabs = ['all', 'guruhlar', 'kanallar', 'ijodkorlar', 'hamjamiyat', 'trendlar']
+    const [exploreTouchStart, setExploreTouchStart] = useState<number | null>(null)
+    const [exploreTouchEnd, setExploreTouchEnd] = useState<number | null>(null)
+
+    const handleExploreTouchStart = (e: React.TouchEvent) => {
+        if (e.target instanceof HTMLInputElement) return
+        if ((e.target as HTMLElement).closest('.overflow-x-auto')) return
+
+        setExploreTouchEnd(null)
+        setExploreTouchStart(e.targetTouches[0].clientX)
+    }
+
+    const handleExploreTouchMove = (e: React.TouchEvent) => {
+        if (exploreTouchStart === null) return
+        if (e.target instanceof HTMLInputElement) return
+        if ((e.target as HTMLElement).closest('.overflow-x-auto')) return
+
+        setExploreTouchEnd(e.targetTouches[0].clientX)
+    }
+
+    const handleExploreTouchEnd = () => {
+        if (exploreTouchStart === null || exploreTouchEnd === null) return
+
+        const distance = exploreTouchStart - exploreTouchEnd
+        const minSwipeDistance = 60 // px
+
+        const isLeftSwipe = distance > minSwipeDistance
+        const isRightSwipe = distance < -minSwipeDistance
+
+        if (isLeftSwipe || isRightSwipe) {
+            const currentIndex = exploreTabs.indexOf(activeTab)
+            if (currentIndex !== -1) {
+                if (isLeftSwipe && currentIndex < exploreTabs.length - 1) {
+                    setActiveTab(exploreTabs[currentIndex + 1])
+                } else if (isRightSwipe && currentIndex > 0) {
+                    setActiveTab(exploreTabs[currentIndex - 1])
+                }
+            }
+        }
+
+        setExploreTouchStart(null)
+        setExploreTouchEnd(null)
+    }
+
     useEffect(() => {
         const history = localStorage.getItem('explore_search_history')
         if (history) {
@@ -204,7 +246,6 @@ function ExploreContent() {
         }
         getUser()
 
-        // Handle auto-focus from URL
         if (searchParams.get('focus') === 'true') {
             setTimeout(() => {
                 inputRef.current?.focus()
@@ -369,7 +410,12 @@ function ExploreContent() {
     const popularTags = ['IT', 'Dizayn', 'Marketing', 'Musiqa', 'Kino', 'Sport', 'Ta\'lim']
 
     return (
-        <div className="space-y-6 pb-12 animate-fade-in">
+        <div
+            onTouchStart={handleExploreTouchStart}
+            onTouchMove={handleExploreTouchMove}
+            onTouchEnd={handleExploreTouchEnd}
+            className="space-y-6 pb-12 animate-fade-in"
+        >
             {/* Search Input Box */}
             <div className="relative w-full group">
                 <div className="relative flex items-center mt-5">
