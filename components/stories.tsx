@@ -106,8 +106,9 @@ export const Stories = ({ progress = 1, isDragging = false, showStories = true }
 
   return (
     <div className="relative">
-      <div 
+      <div
         ref={containerRef}
+        data-no-pull
         className="flex items-center gap-3.5 py-2.5 overflow-x-auto -mx-2 px-2 md:mx-0 md:px-0 scrollbar-none"
       >
 
@@ -125,8 +126,8 @@ export const Stories = ({ progress = 1, isDragging = false, showStories = true }
           >
             <div
               className={`relative w-[60px] h-[60px] md:w-[66px] md:h-[66px] rounded-full p-0.5 transition-colors duration-200 ${myStoryGroup && myStoryGroup.stories.length > 0
-                  ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-violet-600'
-                  : 'border-2 border-dashed border-slate-200 dark:border-slate-800 group-hover:border-blue-400'
+                ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-violet-600'
+                : 'border-2 border-dashed border-slate-200 dark:border-slate-800 group-hover:border-blue-400'
                 }`}
             >
               <div className="w-full h-full bg-white dark:bg-slate-950 rounded-full p-[2px]">
@@ -146,7 +147,7 @@ export const Stories = ({ progress = 1, isDragging = false, showStories = true }
                 <HiPlus className="w-2.5 h-2.5" />
               </span>
             </div>
-            <span 
+            <span
               style={{
                 opacity: Math.max(0, (progress - 0.75) / 0.25),
                 transform: `translateY(${(1 - progress) * 8}px)`,
@@ -177,7 +178,7 @@ export const Stories = ({ progress = 1, isDragging = false, showStories = true }
           }
 
           // Aggressive opacity check for items beyond index 3 to keep the cluster simple
-          const targetOpacity = renderIndex < 4 
+          const targetOpacity = renderIndex < 4
             ? Math.max(0, Math.min(1, progress * 1.5 - 0.2))
             : Math.max(0, Math.min(1, (progress - 0.6) / 0.4))
 
@@ -204,7 +205,7 @@ export const Stories = ({ progress = 1, isDragging = false, showStories = true }
                   </div>
                 </div>
                 {/* Vibe Match Badge (No shadows!) */}
-                <span 
+                <span
                   style={{
                     opacity: Math.max(0, (progress - 0.8) / 0.2),
                     transition: isDragging ? 'none' : 'opacity 0.3s ease-out'
@@ -214,7 +215,7 @@ export const Stories = ({ progress = 1, isDragging = false, showStories = true }
                   {vibeScore}% vibe
                 </span>
               </div>
-              <span 
+              <span
                 style={{
                   opacity: Math.max(0, (progress - 0.75) / 0.25),
                   transform: `translateY(${(1 - progress) * 8}px)`,
