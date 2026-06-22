@@ -100,6 +100,42 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const likeMutation = useLikeToggle()
 
+  const renderContentWithHashtags = (content: string) => {
+    if (!content) return null
+    const parts = content.split(/(\s+)/)
+    return parts.map((part, index) => {
+      if (part.startsWith('#')) {
+        return (
+          <span
+            key={index}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent font-bold hover:underline cursor-pointer select-none"
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push(`/dashboard/explore?q=${encodeURIComponent(part)}`)
+            }}
+          >
+            {part}
+          </span>
+        )
+      } else if (part.startsWith('@')) {
+        return (
+          <span
+            key={index}
+            className="text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer select-none"
+            onClick={(e) => {
+              e.stopPropagation()
+              const cleanUsername = part.replace('@', '')
+              router.push(`/dashboard/explore?q=${encodeURIComponent(cleanUsername)}`)
+            }}
+          >
+            {part}
+          </span>
+        )
+      }
+      return part
+    })
+  }
+
   useEffect(() => {
     setMounted(true)
     loadComments()
@@ -316,35 +352,45 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         whileInView={isDetailPage ? {} : { opacity: 1, y: 0, scale: 1 }}
         viewport={{ once: true, margin: "-40px" }}
         transition={{ type: "spring", stiffness: 120, damping: 16, mass: 0.8 }}
-        className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden relative transition-colors duration-300 ${showMenu ? 'z-50' : 'z-10'} ${isDetailPage ? '' : 'cursor-pointer hover:shadow-md hover:border-slate-200 dark:hover:border-white/10'}`}
+        className={`group bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-3xl overflow-hidden relative transition-all duration-500 ${showMenu ? 'z-50' : 'z-10'} ${isDetailPage ? '' : 'cursor-pointer hover:shadow-[0_20px_50px_rgba(8,112,184,0.05)] hover:border-slate-200/80 dark:hover:border-white/10 dark:hover:shadow-[0_20px_50px_rgba(59,130,246,0.02)]'}`}
       >
-        <div className="flex items-center justify-between p-4 relative">
+        {/* Ambient Backlight Glow for Hover in Dark Mode */}
+        {!isDetailPage && (
+          <div className="absolute -inset-px rounded-[24px] bg-gradient-to-tr from-blue-500/10 via-indigo-500/5 to-purple-500/10 opacity-0 group-hover:opacity-100 blur-xl transition duration-700 pointer-events-none" />
+        )}
+
+        <div className="flex items-center justify-between p-4 relative z-10">
           <div
             onClick={(e) => goToProfile(e)}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-3 cursor-pointer group/author"
           >
-            <img
-              src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
-              className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 group-hover:opacity-85 transition-opacity"
-              alt=""
-            />
+            <div className="relative">
+              <img
+                src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
+                className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-800 group-hover/author:ring-blue-500/60 transition-all duration-300"
+                alt=""
+              />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-900" />
+            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 leading-none group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{post.author}</h4>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 leading-none group-hover/author:text-blue-600 dark:group-hover/author:text-blue-400 transition-colors">{post.author}</h4>
                 {post.isOwner && (
-                  <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
+                  <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
                 )}
               </div>
-              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">{formatTime(post.time)} • {post.location}</span>
+              <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
+                {formatTime(post.time)} {!post.image && post.location && `• ${post.location}`}
+              </span>
             </div>
           </div>
 
           <div className="relative" ref={menuRef}>
             <button 
               onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }} 
-              className={`p-1 rounded-full transition-colors ${showMenu ? 'bg-slate-100 dark:bg-slate-850 text-slate-700 dark:text-slate-300' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              className={`p-1.5 rounded-full transition-colors ${showMenu ? 'bg-slate-150 dark:bg-slate-800 text-slate-700 dark:text-slate-300' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}
             >
-              <HiEllipsisHorizontal className="w-6 h-6" />
+              <HiEllipsisHorizontal className="w-5 h-5" />
             </button>
 
             {showMenu && (
@@ -393,33 +439,41 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         </div>
 
         {post.image && (
-          <div className="px-4">
+          <div className="px-4 relative z-10">
             <div 
               onClick={(e) => handleImageClick(e)} 
-              className={`relative w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 cursor-pointer select-none ${isDetailPage ? 'max-h-[70vh] flex items-center justify-center' : 'aspect-4/3'}`}
+              className={`relative w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950 cursor-pointer select-none group/img ${isDetailPage ? 'max-h-[70vh] flex items-center justify-center' : 'aspect-4/3'}`}
             >
               <img 
                 src={post.image} 
                 alt="Post content" 
-                className={`w-full h-full ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'} transition-transform duration-500 hover:scale-[1.02]`} 
+                className={`w-full h-full ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'} transition-transform duration-700 ease-out group-hover/img:scale-[1.03]`} 
               />
+              
+              {/* Floating location tag inside the image */}
+              {post.location && (
+                <div className="absolute bottom-3 left-3 backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-all duration-300 hover:bg-black/60">
+                  <span>📍 {post.location}</span>
+                </div>
+              )}
+
               {showDoubleTapHeart && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 animate-double-tap-heart">
-                  <FaHeart className="w-20 h-20 text-rose-500" />
+                  <FaHeart className="w-20 h-20 text-rose-500 drop-shadow-[0_0_20px_rgba(244,63,94,0.6)]" />
                 </div>
               )}
             </div>
           </div>
         )}
 
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between p-4 relative z-10">
           <div className="flex items-center gap-4">
             <button 
               onClick={(e) => { e.stopPropagation(); handleLikeToggle(); }} 
-              className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition active:scale-90"
+              className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-450 transition active:scale-90"
             >
               {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{likesCount}</span>
+              <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">{likesCount}</span>
             </button>
 
             <button 
@@ -432,44 +486,50 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                 }
               }} 
               className={`flex items-center gap-1.5 transition active:scale-90 ${
-                isDetailPage || showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400'
+                isDetailPage || showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-450'
               }`}>
               <FiMessageSquare className="w-5 h-5" />
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{commentsCount}</span>
+              <span className="text-xs font-semibold text-slate-650 dark:text-slate-400">{commentsCount}</span>
             </button>
 
             <button 
               onClick={(e) => e.stopPropagation()} 
-              className="text-slate-700 dark:text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition"
+              className="text-slate-700 dark:text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-405 transition"
             >
               <FiSend className="w-5 h-5" />
             </button>
           </div>
 
+          {/* Premium Breathing Tip Button */}
           <button 
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full text-xs font-bold transition active:scale-95 border border-amber-200/30"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border border-amber-500/25 shadow-xs hover:shadow-sm"
           >
-            <div className="w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-white font-extrabold text-[9px]">$</div> Tip
+            <span className="relative flex h-1.5 w-1.5 mr-0.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+            </span>
+            Tip
           </button>
         </div>
 
-        <div className="px-4 pb-4 text-xs text-slate-600 dark:text-slate-450 leading-relaxed border-b border-slate-50 dark:border-white/5">
+        <div className="px-4 pb-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed border-b border-slate-50 dark:border-white/5 relative z-10 select-text">
           <span
             onClick={(e) => goToProfile(e)}
-            className="font-bold text-slate-900 dark:text-slate-100 mr-1 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="font-bold text-slate-900 dark:text-slate-100 mr-1.5 cursor-pointer hover:text-blue-600 dark:hover:text-blue-450 transition-colors"
           >
             {post.author}
-          </span> {post.content}
+          </span>
+          {renderContentWithHashtags(post.content)}
         </div>
 
         {!isDetailPage && (
           <div
             onClick={(e) => { e.stopPropagation(); setShowComments(true); }}
-            className="p-3 bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-50 dark:border-white/5 flex items-center justify-between cursor-pointer text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            className="p-3.5 bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-50 dark:border-white/5 flex items-center justify-between cursor-pointer text-xs text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350 transition-colors relative z-10"
           >
             <span>Fikr bildiring...</span>
-            <FiSend className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />
+            <FiSend className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700" />
           </div>
         )}
       </motion.div>
