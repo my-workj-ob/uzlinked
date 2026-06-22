@@ -16,6 +16,7 @@ import {
 } from 'react-icons/hi2'
 import { CreateWizard } from '@/components/create-wizard'
 import { createClient } from '@/utils/supabase/client'
+import { Loader2 } from 'lucide-react'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -158,12 +159,32 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     const disablePull = isReelsPage || isMessagesPage || isRefreshing
     if (disablePull) return
 
-    // Horizontal scroll container ichida bo'lsa — pull'ni o'chirish
+    // Horizontal scroll container yoki data-no-pull elementlar ichida bo'lsa pull-to-refresh'ni o'chirish
+    const isInsideHorizontalContainer = (el: HTMLElement | null): boolean => {
+      let curr = el
+      while (curr && curr !== mainRef.current && curr !== document.body) {
+        if (
+          curr.classList.contains('overflow-x-auto') ||
+          curr.classList.contains('overflow-x-scroll') ||
+          curr.hasAttribute('data-no-pull') ||
+          (curr.className && typeof curr.className === 'string' && (
+            curr.className.includes('overflow-x-auto') ||
+            curr.className.includes('overflow-x-scroll')
+          ))
+        ) {
+          return true
+        }
+        const style = window.getComputedStyle(curr)
+        if (style.overflowX === 'auto' || style.overflowX === 'scroll') {
+          return true
+        }
+        curr = curr.parentElement
+      }
+      return false
+    }
+
     const target = e.target as HTMLElement
-    const isInsideHorizontalScroll = !!target.closest(
-      '.overflow-x-auto, [data-stories], .stories-container, [data-no-pull]'
-    )
-    if (isInsideHorizontalScroll) {
+    if (isInsideHorizontalContainer(target)) {
       isPullingRef.current = false
       return
     }
@@ -194,20 +215,20 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       const absX = Math.abs(deltaX)
       const absY = Math.abs(deltaY)
 
-      // Kichik threshold — tezroq qaror qabul qilish
-      if (absX > 8 || absY > 8) {
-        // Horizontal yoki diagonal — pull yo'q
-        if (absX >= absY * 0.5) {
+      // Kichik threshold (6px) — tez va aniq qaror qabul qilish
+      if (absX > 12 || absY > 12) {
+        if (absX > absY) {
+          // Aniq horizontal harakat
           pullDirectionLockRef.current = 'horizontal'
           isPullingRef.current = false
           setPullDistance(0)
           currentPullDistanceRef.current = 0
           return
-        }
-        // Faqat aniq vertikal (pastga) bo'lsa pull
-        if (deltaY > 0 && absY > absX * 2.0) {
+        } else if (deltaY > 0 && absY > absX * 5) {
+          // Aniq vertikal pastga tortish
           pullDirectionLockRef.current = 'vertical'
         } else {
+          // Diagonal yoki yuqoriga harakat — pull-to-refresh'ni bekor qilish
           pullDirectionLockRef.current = 'horizontal'
           isPullingRef.current = false
           setPullDistance(0)
@@ -238,7 +259,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     pullTouchStartXRef.current = null
     pullDirectionLockRef.current = 'none'
 
-    if (currentPullDistanceRef.current > 65) {
+    if (currentPullDistanceRef.current > 90) {
       setIsRefreshing(true)
       setTimeout(() => {
         window.location.reload()
@@ -811,7 +832,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                       style={{ transform: `rotate(${pullDistance * 4}deg)` }}
                       className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full transition-transform duration-100"
                     />
-                    <span>{pullDistance > 65 ? "Yuboring yangilash uchun" : "Pastga torting"}</span>
+
                   </>
                 )}
               </div>

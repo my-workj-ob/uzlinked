@@ -10,7 +10,10 @@ interface StoriesBarProps {
 
 export const StoriesBar = ({ onOpenStory }: StoriesBarProps) => {
     return (
-        <div className="w-full bg-white border border-slate-100 rounded-2xl p-4 flex gap-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] select-none mb-6">
+        <div
+            data-no-pull
+            className="w-full bg-white border border-slate-100 rounded-2xl p-4 flex gap-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] select-none mb-6"
+        >
             {STORIES_DATA.map((user, index) => (
                 <div
                     key={user.id}
