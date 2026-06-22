@@ -105,7 +105,7 @@ export async function GET(request: Request) {
             let profileQuery = supabase
                 .from('profiles')
                 .select('id, nickname, username, avatar_url, bio, is_professional_mode, headline, tags, open_for_collab, is_private')
-                .or('is_private.is.null,is_private.eq.false')
+                .not('is_private', 'eq', true)
                 .limit(20)
 
             if (query) {
@@ -223,7 +223,7 @@ export async function GET(request: Request) {
                     id, video_key, thumbnail_key, title, description, created_at, views_count,
                     profiles (nickname, avatar_url, is_private),
                     reel_likes (user_id),
-                    reel_comments:comments (id)
+                    reel_comments (id)
                 `)
                 .order('created_at', { ascending: false })
 
@@ -372,7 +372,7 @@ export async function GET(request: Request) {
             let profileQuery = supabase
                 .from('profiles')
                 .select('id, nickname, username, avatar_url, bio, is_professional_mode, headline, tags, open_for_collab, is_private')
-                .or('is_private.is.null,is_private.eq.false')
+                .not('is_private', 'eq', true)
                 .limit(20)
 
             if (tab === 'hamjamiyat') {
@@ -454,7 +454,7 @@ export async function GET(request: Request) {
                 id, video_key, thumbnail_key, title, description, created_at, views_count,
                 profiles (nickname, avatar_url, is_private),
                 reel_likes (user_id),
-                reel_comments:comments (id)
+                reel_comments (id)
             `)
             .order('created_at', { ascending: false })
             .limit(30)

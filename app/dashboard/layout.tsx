@@ -158,15 +158,17 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     const disablePull = isReelsPage || isMessagesPage || isRefreshing
     if (disablePull) return
 
-    // If starting a touch inside horizontal stories container or similar, we can also default to horizontal
+    // Horizontal scroll container ichida bo'lsa — pull'ni o'chirish
     const target = e.target as HTMLElement
-    const isInsideHorizontalScroll = target.closest('.overflow-x-auto') || target.closest('[data-stories]') || target.closest('.stories-container')
-
+    const isInsideHorizontalScroll = !!target.closest(
+      '.overflow-x-auto, [data-stories], .stories-container, [data-no-pull]'
+    )
     if (isInsideHorizontalScroll) {
       isPullingRef.current = false
       return
     }
 
+    // Faqat scroll tepada bo'lsa boshlash
     if (mainRef.current && mainRef.current.scrollTop === 0) {
       pullTouchStartRef.current = e.touches[0].clientY
       pullTouchStartXRef.current = e.touches[0].clientX
@@ -191,10 +193,19 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     if (pullDirectionLockRef.current === 'none') {
       const absX = Math.abs(deltaX)
       const absY = Math.abs(deltaY)
-      const decisionThreshold = 20 // px
 
-      if (absX > decisionThreshold || absY > decisionThreshold) {
-        if (absY > absX * 2.0 && deltaY > 0) {
+      // Kichik threshold — tezroq qaror qabul qilish
+      if (absX > 8 || absY > 8) {
+        // Horizontal yoki diagonal — pull yo'q
+        if (absX >= absY * 0.5) {
+          pullDirectionLockRef.current = 'horizontal'
+          isPullingRef.current = false
+          setPullDistance(0)
+          currentPullDistanceRef.current = 0
+          return
+        }
+        // Faqat aniq vertikal (pastga) bo'lsa pull
+        if (deltaY > 0 && absY > absX * 2.0) {
           pullDirectionLockRef.current = 'vertical'
         } else {
           pullDirectionLockRef.current = 'horizontal'
@@ -208,20 +219,16 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       }
     }
 
-    if (pullDirectionLockRef.current === 'horizontal') {
-      return
-    }
+    if (pullDirectionLockRef.current === 'horizontal') return
 
-    if (pullDirectionLockRef.current === 'vertical') {
-      if (deltaY > 0) {
-        const distance = Math.min(100, deltaY / 3.0)
-        setPullDistance(distance)
-        currentPullDistanceRef.current = distance
-      } else {
-        setPullDistance(0)
-        currentPullDistanceRef.current = 0
-        isPullingRef.current = false
-      }
+    if (pullDirectionLockRef.current === 'vertical' && deltaY > 0) {
+      const distance = Math.min(100, deltaY / 3.0)
+      setPullDistance(distance)
+      currentPullDistanceRef.current = distance
+    } else {
+      setPullDistance(0)
+      currentPullDistanceRef.current = 0
+      isPullingRef.current = false
     }
   }
 
