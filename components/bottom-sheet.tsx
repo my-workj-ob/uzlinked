@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
 import { HiXMark } from 'react-icons/hi2'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useDragControls } from 'framer-motion'
 
 interface BottomSheetProps {
     isOpen: boolean
@@ -13,7 +13,11 @@ interface BottomSheetProps {
     expandable?: boolean
     headerAction?: React.ReactNode
     initialState?: 'peek' | 'full'
+    headerContent?: React.ReactNode
+    footerContent?: React.ReactNode
 }
+
+const INTERACTIVE_SELECTOR = 'input, textarea, button, a, select, [data-no-drag]'
 
 export const BottomSheet = forwardRef<any, BottomSheetProps>(({
     isOpen,
@@ -22,12 +26,14 @@ export const BottomSheet = forwardRef<any, BottomSheetProps>(({
     children,
     expandable = false,
     headerAction,
-    initialState = 'peek'
+    initialState = 'peek',
+    headerContent,
+    footerContent
 }, ref) => {
     const [mounted, setMounted] = useState(false)
     const [sheetState, setSheetState] = useState<'peek' | 'full'>(initialState)
-    const startYRef = useRef(0)
     const contentRef = useRef<HTMLDivElement>(null)
+    const dragControls = useDragControls()
 
     useImperativeHandle(ref, () => ({
         expand: () => setSheetState('full'),
@@ -41,7 +47,7 @@ export const BottomSheet = forwardRef<any, BottomSheetProps>(({
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden'
-            setSheetState(initialState) // Reset to initial state height when opened
+            setSheetState(initialState)
         } else {
             document.body.style.overflow = 'unset'
         }
@@ -56,49 +62,28 @@ export const BottomSheet = forwardRef<any, BottomSheetProps>(({
         }
     }, [sheetState])
 
-    // Native touchmove listener to allow dragging on the entire modal (including scrollable content)
     useEffect(() => {
-        const contentEl = contentRef.current
-        if (!contentEl) return
+        if (!isOpen) return
 
-        const onTouchStart = (e: TouchEvent) => {
-            startYRef.current = e.touches[0].clientY
+        const setVh = () => {
+            const vh = window.visualViewport?.height ?? window.innerHeight
+            document.documentElement.style.setProperty('--vh', `${vh}px`)
         }
 
-        const onTouchMove = (e: TouchEvent) => {
-            const currentY = e.touches[0].clientY
-            const diffY = currentY - startYRef.current
-            const scrollTop = contentEl.scrollTop
+        setVh()
+        window.visualViewport?.addEventListener('resize', setVh)
+        window.visualViewport?.addEventListener('scroll', setVh)
+        window.addEventListener('resize', setVh)
 
-            if (expandable) {
-                if (sheetState === 'peek') {
-                    // In peek state, swipe up/down drags the modal, prevent native scrolling
-                    if (e.cancelable) e.preventDefault()
-                } else if (sheetState === 'full') {
-                    // In full state, swipe down at the top collapses the modal, prevent native scrolling
-                    if (scrollTop === 0 && diffY > 0) {
-                        if (e.cancelable) e.preventDefault()
-                    }
-                }
-            } else {
-                // Non-expandable: swipe down at top collapses/closes
-                if (scrollTop === 0 && diffY > 0) {
-                    if (e.cancelable) e.preventDefault()
-                }
-            }
-        }
-
-        contentEl.addEventListener('touchstart', onTouchStart, { passive: true })
-        contentEl.addEventListener('touchmove', onTouchMove, { passive: false })
         return () => {
-            contentEl.removeEventListener('touchstart', onTouchStart)
-            contentEl.removeEventListener('touchmove', onTouchMove)
+            window.visualViewport?.removeEventListener('resize', setVh)
+            window.visualViewport?.removeEventListener('scroll', setVh)
+            window.removeEventListener('resize', setVh)
         }
-    }, [expandable, sheetState])
+    }, [isOpen])
 
     if (!mounted) return null
 
-    // Height and position configuration based on expandable mode
     const containerVariants = {
         closed: {
             y: "100%",
@@ -142,10 +127,39 @@ export const BottomSheet = forwardRef<any, BottomSheetProps>(({
                 }
             }
         } else {
-            // Non-expandable sheet: drag down to close
             if (offset > 150 || velocity > 400) {
                 onClose()
             }
+        }
+    }
+
+    const isInteractive = (target: EventTarget | null) => {
+        if (!(target instanceof Element)) return false
+        return !!target.closest(INTERACTIVE_SELECTOR)
+    }
+
+    const startDragFromChrome = (e: React.PointerEvent) => {
+        if (isInteractive(e.target)) return
+        dragControls.start(e)
+    }
+
+    const handlePanStart = (e: any, info: any) => {
+        if (e?.pointerType === 'mouse') return
+        if (isInteractive(e?.target)) return
+
+        const el = contentRef.current
+        const scrollTop = el?.scrollTop ?? 0
+        const goingDown = info.delta.y > 0
+
+        if (!expandable) {
+            if (scrollTop <= 0 && goingDown) dragControls.start(e)
+            return
+        }
+
+        if (sheetState === 'peek') {
+            dragControls.start(e)
+        } else if (scrollTop <= 0 && goingDown) {
+            dragControls.start(e)
         }
     }
 
@@ -155,9 +169,6 @@ export const BottomSheet = forwardRef<any, BottomSheetProps>(({
                 <div
                     className="fixed top-0 left-0 right-0 z-[999999] flex items-end justify-center select-none"
                     style={{ bottom: 'calc(100vh - var(--vh, 100vh))' }}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onTouchMove={(e) => e.stopPropagation()}
-                    onTouchEnd={(e) => e.stopPropagation()}
                 >
                     {/* Backdrop */}
                     <motion.div
@@ -174,7 +185,10 @@ export const BottomSheet = forwardRef<any, BottomSheetProps>(({
                     {/* Sheet Container */}
                     <motion.div
                         drag="y"
+                        dragListener={false}
+                        dragControls={dragControls}
                         dragDirectionLock
+                        dragMomentum={false}
                         dragElastic={{ top: expandable && sheetState === 'full' ? 0.15 : 0.85, bottom: 0.85 }}
                         dragConstraints={{ top: 0, bottom: 0 }}
                         onDragEnd={handleDragEnd}
@@ -187,13 +201,19 @@ export const BottomSheet = forwardRef<any, BottomSheetProps>(({
                         data-no-pull="true"
                     >
                         {/* Drag / Pull Indicator Handle */}
-                        <div className="w-full py-3 shrink-0 cursor-grab active:cursor-grabbing flex justify-center">
+                        <div
+                            onPointerDown={startDragFromChrome}
+                            className="w-full py-3 shrink-0 cursor-grab active:cursor-grabbing flex justify-center"
+                        >
                             <div className="w-10 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full" />
                         </div>
 
                         {/* Header */}
                         {(title || headerAction) && (
-                            <div className={`flex items-center justify-between px-5 pb-3 shrink-0 ${title ? 'border-b border-slate-100 dark:border-white/5' : ''}`}>
+                            <div
+                                onPointerDown={startDragFromChrome}
+                                className={`flex items-center justify-between px-5 pb-3 shrink-0 ${title ? 'border-b border-slate-100 dark:border-white/5' : ''}`}
+                            >
                                 <span className="text-slate-900 dark:text-slate-100 font-extrabold text-sm truncate pr-4">
                                     {title}
                                 </span>
@@ -209,19 +229,29 @@ export const BottomSheet = forwardRef<any, BottomSheetProps>(({
                             </div>
                         )}
 
-                        <div
+                        {/* Optional fixed header content (does not scroll) */}
+                        {headerContent && (
+                            <div onPointerDown={startDragFromChrome} className="shrink-0">
+                                {headerContent}
+                            </div>
+                        )}
+
+                        {/* Scrollable content */}
+                        <motion.div
                             ref={contentRef}
+                            onPanStart={handlePanStart}
                             className="flex-1 overflow-y-auto p-3 scrollbar-none select-text text-xs sm:text-sm text-slate-700 dark:text-slate-300"
                             style={{ overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
-                            onPointerDown={(e) => {
-                                // Stop pointer event bubbling on mouse devices (desktop selection/clicking)
-                                if (e.pointerType === 'mouse') {
-                                    e.stopPropagation()
-                                }
-                            }}
                         >
                             {children}
-                        </div>
+                        </motion.div>
+
+                        {/* Optional fixed footer content (does not scroll) */}
+                        {footerContent && (
+                            <div onPointerDown={startDragFromChrome} className="shrink-0">
+                                {footerContent}
+                            </div>
+                        )}
                     </motion.div>
                 </div>
             )}

@@ -603,8 +603,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           <button
             onClick={handleTipClick}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${post.authorIsPremium
-                ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs shadow-amber-500/5'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
+              ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs shadow-amber-500/5'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
               }`}
           >
             {post.authorIsPremium && (
@@ -787,8 +787,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               type="submit"
               disabled={!editContent.trim() || editContent === post.content}
               className={`px-4 py-2.5 text-xs font-bold text-white rounded-xl transition-all cursor-pointer ${editContent.trim() && editContent !== post.content
-                  ? 'bg-blue-600 hover:bg-blue-700 active:scale-95'
-                  : 'bg-slate-100 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed'
+                ? 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+                : 'bg-slate-100 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed'
                 }`}
             >
               Saqlash
@@ -856,8 +856,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                   type="button"
                   onClick={() => { setTipAmount(amount); setCustomTip(''); }}
                   className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${tipAmount === amount && !customTip
-                      ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
-                      : 'bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-350 border-slate-200 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-slate-900/60'
+                    ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
+                    : 'bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-350 border-slate-200 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-slate-900/60'
                     }`}
                 >
                   {Number(amount).toLocaleString('uz-UZ')} UZS
@@ -893,6 +893,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           </form>
         )}
       </BottomSheet>
+
       {/* Quick View Post Details Bottom Sheet */}
       <BottomSheet
         ref={sheetRef}
@@ -913,13 +914,15 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             <FiExternalLink className="w-5 h-5" />
           </button>
         }
-      >
-        <div className="flex flex-col gap-4 select-none">
-          {/* Sticky Author Header & Post Image */}
-          <div className="sticky top-[-20px] z-20 bg-white dark:bg-slate-900 pt-[20px] pb-3 -mx-5 px-5 border-b border-slate-100 dark:border-white/5 flex flex-col gap-4">
+        headerContent={
+          <div className="px-5 pt-5 pb-3 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900 flex flex-col gap-4 select-none">
             {/* Author Header */}
             <div className="flex items-center justify-between">
-              <div onClick={() => { setIsDetailModalOpen(false); goToProfile({ stopPropagation: () => { } } as any); }} className="flex items-center gap-3 cursor-pointer group/det">
+              <div
+                onClick={() => { setIsDetailModalOpen(false); goToProfile({ stopPropagation: () => { } } as any); }}
+                className="flex items-center gap-3 cursor-pointer group/det"
+                data-no-drag
+              >
                 <div className="relative">
                   <img
                     src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
@@ -960,7 +963,28 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               </div>
             )}
           </div>
-
+        }
+        footerContent={
+          <form
+            onSubmit={handleAddComment}
+            className="flex items-center gap-2 px-5 pt-3 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900"
+            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}
+          >
+            <input
+              type="text"
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              onFocus={handleInputFocus}
+              placeholder="Fikr yozing..."
+              className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
+            />
+            <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl transition active:scale-95 cursor-pointer">
+              <FiSend className="w-4 h-4" />
+            </button>
+          </form>
+        }
+      >
+        <div className="flex flex-col gap-4 select-none">
           {/* Post Content */}
           <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">
             {renderContentWithHashtags(post.content)}
@@ -972,6 +996,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               <button
                 onClick={handleLikeToggle}
                 className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 transition active:scale-90"
+                data-no-drag
               >
                 {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
                 <span className="text-xs font-semibold">{likesCount}</span>
@@ -985,9 +1010,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             {/* Tip Button inside modal */}
             <button
               onClick={handleTipClick}
+              data-no-drag
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${post.authorIsPremium
-                  ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-550 border-transparent cursor-not-allowed'
+                ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-550 border-transparent cursor-not-allowed'
                 }`}
             >
               {post.authorIsPremium && (
@@ -1021,7 +1047,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                       </div>
                       <div className="flex items-center gap-3 mt-1.5 ml-1 text-[9px] font-bold text-slate-400 dark:text-slate-550">
                         <span>{formatTime(comment.createdAt)}</span>
-                        <button onClick={() => handleLikeComment(comment.id)} className={`hover:text-rose-500 flex items-center gap-0.5 ${comment.likedByMe ? 'text-rose-500' : ''}`}>
+                        <button onClick={() => handleLikeComment(comment.id)} data-no-drag className={`hover:text-rose-500 flex items-center gap-0.5 ${comment.likedByMe ? 'text-rose-500' : ''}`}>
                           {comment.likedByMe ? <FaHeart className="w-3.5 h-3.5 text-rose-500" /> : <FiHeart className="w-3.5 h-3.5" />}
                           {(comment.likesCount || 0) > 0 && <span>{comment.likesCount}</span>}
                         </button>
@@ -1032,21 +1058,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               </div>
             )}
           </div>
-
-          {/* Quick Comment Input Form */}
-          <form onSubmit={handleAddComment} className="flex items-center gap-2 pt-3 pb-[20px] border-t border-slate-100 dark:border-white/5 sticky bottom-[-20px] bg-white dark:bg-slate-900 -mx-5 px-5 z-20">
-            <input
-              type="text"
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              onFocus={handleInputFocus}
-              placeholder="Fikr yozing..."
-              className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
-            />
-            <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl transition active:scale-95 cursor-pointer">
-              <FiSend className="w-4 h-4" />
-            </button>
-          </form>
         </div>
       </BottomSheet>
     </>
