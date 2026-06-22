@@ -151,15 +151,26 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const pullTouchStartRef = useRef<number | null>(null)
   const pullTouchStartXRef = useRef<number | null>(null)
+  const pullDirectionLockRef = useRef<'none' | 'vertical' | 'horizontal'>('none')
   const isPullingRef = useRef(false)
 
   const handleMainTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     const disablePull = isReelsPage || isMessagesPage || isRefreshing
     if (disablePull) return
 
+    // If starting a touch inside horizontal stories container or similar, we can also default to horizontal
+    const target = e.target as HTMLElement
+    const isInsideHorizontalScroll = target.closest('.overflow-x-auto') || target.closest('[data-stories]') || target.closest('.stories-container')
+
+    if (isInsideHorizontalScroll) {
+      isPullingRef.current = false
+      return
+    }
+
     if (mainRef.current && mainRef.current.scrollTop === 0) {
       pullTouchStartRef.current = e.touches[0].clientY
       pullTouchStartXRef.current = e.touches[0].clientX
+      pullDirectionLockRef.current = 'none'
       isPullingRef.current = true
     } else {
       isPullingRef.current = false
@@ -175,14 +186,40 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     const deltaY = currentY - pullTouchStartRef.current
     const deltaX = currentX - pullTouchStartXRef.current
 
-    // Predominantly vertical drag downward: deltaY must be positive and significantly larger than horizontal deltaX
-    if (deltaY > 0 && deltaY > Math.abs(deltaX) * 2.0) {
-      const distance = Math.min(100, Math.pow(deltaY, 0.82))
-      setPullDistance(distance)
-    } else if (deltaY < 0 || Math.abs(deltaX) > deltaY) {
-      // Cancel pull if scrolling up or swiping sideways
-      isPullingRef.current = false
-      setPullDistance(0)
+    // Determine lock direction if not set yet
+    if (pullDirectionLockRef.current === 'none') {
+      const absX = Math.abs(deltaX)
+      const absY = Math.abs(deltaY)
+      const decisionThreshold = 8 // px
+
+      if (absX > decisionThreshold || absY > decisionThreshold) {
+        if (absY > absX * 2.0 && deltaY > 0) {
+          pullDirectionLockRef.current = 'vertical'
+        } else {
+          pullDirectionLockRef.current = 'horizontal'
+          isPullingRef.current = false
+          setPullDistance(0)
+          return
+        }
+      } else {
+        return
+      }
+    }
+
+    // Ignore movements if locked to horizontal scrolling
+    if (pullDirectionLockRef.current === 'horizontal') {
+      return
+    }
+
+    // Apply distance if locked to vertical downward pull
+    if (pullDirectionLockRef.current === 'vertical') {
+      if (deltaY > 0) {
+        const distance = Math.min(100, Math.pow(deltaY, 0.82))
+        setPullDistance(distance)
+      } else {
+        setPullDistance(0)
+        isPullingRef.current = false
+      }
     }
   }
 
@@ -190,6 +227,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     isPullingRef.current = false
     pullTouchStartRef.current = null
     pullTouchStartXRef.current = null
+    pullDirectionLockRef.current = 'none'
 
     if (pullDistance > 65) {
       setIsRefreshing(true)
@@ -265,7 +303,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       .on('presence', { event: 'sync' }, () => {
         const state = presenceChannel.presenceState()
         const onlineIds = Object.keys(state)
-        ;(window as any).supabaseOnlineUserIds = onlineIds
+          ; (window as any).supabaseOnlineUserIds = onlineIds
         window.dispatchEvent(new CustomEvent('supabase-online-users', { detail: onlineIds }))
       })
       .subscribe(async (status: any) => {
@@ -406,7 +444,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     if (pathname !== prevPathname) {
       const oldIndex = bottomNavItems.findIndex(item => prevPathname === item.path)
       const newIndex = bottomNavItems.findIndex(item => pathname === item.path)
-      
+
       if (oldIndex !== -1 && newIndex !== -1) {
         if (newIndex > oldIndex) {
           setSlideDirection('left')
@@ -421,11 +459,11 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   // Touch Swipe handlers for tab switching
   const handleTouchStart = (e: React.TouchEvent) => {
     const hasActiveChat = typeof window !== 'undefined' && (
-      window.location.search.includes('chat=') || 
+      window.location.search.includes('chat=') ||
       window.location.search.includes('partner=')
     )
     const disableSwipe = pathname === '/dashboard/explore' || pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
-    
+
     if (disableSwipe) return
     setTouchEnd(null)
     setTouchStart(e.targetTouches[0].clientX)
@@ -433,22 +471,22 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     const hasActiveChat = typeof window !== 'undefined' && (
-      window.location.search.includes('chat=') || 
+      window.location.search.includes('chat=') ||
       window.location.search.includes('partner=')
     )
     const disableSwipe = pathname === '/dashboard/explore' || pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
-    
+
     if (disableSwipe || touchStart === null) return
     setTouchEnd(e.targetTouches[0].clientX)
   }
 
   const handleTouchEnd = () => {
     const hasActiveChat = typeof window !== 'undefined' && (
-      window.location.search.includes('chat=') || 
+      window.location.search.includes('chat=') ||
       window.location.search.includes('partner=')
     )
     const disableSwipe = pathname === '/dashboard/explore' || pathname.startsWith('/dashboard/groups/') || pathname.startsWith('/dashboard/channels/') || (pathname === '/dashboard/messages' && hasActiveChat)
-    
+
     if (disableSwipe || touchStart === null || touchEnd === null) return
     const distance = touchStart - touchEnd
     const minSwipeDistance = 65 // minimum swipe distance in px
@@ -547,7 +585,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
 
   return (
-    <div 
+    <div
       style={{ height: 'var(--vh, 100dvh)' }}
       className="w-full max-w-[100dvw] bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300"
     >
@@ -614,7 +652,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       )}
 
       {/* DESKTOP SIDEBAR */}
-      <div 
+      <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -651,9 +689,8 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                     <span className="text-sm">{item.label}</span>
                   </div>
                   {badgeCount > 0 && (
-                    <span className={`min-w-[18px] h-4.5 px-1.5 flex items-center justify-center text-[10px] font-black rounded-full text-white ${
-                      item.id === 'messages' ? 'bg-blue-600' : 'bg-rose-500'
-                    }`}>
+                    <span className={`min-w-[18px] h-4.5 px-1.5 flex items-center justify-center text-[10px] font-black rounded-full text-white ${item.id === 'messages' ? 'bg-blue-600' : 'bg-rose-500'
+                      }`}>
                       {badgeCount}
                     </span>
                   )}
@@ -730,7 +767,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main 
+        <main
           ref={mainRef}
           onTouchStart={handleMainTouchStart}
           onTouchMove={handleMainTouchMove}
@@ -740,13 +777,13 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             : isMessagesPage
               ? 'pt-0 pb-0 overflow-hidden'
               : 'pt-16 pb-24 md:py-8 overflow-y-auto'
-          }`}
+            }`}
         >
           {/* Pull to Refresh Indicator */}
           {pullDistance > 35 && (
-            <div 
-              style={{ 
-                transform: `translateY(${pullDistance - 55}px)`, 
+            <div
+              style={{
+                transform: `translateY(${pullDistance - 55}px)`,
                 opacity: Math.min(1, (pullDistance - 35) / 25),
                 transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94), opacity 0.3s'
               }}
@@ -760,9 +797,9 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                   </>
                 ) : (
                   <>
-                    <div 
-                      style={{ transform: `rotate(${pullDistance * 4}deg)` }} 
-                      className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full transition-transform duration-100" 
+                    <div
+                      style={{ transform: `rotate(${pullDistance * 4}deg)` }}
+                      className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full transition-transform duration-100"
                     />
                     <span>{pullDistance > 65 ? "Yuboring yangilash uchun" : "Pastga torting"}</span>
                   </>
@@ -772,17 +809,17 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           )}
 
           <div className={`mx-auto ${isReelsPage || isMessagesPage
-              ? 'w-full h-full max-w-none px-0'
-              : 'w-full max-w-2xl px-4 md:px-6'
+            ? 'w-full h-full max-w-none px-0'
+            : 'w-full max-w-2xl px-4 md:px-6'
             }`}>
-            <div 
-              key={pathname} 
+            <div
+              key={pathname}
               style={{
                 transform: pullDistance > 0 && !isRefreshing ? `translateY(${pullDistance * 0.4}px)` : 'none',
                 transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94)'
               }}
               className={`w-full h-full ${!pathname.includes('explore') && (slideDirection === 'left' ? 'animate-slide-from-right' : 'animate-slide-from-left')
-               }`}
+                }`}
             >
               {children}
             </div>
@@ -794,7 +831,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       {showUpdateModal && latestCommit && (
         <div className="fixed inset-0 z-70 flex items-end justify-center md:pb-10 p-0 md:p-4 animate-fade-in">
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity duration-300"
             onClick={() => {
               setShowUpdateModal(false)
@@ -806,7 +843,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           />
 
           {/* Bottom Sheet Card */}
-          <div 
+          <div
             onTouchStart={handleUpdateTouchStart}
             onTouchMove={handleUpdateTouchMove}
             onTouchEnd={handleUpdateTouchEnd}
@@ -838,7 +875,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                 </p>
               </div>
             </div>
-            
+
             {/* Commit Message Box */}
             <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-white/5 rounded-2xl p-4 mb-5 text-left">
               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
@@ -897,17 +934,16 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                 key={item.id}
                 href={item.path}
                 className={`flex items-center justify-center transition-all duration-300 ease-in-out select-none active:scale-95 ${isActive
-                    ? 'bg-blue-600 text-white rounded-full px-4 py-2.5'
-                    : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-blue-600 text-white rounded-full px-4 py-2.5'
+                  : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
               >
                 <div className="relative">
                   {item.id === 'profile' && user && avatarUrl ? (
-                    <div className={`w-5 h-5 overflow-hidden rounded-full ring-1 ${
-                      isActive 
-                        ? 'ring-white' 
-                        : 'ring-slate-350 dark:ring-slate-700'
-                    } shrink-0`}>
+                    <div className={`w-5 h-5 overflow-hidden rounded-full ring-1 ${isActive
+                      ? 'ring-white'
+                      : 'ring-slate-350 dark:ring-slate-700'
+                      } shrink-0`}>
                       <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                     </div>
                   ) : (
@@ -921,8 +957,8 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                 </div>
 
                 <span className={`overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-semibold ${isActive
-                    ? 'max-w-24 opacity-100 ml-2'
-                    : 'max-w-0 opacity-0 ml-0'
+                  ? 'max-w-24 opacity-100 ml-2'
+                  : 'max-w-0 opacity-0 ml-0'
                   }`}>
                   {item.label}
                   {badgeCount > 0 && isActive && (
