@@ -150,6 +150,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const [pullDistance, setPullDistance] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const pullTouchStartRef = useRef<number | null>(null)
+  const pullTouchStartXRef = useRef<number | null>(null)
   const isPullingRef = useRef(false)
 
   const handleMainTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
@@ -158,6 +159,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
     if (mainRef.current && mainRef.current.scrollTop === 0) {
       pullTouchStartRef.current = e.touches[0].clientY
+      pullTouchStartXRef.current = e.touches[0].clientX
       isPullingRef.current = true
     } else {
       isPullingRef.current = false
@@ -166,15 +168,20 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
   const handleMainTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     const disablePull = isReelsPage || isMessagesPage || isRefreshing
-    if (disablePull || !isPullingRef.current || pullTouchStartRef.current === null) return
+    if (disablePull || !isPullingRef.current || pullTouchStartRef.current === null || pullTouchStartXRef.current === null) return
 
     const currentY = e.touches[0].clientY
+    const currentX = e.touches[0].clientX
     const deltaY = currentY - pullTouchStartRef.current
+    const deltaX = currentX - pullTouchStartXRef.current
 
-    if (deltaY > 0) {
+    // Predominantly vertical drag downward: deltaY must be positive and significantly larger than horizontal deltaX
+    if (deltaY > 0 && deltaY > Math.abs(deltaX) * 2.0) {
       const distance = Math.min(100, Math.pow(deltaY, 0.82))
       setPullDistance(distance)
-    } else {
+    } else if (deltaY < 0 || Math.abs(deltaX) > deltaY) {
+      // Cancel pull if scrolling up or swiping sideways
+      isPullingRef.current = false
       setPullDistance(0)
     }
   }
@@ -182,6 +189,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
   const handleMainTouchEnd = () => {
     isPullingRef.current = false
     pullTouchStartRef.current = null
+    pullTouchStartXRef.current = null
 
     if (pullDistance > 65) {
       setIsRefreshing(true)
@@ -192,6 +200,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       setPullDistance(0)
     }
   }
+
 
   // Mavzuni boshlang'ich yuklash
   useEffect(() => {
@@ -734,11 +743,11 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           }`}
         >
           {/* Pull to Refresh Indicator */}
-          {pullDistance > 0 && (
+          {pullDistance > 35 && (
             <div 
               style={{ 
                 transform: `translateY(${pullDistance - 55}px)`, 
-                opacity: Math.min(1, pullDistance / 40),
+                opacity: Math.min(1, (pullDistance - 35) / 25),
                 transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94), opacity 0.3s'
               }}
               className="absolute left-0 right-0 top-0 z-40 flex items-center justify-center pointer-events-none pt-4"
