@@ -177,6 +177,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     }
   }
 
+  // 1. Komponentingiz tepasiga joriy masofani saqlash uchun yangi ref qo'shing (agar yo'q bo'lsa):
+  const currentPullDistanceRef = React.useRef(0);
+
+  // 2. handleMainTouchMove funksiyasini yangilang:
   const handleMainTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     const disablePull = isReelsPage || isMessagesPage || isRefreshing
     if (disablePull || !isPullingRef.current || pullTouchStartRef.current === null || pullTouchStartXRef.current === null) return
@@ -186,11 +190,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     const deltaY = currentY - pullTouchStartRef.current
     const deltaX = currentX - pullTouchStartXRef.current
 
-    // Determine lock direction if not set yet
     if (pullDirectionLockRef.current === 'none') {
       const absX = Math.abs(deltaX)
       const absY = Math.abs(deltaY)
-      const decisionThreshold = 8 // px
+      const decisionThreshold = 20 // px
 
       if (absX > decisionThreshold || absY > decisionThreshold) {
         if (absY > absX * 2.0 && deltaY > 0) {
@@ -199,6 +202,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           pullDirectionLockRef.current = 'horizontal'
           isPullingRef.current = false
           setPullDistance(0)
+          currentPullDistanceRef.current = 0; // reset
           return
         }
       } else {
@@ -206,30 +210,32 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       }
     }
 
-    // Ignore movements if locked to horizontal scrolling
     if (pullDirectionLockRef.current === 'horizontal') {
       return
     }
 
-    // Apply distance if locked to vertical downward pull
     if (pullDirectionLockRef.current === 'vertical') {
       if (deltaY > 0) {
         const distance = Math.min(100, Math.pow(deltaY, 0.82))
         setPullDistance(distance)
+        currentPullDistanceRef.current = distance; // Masofani ref'da saqlaymiz
       } else {
         setPullDistance(0)
+        currentPullDistanceRef.current = 0; // reset
         isPullingRef.current = false
       }
     }
   }
 
+  // 3. handleMainTouchEnd funksiyasini yangilang:
   const handleMainTouchEnd = () => {
     isPullingRef.current = false
     pullTouchStartRef.current = null
     pullTouchStartXRef.current = null
     pullDirectionLockRef.current = 'none'
 
-    if (pullDistance > 65) {
+    // State o'rniga eng so'nggi aniq qiymatni ref orqali tekshiramiz
+    if (currentPullDistanceRef.current > 65) {
       setIsRefreshing(true)
       setTimeout(() => {
         window.location.reload()
@@ -237,6 +243,9 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     } else {
       setPullDistance(0)
     }
+
+    // Oxirida refni ham nolga tenglashtiramiz
+    currentPullDistanceRef.current = 0;
   }
 
 
