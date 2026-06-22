@@ -177,10 +177,8 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     }
   }
 
-  // 1. Komponentingiz tepasiga joriy masofani saqlash uchun yangi ref qo'shing (agar yo'q bo'lsa):
-  const currentPullDistanceRef = React.useRef(0);
+  const currentPullDistanceRef = useRef(0)
 
-  // 2. handleMainTouchMove funksiyasini yangilang:
   const handleMainTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     const disablePull = isReelsPage || isMessagesPage || isRefreshing
     if (disablePull || !isPullingRef.current || pullTouchStartRef.current === null || pullTouchStartXRef.current === null) return
@@ -202,7 +200,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           pullDirectionLockRef.current = 'horizontal'
           isPullingRef.current = false
           setPullDistance(0)
-          currentPullDistanceRef.current = 0; // reset
+          currentPullDistanceRef.current = 0
           return
         }
       } else {
@@ -216,25 +214,23 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
     if (pullDirectionLockRef.current === 'vertical') {
       if (deltaY > 0) {
-        const distance = Math.min(100, Math.pow(deltaY, 0.82))
+        const distance = Math.min(100, deltaY / 3.0)
         setPullDistance(distance)
-        currentPullDistanceRef.current = distance; // Masofani ref'da saqlaymiz
+        currentPullDistanceRef.current = distance
       } else {
         setPullDistance(0)
-        currentPullDistanceRef.current = 0; // reset
+        currentPullDistanceRef.current = 0
         isPullingRef.current = false
       }
     }
   }
 
-  // 3. handleMainTouchEnd funksiyasini yangilang:
   const handleMainTouchEnd = () => {
     isPullingRef.current = false
     pullTouchStartRef.current = null
     pullTouchStartXRef.current = null
     pullDirectionLockRef.current = 'none'
 
-    // State o'rniga eng so'nggi aniq qiymatni ref orqali tekshiramiz
     if (currentPullDistanceRef.current > 65) {
       setIsRefreshing(true)
       setTimeout(() => {
@@ -243,9 +239,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     } else {
       setPullDistance(0)
     }
-
-    // Oxirida refni ham nolga tenglashtiramiz
-    currentPullDistanceRef.current = 0;
+    currentPullDistanceRef.current = 0
   }
 
 
