@@ -339,8 +339,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       const res = await fetch('/api/posts/comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          postId: post.id, 
+        body: JSON.stringify({
+          postId: post.id,
           content: commentText,
           parentId: replyingTo?.id || null
         })
@@ -384,7 +384,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const goToProfile = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (post.isOwner) {
-            router.push('/dashboard/profile')
+      router.push('/dashboard/profile')
     } else {
       router.push(`/dashboard/profile/${post.authorId}`)
     }
@@ -394,12 +394,12 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
   const handleImageClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    
+
     if (clickTimeoutRef.current) {
       // Double tap detected: trigger like, cancel navigation
       clearTimeout(clickTimeoutRef.current)
       clickTimeoutRef.current = null
-      
+
       setShowDoubleTapHeart(true)
       setTimeout(() => setShowDoubleTapHeart(false), 1000)
       if (!liked) {
@@ -426,7 +426,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
   return (
     <>
-      <motion.div 
+      <motion.div
         ref={cardRef}
         onClick={handleCardClick}
         initial={isDetailPage ? {} : { opacity: 0, y: 35, scale: 0.96 }}
@@ -478,8 +478,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           </div>
 
           <div className="relative" ref={menuRef}>
-            <button 
-              onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }} 
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
               className={`p-1.5 rounded-full transition-colors ${showMenu ? 'bg-slate-150 dark:bg-slate-800 text-slate-700 dark:text-slate-300' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}
             >
               <HiEllipsisHorizontal className="w-5 h-5" />
@@ -489,14 +489,14 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               <div className="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-xl z-[9999] p-1.5 animate-in fade-in zoom-in-95 duration-100 shadow-xl">
                 {post.isOwner ? (
                   <>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setIsEditing(true); setShowMenu(false); }} 
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setIsEditing(true); setShowMenu(false); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"
                     >
                       <FiEdit3 className="w-4 h-4 text-slate-400" /> Tahrirlash
                     </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); setShowMenu(false); }} 
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); setShowMenu(false); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-950/20 rounded-lg transition-colors text-left"
                     >
                       <FiTrash2 className="w-4 h-4" /> Postni o'chirish
@@ -504,21 +504,21 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                   </>
                 ) : (
                   <>
-                    <button 
-                      onClick={(e) => { goToProfile(e); setShowMenu(false); }} 
+                    <button
+                      onClick={(e) => { goToProfile(e); setShowMenu(false); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"
                     >
                       <FiUser className="w-4 h-4 text-slate-400" /> Profilni ko'rish
                     </button>
-                    <button 
-                      onClick={(e) => handleCopyLink(e)} 
+                    <button
+                      onClick={(e) => handleCopyLink(e)}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors text-left"
                     >
                       <FiCopy className="w-4 h-4 text-slate-400" /> Havolani nusxalash
                     </button>
                     <div className="h-px bg-slate-100 dark:bg-white/5 my-1" />
-                    <button 
-                      onClick={(e) => e.stopPropagation()} 
+                    <button
+                      onClick={(e) => e.stopPropagation()}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-600 hover:bg-amber-950/20 rounded-lg transition-colors text-left"
                     >
                       <FiAlertTriangle className="w-4 h-4" /> Shikoyat qilish
@@ -532,16 +532,16 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
         {post.image && (
           <div className="px-4 relative z-10">
-            <div 
-              onClick={(e) => handleImageClick(e)} 
+            <div
+              onClick={(e) => handleImageClick(e)}
               className={`relative w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950 cursor-pointer select-none group/img ${isDetailPage ? 'max-h-[70vh] flex items-center justify-center' : 'aspect-4/3'}`}
             >
-              <img 
-                src={post.image} 
-                alt="Post content" 
-                className={`w-full h-full ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'} transition-transform duration-700 ease-out group-hover/img:scale-[1.03]`} 
+              <img
+                src={post.image}
+                alt="Post content"
+                className={`w-full h-full ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'} transition-transform duration-700 ease-out group-hover/img:scale-[1.03]`}
               />
-              
+
               {/* Floating location tag inside the image */}
               {post.location && (
                 <div className="absolute bottom-3 left-3 backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-all duration-350 hover:bg-black/60">
@@ -561,15 +561,15 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
         <div className="flex items-center justify-between p-4 relative z-10">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={(e) => { e.stopPropagation(); handleLikeToggle(); }} 
+            <button
+              onClick={(e) => { e.stopPropagation(); handleLikeToggle(); }}
               className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-455 transition active:scale-90"
             >
               {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
               <span className="text-xs font-semibold text-slate-655 dark:text-slate-400">{likesCount}</span>
             </button>
 
-            <button 
+            <button
               onClick={(e) => {
                 e.stopPropagation()
                 if (isDetailPage) {
@@ -577,16 +577,15 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                 } else {
                   setIsDetailModalOpen(true)
                 }
-              }} 
-              className={`flex items-center gap-1.5 transition active:scale-90 ${
-                isDetailPage || showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-450'
-              }`}>
+              }}
+              className={`flex items-center gap-1.5 transition active:scale-90 ${isDetailPage || showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-450'
+                }`}>
               <FiMessageSquare className="w-5 h-5" />
               <span className="text-xs font-semibold text-slate-655 dark:text-slate-400">{commentsCount}</span>
             </button>
 
-            <button 
-              onClick={(e) => e.stopPropagation()} 
+            <button
+              onClick={(e) => e.stopPropagation()}
               className="text-slate-700 dark:text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-405 transition"
             >
               <FiSend className="w-5 h-5" />
@@ -594,13 +593,12 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           </div>
 
           {/* Premium Tipping Button */}
-          <button 
+          <button
             onClick={handleTipClick}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${
-              post.authorIsPremium 
-                ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs shadow-amber-500/5' 
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${post.authorIsPremium
+                ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs shadow-amber-500/5'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
-            }`}
+              }`}
           >
             {post.authorIsPremium && (
               <span className="relative flex h-1.5 w-1.5 mr-0.5">
@@ -677,15 +675,15 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                             </div>
                             <div className="flex items-center gap-4 mt-1.5 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-550 select-none">
                               <span>{formatTime(comment.createdAt)}</span>
-                              <button 
-                                onClick={() => handleLikeComment(comment.id)} 
+                              <button
+                                onClick={() => handleLikeComment(comment.id)}
                                 className={`hover:text-rose-500 transition-colors flex items-center gap-1 ${comment.likedByMe ? 'text-rose-500 font-black' : ''}`}
                               >
                                 {comment.likedByMe ? <FaHeart className="w-[17px] h-[17px] text-rose-500" /> : <FiHeart className="w-[17px] h-[17px]" />}
                                 {(comment.likesCount || 0) > 0 && <span className="text-[10px]">{comment.likesCount}</span>}
                               </button>
-                              <button 
-                                onClick={() => handleReplyTo(comment)} 
+                              <button
+                                onClick={() => handleReplyTo(comment)}
                                 className="hover:text-blue-500 transition-colors flex items-center"
                               >
                                 <FiCornerDownLeft className="w-[17px] h-[17px]" />
@@ -707,8 +705,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                                   </div>
                                   <div className="flex items-center gap-4 mt-1.5 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-550 select-none">
                                     <span>{formatTime(reply.createdAt)}</span>
-                                    <button 
-                                      onClick={() => handleLikeComment(reply.id)} 
+                                    <button
+                                      onClick={() => handleLikeComment(reply.id)}
                                       className={`hover:text-rose-500 transition-colors flex items-center gap-1 ${reply.likedByMe ? 'text-rose-500 font-black' : ''}`}
                                     >
                                       {reply.likedByMe ? <FaHeart className="w-[17px] h-[17px] text-rose-500" /> : <FiHeart className="w-[17px] h-[17px]" />}
@@ -733,7 +731,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                 <span>
                   <strong>@{replyingTo.user}</strong> ga javob berilmoqda
                 </span>
-                <button 
+                <button
                   onClick={() => setReplyingTo(null)}
                   className="text-blue-600 dark:text-blue-400 font-bold hover:underline"
                 >
@@ -763,29 +761,28 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       {/* Edit Post Bottom Sheet */}
       <BottomSheet isOpen={isEditing} onClose={() => setIsEditing(false)} title="Postni tahrirlash">
         <form onSubmit={handleSaveEdit} className="flex flex-col select-none">
-           <textarea 
-            value={editContent} 
-            onChange={(e) => setEditContent(e.target.value)} 
-            rows={4} 
-            className="w-full text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-3.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all resize-none mb-4 font-semibold border border-slate-200 dark:border-white/10" 
-            maxLength={500} 
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={4}
+            className="w-full text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-3.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all resize-none mb-4 font-semibold border border-slate-200 dark:border-white/10"
+            maxLength={500}
           />
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-white/5">
-            <button 
-              type="button" 
-              onClick={() => setIsEditing(false)} 
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
               className="px-4 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl"
             >
               Bekor qilish
             </button>
-            <button 
-              type="submit" 
-              disabled={!editContent.trim() || editContent === post.content} 
-              className={`px-4 py-2.5 text-xs font-bold text-white rounded-xl transition-all cursor-pointer ${
-                editContent.trim() && editContent !== post.content 
-                  ? 'bg-blue-600 hover:bg-blue-700 active:scale-95' 
+            <button
+              type="submit"
+              disabled={!editContent.trim() || editContent === post.content}
+              className={`px-4 py-2.5 text-xs font-bold text-white rounded-xl transition-all cursor-pointer ${editContent.trim() && editContent !== post.content
+                  ? 'bg-blue-600 hover:bg-blue-700 active:scale-95'
                   : 'bg-slate-100 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed'
-              }`}
+                }`}
             >
               Saqlash
             </button>
@@ -799,24 +796,24 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/20 rounded-full flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900/10">
             <FiTrash2 className="w-5 h-5 text-rose-600 dark:text-rose-455" />
           </div>
-           <div>
+          <div>
             <h4 className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">Postni o'chirib tashlaysizmi?</h4>
             <p className="text-slate-500 dark:text-slate-400 text-[11px] font-semibold mt-1">Ushbu harakatni ortga qaytarib bo'lmaydi va post butunlay o'chiriladi.</p>
           </div>
           <div className="flex gap-2.5 mt-2">
-            <button 
-              type="button" 
-              onClick={() => setShowDeleteConfirm(false)} 
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(false)}
               className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer border border-transparent dark:border-white/5"
             >
               Bekor qilish
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => {
                 if (onDeletePost) onDeletePost(post.id);
                 setShowDeleteConfirm(false);
-              }} 
+              }}
               className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer"
             >
               Ha, o'chirilsin
@@ -851,11 +848,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                   key={amount}
                   type="button"
                   onClick={() => { setTipAmount(amount); setCustomTip(''); }}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                    tipAmount === amount && !customTip 
-                      ? 'bg-amber-500 border-amber-500 text-white shadow-xs' 
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${tipAmount === amount && !customTip
+                      ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
                       : 'bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-350 border-slate-200 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-slate-900/60'
-                  }`}
+                    }`}
                 >
                   {Number(amount).toLocaleString('uz-UZ')} UZS
                 </button>
@@ -891,10 +887,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         )}
       </BottomSheet>
       {/* Quick View Post Details Bottom Sheet */}
-      <BottomSheet 
-        isOpen={isDetailModalOpen} 
-        onClose={() => setIsDetailModalOpen(false)} 
-        title="" 
+      <BottomSheet
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        title=""
         expandable={true}
         headerAction={
           <button
@@ -909,49 +905,52 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           </button>
         }
       >
-        <div className="flex flex-col gap-4 select-none pb-2">
-          {/* Author Header */}
-          <div className="flex items-center justify-between">
-            <div onClick={() => { setIsDetailModalOpen(false); goToProfile({ stopPropagation: () => {} } as any); }} className="flex items-center gap-3 cursor-pointer group/det">
-              <div className="relative">
-                <img
-                  src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
-                  className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-855"
-                  alt=""
-                />
-                {isOnline && (
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
-                )}
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 leading-none group-hover/det:text-blue-600 transition-colors">{post.author}</h4>
-                  {post.isOwner && (
-                    <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
-                  )}
-                  {post.authorIsPremium && (
-                    <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
+        <div className="flex flex-col gap-4 select-none">
+          {/* Sticky Author Header & Post Image */}
+          <div className="sticky top-[-20px] z-20 bg-white dark:bg-slate-900 pt-[20px] pb-3 -mx-5 px-5 border-b border-slate-100 dark:border-white/5 flex flex-col gap-4">
+            {/* Author Header */}
+            <div className="flex items-center justify-between">
+              <div onClick={() => { setIsDetailModalOpen(false); goToProfile({ stopPropagation: () => { } } as any); }} className="flex items-center gap-3 cursor-pointer group/det">
+                <div className="relative">
+                  <img
+                    src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
+                    className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-855"
+                    alt=""
+                  />
+                  {isOnline && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
                   )}
                 </div>
-                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-0.5 mt-0.5">
-                  {formatTime(post.time)} {post.location && (
-                    <>
-                      <span>•</span>
-                      <FiMapPin className="w-2.5 h-2.5 inline text-slate-400 dark:text-slate-500" />
-                      <span>{post.location}</span>
-                    </>
-                  )}
-                </span>
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 leading-none group-hover/det:text-blue-600 transition-colors">{post.author}</h4>
+                    {post.isOwner && (
+                      <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
+                    )}
+                    {post.authorIsPremium && (
+                      <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-0.5 mt-0.5">
+                    {formatTime(post.time)} {post.location && (
+                      <>
+                        <span>•</span>
+                        <FiMapPin className="w-2.5 h-2.5 inline text-slate-400 dark:text-slate-500" />
+                        <span>{post.location}</span>
+                      </>
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Post Image */}
-          {post.image && (
-            <div className="rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950 aspect-4/3 max-h-[35vh]">
-              <img src={post.image} alt="" className="w-full h-full object-cover" />
-            </div>
-          )}
+            {/* Post Image */}
+            {post.image && (
+              <div className="rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950 aspect-4/3 max-h-[35vh]">
+                <img src={post.image} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+          </div>
 
           {/* Post Content */}
           <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">
@@ -961,8 +960,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           {/* Post Actions */}
           <div className="flex items-center justify-between py-2 border-y border-slate-100 dark:border-white/5">
             <div className="flex items-center gap-4">
-              <button 
-                onClick={handleLikeToggle} 
+              <button
+                onClick={handleLikeToggle}
                 className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 transition active:scale-90"
               >
                 {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
@@ -975,13 +974,12 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             </div>
 
             {/* Tip Button inside modal */}
-            <button 
+            <button
               onClick={handleTipClick}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${
-                post.authorIsPremium 
-                  ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs' 
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${post.authorIsPremium
+                  ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-550 border-transparent cursor-not-allowed'
+                }`}
             >
               {post.authorIsPremium && (
                 <span className="relative flex h-1.5 w-1.5 mr-0.5">
@@ -994,8 +992,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           </div>
 
           {/* Quick View Comments List */}
-          <div className="text-[10px] font-bold text-slate-450 dark:text-slate-550 uppercase tracking-wider mt-1 shrink-0">Munozaralar ({commentsCount})</div>
-          <div className="max-h-[25vh] overflow-y-auto space-y-3.5 pr-1 scrollbar-none overscroll-y-contain -webkit-overflow-scrolling-touch">
+          <div className="text-[10px] font-bold text-slate-450 dark:text-slate-555 uppercase tracking-wider mt-1 shrink-0">Munozaralar ({commentsCount})</div>
+          <div className="space-y-3.5 pb-4">
             {loadingComments && comments.length === 0 ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
@@ -1027,7 +1025,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           </div>
 
           {/* Quick Comment Input Form */}
-          <form onSubmit={handleAddComment} className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-white/5 shrink-0">
+          <form onSubmit={handleAddComment} className="flex items-center gap-2 pt-3 pb-[20px] border-t border-slate-100 dark:border-white/5 sticky bottom-[-20px] bg-white dark:bg-slate-900 -mx-5 px-5 z-20">
             <input
               type="text"
               value={commentText}
