@@ -818,13 +818,12 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                 opacity: Math.min(1, (pullDistance - 35) / 25),
                 transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94), opacity 0.3s'
               }}
-              className="absolute left-0 right-0 top-0 z-40 flex items-center justify-center pointer-events-none pt-4"
+              className="absolute left-0 right-0 top-0 z-[9999] flex items-center justify-center pointer-events-none pt-4"
             >
               <div className="bg-white/80 dark:bg-slate-900/85 backdrop-blur-md border border-slate-200/40 dark:border-white/10 shadow-lg px-4 py-2 rounded-2xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
                 {isRefreshing ? (
                   <>
                     <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    <span>Yangilanmoqda...</span>
                   </>
                 ) : (
                   <>
