@@ -6,7 +6,6 @@ import { FaHeart, FaTelegram, FaBookmark, FaRegBookmark } from 'react-icons/fa'
 import { HiSpeakerWave, HiSpeakerXMark, HiPlay, HiPause, HiXMark, HiChevronDown } from 'react-icons/hi2'
 import { BsFilm } from 'react-icons/bs'
 
-// ========== TIPLAR ==========
 
 interface ReelType {
     id: string
@@ -655,9 +654,8 @@ function ReelCard({
     return (
         <div className="relative w-full h-full bg-black flex-shrink-0">
             {/* Smooth transition container */}
-            <div className={`w-full h-full relative transition-all duration-700 ease-out ${
-                isActive ? 'scale-100 opacity-100 blur-none' : 'scale-93 opacity-35 blur-[2px]'
-            }`}>
+            <div className={`w-full h-full relative transition-all duration-700 ease-out ${isActive ? 'scale-100 opacity-100 blur-none' : 'scale-93 opacity-35 blur-[2px]'
+                }`}>
                 {/* Video */}
                 <video
                     ref={videoRef}
@@ -911,7 +909,7 @@ export default function ReelsPage() {
             <div className="relative w-full h-svh bg-slate-950 md:max-w-[450px] md:mx-auto md:border-x md:border-white/10 overflow-hidden animate-pulse select-none">
                 {/* Simulated Video Placeholder */}
                 <div className="absolute inset-0 bg-slate-900/40" />
-                
+
                 {/* Simulated Right Action Buttons */}
                 <div className="absolute right-4 bottom-24 md:bottom-28 z-20 flex flex-col items-center gap-5">
                     {/* Like button skeleton */}
@@ -1024,9 +1022,9 @@ export default function ReelsPage() {
                 style={{ scrollbarWidth: 'none' }}
             >
                 {reels.map((reel, index) => (
-                    <div 
-                        key={reel.id} 
-                        data-index={index} 
+                    <div
+                        key={reel.id}
+                        data-index={index}
                         className="h-svh w-full snap-start snap-always reel-card-wrapper"
                     >
                         <ReelCard

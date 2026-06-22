@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 let cachedCommit: any = null
+
 let cacheTime = 0
 const CACHE_TTL = 60 * 1000 // 60 seconds
 

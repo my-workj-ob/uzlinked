@@ -140,7 +140,8 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     checkUpdate()
     const interval = setInterval(checkUpdate, 60000)
     return () => clearInterval(interval)
-  }, [isUpdateDismissed, latestCommit])
+  }, [isUpdateDismissed])
+
 
 
 
