@@ -108,6 +108,13 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(false)
 
+  // Ref for the BottomSheet to command its expansion
+  const sheetRef = useRef<{ expand: () => void; collapse: () => void } | null>(null)
+
+  const handleInputFocus = () => {
+    sheetRef.current?.expand()
+  }
+
   const [showTipModal, setShowTipModal] = useState(false)
   const [tipAmount, setTipAmount] = useState('5000')
   const [customTip, setCustomTip] = useState('')
@@ -888,10 +895,12 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       </BottomSheet>
       {/* Quick View Post Details Bottom Sheet */}
       <BottomSheet
+        ref={sheetRef}
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         title=""
         expandable={true}
+        initialState="full"
         headerAction={
           <button
             onClick={() => {
@@ -1030,6 +1039,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               type="text"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
+              onFocus={handleInputFocus}
               placeholder="Fikr yozing..."
               className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
             />

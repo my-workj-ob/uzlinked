@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
 import { HiXMark } from 'react-icons/hi2'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -12,19 +12,27 @@ interface BottomSheetProps {
     children: React.ReactNode
     expandable?: boolean
     headerAction?: React.ReactNode
+    initialState?: 'peek' | 'full'
 }
 
-export const BottomSheet = ({
+export const BottomSheet = forwardRef<any, BottomSheetProps>(({
     isOpen,
     onClose,
     title,
     children,
     expandable = false,
-    headerAction
-}: BottomSheetProps) => {
+    headerAction,
+    initialState = 'peek'
+}, ref) => {
     const [mounted, setMounted] = useState(false)
-    const [sheetState, setSheetState] = useState<'peek' | 'full'>('peek')
+    const [sheetState, setSheetState] = useState<'peek' | 'full'>(initialState)
     const startYRef = useRef(0)
+    const contentRef = useRef<HTMLDivElement>(null)
+
+    useImperativeHandle(ref, () => ({
+        expand: () => setSheetState('full'),
+        collapse: () => setSheetState('peek')
+    }))
 
     useEffect(() => {
         setMounted(true)
@@ -33,14 +41,60 @@ export const BottomSheet = ({
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden'
-            setSheetState('peek') // Reset to peek height when opened
+            setSheetState(initialState) // Reset to initial state height when opened
         } else {
             document.body.style.overflow = 'unset'
         }
         return () => {
             document.body.style.overflow = 'unset'
         }
-    }, [isOpen])
+    }, [isOpen, initialState])
+
+    useEffect(() => {
+        if (sheetState === 'peek' && contentRef.current) {
+            contentRef.current.scrollTop = 0
+        }
+    }, [sheetState])
+
+    // Native touchmove listener to allow dragging on the entire modal (including scrollable content)
+    useEffect(() => {
+        const contentEl = contentRef.current
+        if (!contentEl) return
+
+        const onTouchStart = (e: TouchEvent) => {
+            startYRef.current = e.touches[0].clientY
+        }
+
+        const onTouchMove = (e: TouchEvent) => {
+            const currentY = e.touches[0].clientY
+            const diffY = currentY - startYRef.current
+            const scrollTop = contentEl.scrollTop
+
+            if (expandable) {
+                if (sheetState === 'peek') {
+                    // In peek state, swipe up/down drags the modal, prevent native scrolling
+                    if (e.cancelable) e.preventDefault()
+                } else if (sheetState === 'full') {
+                    // In full state, swipe down at the top collapses the modal, prevent native scrolling
+                    if (scrollTop === 0 && diffY > 0) {
+                        if (e.cancelable) e.preventDefault()
+                    }
+                }
+            } else {
+                // Non-expandable: swipe down at top collapses/closes
+                if (scrollTop === 0 && diffY > 0) {
+                    if (e.cancelable) e.preventDefault()
+                }
+            }
+        }
+
+        contentEl.addEventListener('touchstart', onTouchStart, { passive: true })
+        contentEl.addEventListener('touchmove', onTouchMove, { passive: false })
+        return () => {
+            contentEl.removeEventListener('touchstart', onTouchStart)
+            contentEl.removeEventListener('touchmove', onTouchMove)
+        }
+    }, [expandable, sheetState])
 
     if (!mounted) return null
 
@@ -51,11 +105,15 @@ export const BottomSheet = ({
             transition: { type: "spring" as const, damping: 30, stiffness: 300 }
         },
         peek: {
-            y: expandable ? "35%" : "0%",
+            y: "0%",
+            height: expandable ? "calc(var(--vh, 100vh) * 0.60)" : "auto",
+            maxHeight: expandable ? "calc(var(--vh, 100vh) * 0.60)" : "calc(var(--vh, 100vh) * 0.85)",
             transition: { type: "spring" as const, damping: 25, stiffness: 220 }
         },
         full: {
             y: "0%",
+            height: "calc(var(--vh, 100vh) * 0.95)",
+            maxHeight: "calc(var(--vh, 100vh) * 0.95)",
             transition: { type: "spring" as const, damping: 25, stiffness: 220 }
         }
     }
@@ -91,42 +149,12 @@ export const BottomSheet = ({
         }
     }
 
-    const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-        startYRef.current = e.touches[0].clientY
-    }
-
-    const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-        const currentY = e.touches[0].clientY
-        const diffY = currentY - startYRef.current
-        const scrollTop = e.currentTarget.scrollTop
-
-        if (expandable) {
-            if (sheetState === 'peek') {
-                // In peek state, any gesture triggers dragging, do not stop propagation.
-            } else if (sheetState === 'full') {
-                // In full screen, swiping down (diffY > 0) at top of scroll collapses to peek.
-                // Dragging up or scrolling down should propagate to the scrollable content.
-                if (scrollTop === 0 && diffY > 0) {
-                    // Let the parent drag down
-                } else {
-                    e.stopPropagation()
-                }
-            }
-        } else {
-            // Non-expandable sheet: only drag down at the top of scroll should move/close the sheet.
-            if (scrollTop === 0 && diffY > 0) {
-                // Let parent drag down
-            } else {
-                e.stopPropagation()
-            }
-        }
-    }
-
     return createPortal(
         <AnimatePresence>
             {isOpen && (
                 <div
-                    className="fixed inset-0 z-[999999] flex items-end justify-center select-none"
+                    className="fixed top-0 left-0 right-0 z-[999999] flex items-end justify-center select-none"
+                    style={{ bottom: 'calc(100vh - var(--vh, 100vh))' }}
                     onTouchStart={(e) => e.stopPropagation()}
                     onTouchMove={(e) => e.stopPropagation()}
                     onTouchEnd={(e) => e.stopPropagation()}
@@ -154,10 +182,7 @@ export const BottomSheet = ({
                         animate={expandable ? sheetState : "peek"}
                         exit="closed"
                         variants={containerVariants}
-                        className={`relative z-[1000000] bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 w-full md:max-w-[450px] rounded-t-[28px] flex flex-col shadow-2xl transition-colors ${expandable
-                            ? 'h-[95vh]'
-                            : 'max-h-[85vh]'
-                            }`}
+                        className="relative z-[1000000] bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 w-full md:max-w-[450px] rounded-t-[28px] flex flex-col shadow-2xl transition-colors"
                         style={{ touchAction: 'none' }}
                         data-no-pull="true"
                     >
@@ -184,12 +209,10 @@ export const BottomSheet = ({
                             </div>
                         )}
 
-                        {/* Scrollable Content */}
                         <div
+                            ref={contentRef}
                             className="flex-1 overflow-y-auto p-3 scrollbar-none select-text text-xs sm:text-sm text-slate-700 dark:text-slate-300"
-                            style={{ overscrollBehaviorY: 'contain' }}
-                            onTouchStart={handleTouchStart}
-                            onTouchMove={handleTouchMove}
+                            style={{ overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
                             onPointerDown={(e) => {
                                 // Stop pointer event bubbling on mouse devices (desktop selection/clicking)
                                 if (e.pointerType === 'mouse') {
@@ -205,4 +228,6 @@ export const BottomSheet = ({
         </AnimatePresence>,
         document.body
     )
-}
+})
+
+BottomSheet.displayName = 'BottomSheet'
