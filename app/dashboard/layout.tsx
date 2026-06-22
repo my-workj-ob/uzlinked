@@ -857,10 +857,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </main>
       </div>
 
-      {/* UPDATE AVAILABLE BOTTOM SHEET */}
+      {/* UPDATE AVAILABLE BOTTOM SHEET
       {showUpdateModal && latestCommit && (
         <div className="fixed inset-0 z-70 flex items-end justify-center md:pb-10 p-0 md:p-4 animate-fade-in">
-          {/* Backdrop */}
+          {/* Backdrop 
           <div
             className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity duration-300"
             onClick={() => {
@@ -872,7 +872,6 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             }}
           />
 
-          {/* Bottom Sheet Card */}
           <div
             onTouchStart={handleUpdateTouchStart}
             onTouchMove={handleUpdateTouchMove}
@@ -884,7 +883,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             }}
             className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t md:border border-slate-200/50 dark:border-white/5 w-full md:max-w-md rounded-t-[32px] md:rounded-[32px] p-6 pb-8 md:pb-6 shadow-2xl relative z-10 flex flex-col select-none"
           >
-            {/* Drag Handle */}
+            {/* Drag Handle 
             <div className="flex justify-center cursor-grab active:cursor-grabbing pb-4 md:hidden">
               <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full" />
             </div>
@@ -906,46 +905,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
               </div>
             </div>
 
-            {/* Commit Message Box */}
-            <div className="bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-white/5 rounded-2xl p-4 mb-5 text-left">
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                O'zgarishlar tavsifi:
-              </p>
-              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-relaxed italic">
-                "{latestCommit.message}"
-              </p>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-white/5 text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
-                <span>Muallif: {latestCommit.author}</span>
-                <span>{new Date(latestCommit.date).toLocaleDateString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 w-full">
-              <button
-                onClick={() => {
-                  setShowUpdateModal(false)
-                  setIsUpdateDismissed(true)
-                  if (latestCommit?.commitSha) {
-                    localStorage.setItem('dismissed_commit_sha', latestCommit.commitSha)
-                  }
-                }}
-                className="flex-1 py-3.5 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-extrabold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/40 active:scale-95 transition-all"
-              >
-                Shart emas
-              </button>
-              <button
-                onClick={() => {
-                  setShowUpdateModal(false)
-                  window.location.reload()
-                }}
-                className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-extrabold shadow-lg shadow-blue-500/25 active:scale-95 transition-all"
-              >
-                Yangilash
-              </button>
-            </div>
+            
           </div>
         </div>
-      )}
+      )}    */}
 
       {/* MOBILE BOTTOM NAVIGATION */}
       {!isMessagesPage && (

@@ -586,10 +586,10 @@ function ExploreContent() {
                                             <img
                                                 src={group.avatar_url}
                                                 alt={group.name}
-                                                className="w-12 h-12 rounded-xl object-cover bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-50 dark:ring-slate-950 shrink-0"
+                                                className="w-12 h-12 rounded-full object-cover bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-50 dark:ring-slate-950 shrink-0"
                                             />
                                         ) : (
-                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0">
+                                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0">
                                                 {avatarLetters}
                                             </div>
                                         )}
