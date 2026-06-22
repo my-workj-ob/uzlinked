@@ -890,158 +890,157 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           </form>
         )}
       </BottomSheet>
-
       {/* Quick View Post Details Bottom Sheet */}
-      {isDetailModalOpen && (
-        <BottomSheet isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} title="Post tafsilotlari">
-          <div className="flex flex-col gap-4 select-none pb-2">
-            {/* Top View Full Page action */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5 shrink-0">
-              <span className="text-[10px] text-slate-450 dark:text-slate-550 font-extrabold uppercase tracking-wider">Tezkor ko'rish</span>
-              <button
-                onClick={() => {
-                  setIsDetailModalOpen(false)
-                  router.push(`/post/${post.id}`)
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black transition active:scale-95 shadow-md shadow-blue-500/15 cursor-pointer"
-              >
-                <FiExternalLink className="w-3.5 h-3.5 mr-0.5" />
-                <span>To'liq ko'rish</span>
-              </button>
-            </div>
-
-            {/* Author Header */}
-            <div className="flex items-center justify-between">
-              <div onClick={() => { setIsDetailModalOpen(false); goToProfile({ stopPropagation: () => {} } as any); }} className="flex items-center gap-3 cursor-pointer group/det">
-                <div className="relative">
-                  <img
-                    src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
-                    className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-850"
-                    alt=""
-                  />
-                  {isOnline && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
+      <BottomSheet 
+        isOpen={isDetailModalOpen} 
+        onClose={() => setIsDetailModalOpen(false)} 
+        title="" 
+        expandable={true}
+        headerAction={
+          <button
+            onClick={() => {
+              setIsDetailModalOpen(false)
+              router.push(`/post/${post.id}`)
+            }}
+            className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+            title="To'liq ko'rish"
+          >
+            <FiExternalLink className="w-5 h-5" />
+          </button>
+        }
+      >
+        <div className="flex flex-col gap-4 select-none pb-2">
+          {/* Author Header */}
+          <div className="flex items-center justify-between">
+            <div onClick={() => { setIsDetailModalOpen(false); goToProfile({ stopPropagation: () => {} } as any); }} className="flex items-center gap-3 cursor-pointer group/det">
+              <div className="relative">
+                <img
+                  src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
+                  className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-855"
+                  alt=""
+                />
+                {isOnline && (
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 leading-none group-hover/det:text-blue-600 transition-colors">{post.author}</h4>
+                  {post.isOwner && (
+                    <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
+                  )}
+                  {post.authorIsPremium && (
+                    <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
                   )}
                 </div>
-                <div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 leading-none group-hover/det:text-blue-600 transition-colors">{post.author}</h4>
-                    {post.isOwner && (
-                      <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">Siz</span>
-                    )}
-                    {post.authorIsPremium && (
-                      <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-0.5 mt-0.5">
-                    {formatTime(post.time)} {post.location && (
-                      <>
-                        <span>•</span>
-                        <FiMapPin className="w-2.5 h-2.5 inline text-slate-400 dark:text-slate-500" />
-                        <span>{post.location}</span>
-                      </>
-                    )}
-                  </span>
-                </div>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-0.5 mt-0.5">
+                  {formatTime(post.time)} {post.location && (
+                    <>
+                      <span>•</span>
+                      <FiMapPin className="w-2.5 h-2.5 inline text-slate-400 dark:text-slate-500" />
+                      <span>{post.location}</span>
+                    </>
+                  )}
+                </span>
               </div>
             </div>
+          </div>
 
-            {/* Post Image */}
-            {post.image && (
-              <div className="rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950 aspect-4/3 max-h-[35vh]">
-                <img src={post.image} alt="" className="w-full h-full object-cover" />
-              </div>
-            )}
+          {/* Post Image */}
+          {post.image && (
+            <div className="rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950 aspect-4/3 max-h-[35vh]">
+              <img src={post.image} alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
 
-            {/* Post Content */}
-            <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">
-              {renderContentWithHashtags(post.content)}
-            </p>
+          {/* Post Content */}
+          <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">
+            {renderContentWithHashtags(post.content)}
+          </p>
 
-            {/* Post Actions */}
-            <div className="flex items-center justify-between py-2 border-y border-slate-100 dark:border-white/5">
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={handleLikeToggle} 
-                  className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 transition active:scale-90"
-                >
-                  {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
-                  <span className="text-xs font-semibold">{likesCount}</span>
-                </button>
-                <div className="flex items-center gap-1.5 text-slate-500">
-                  <FiMessageSquare className="w-5 h-5" />
-                  <span className="text-xs font-semibold">{commentsCount}</span>
-                </div>
-              </div>
-
-              {/* Tip Button inside modal */}
+          {/* Post Actions */}
+          <div className="flex items-center justify-between py-2 border-y border-slate-100 dark:border-white/5">
+            <div className="flex items-center gap-4">
               <button 
-                onClick={handleTipClick}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${
-                  post.authorIsPremium 
-                    ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs' 
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
-                }`}
+                onClick={handleLikeToggle} 
+                className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 transition active:scale-90"
               >
-                {post.authorIsPremium && (
-                  <span className="relative flex h-1.5 w-1.5 mr-0.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
-                  </span>
-                )}
-                Tip
+                {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
+                <span className="text-xs font-semibold">{likesCount}</span>
               </button>
+              <div className="flex items-center gap-1.5 text-slate-500">
+                <FiMessageSquare className="w-5 h-5" />
+                <span className="text-xs font-semibold">{commentsCount}</span>
+              </div>
             </div>
 
-            {/* Quick View Comments List */}
-            <div className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider mt-1 shrink-0">Munozaralar ({commentsCount})</div>
-            <div className="max-h-[25vh] overflow-y-auto space-y-3.5 pr-1 scrollbar-none overscroll-y-contain -webkit-overflow-scrolling-touch">
-              {loadingComments && comments.length === 0 ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                </div>
-              ) : comments.length === 0 ? (
-                <p className="text-[11px] text-slate-450 dark:text-slate-500 font-semibold text-center py-4">Birinchi bo'lib fikr bildiring!</p>
-              ) : (
-                <div className="space-y-3.5">
-                  {comments.filter(c => !c.parentId).map((comment) => (
-                    <div key={comment.id} className="flex items-start gap-2.5 text-xs animate-comment-slide-in">
-                      <img src={comment.avatar} className="w-7 h-7 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
-                      <div className="flex-1 min-w-0">
-                        <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3 py-1.5">
-                          <span className="font-bold text-slate-950 dark:text-slate-100 block text-[10px] mb-0.5">{comment.user}</span>
-                          <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">{comment.text}</p>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1.5 ml-1 text-[9px] font-bold text-slate-400 dark:text-slate-550">
-                          <span>{formatTime(comment.createdAt)}</span>
-                          <button onClick={() => handleLikeComment(comment.id)} className={`hover:text-rose-500 flex items-center gap-0.5 ${comment.likedByMe ? 'text-rose-500' : ''}`}>
-                            {comment.likedByMe ? <FaHeart className="w-3.5 h-3.5 text-rose-500" /> : <FiHeart className="w-3.5 h-3.5" />}
-                            {(comment.likesCount || 0) > 0 && <span>{comment.likesCount}</span>}
-                          </button>
-                        </div>
+            {/* Tip Button inside modal */}
+            <button 
+              onClick={handleTipClick}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${
+                post.authorIsPremium 
+                  ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs' 
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
+              }`}
+            >
+              {post.authorIsPremium && (
+                <span className="relative flex h-1.5 w-1.5 mr-0.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                </span>
+              )}
+              Tip
+            </button>
+          </div>
+
+          {/* Quick View Comments List */}
+          <div className="text-[10px] font-bold text-slate-450 dark:text-slate-550 uppercase tracking-wider mt-1 shrink-0">Munozaralar ({commentsCount})</div>
+          <div className="max-h-[25vh] overflow-y-auto space-y-3.5 pr-1 scrollbar-none overscroll-y-contain -webkit-overflow-scrolling-touch">
+            {loadingComments && comments.length === 0 ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              </div>
+            ) : comments.length === 0 ? (
+              <p className="text-[11px] text-slate-450 dark:text-slate-500 font-semibold text-center py-4">Birinchi bo'lib fikr bildiring!</p>
+            ) : (
+              <div className="space-y-3.5">
+                {comments.filter(c => !c.parentId).map((comment) => (
+                  <div key={comment.id} className="flex items-start gap-2.5 text-xs animate-comment-slide-in">
+                    <img src={comment.avatar} className="w-7 h-7 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
+                    <div className="flex-1 min-w-0">
+                      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3 py-1.5">
+                        <span className="font-bold text-slate-950 dark:text-slate-100 block text-[10px] mb-0.5">{comment.user}</span>
+                        <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">{comment.text}</p>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1.5 ml-1 text-[9px] font-bold text-slate-400 dark:text-slate-550">
+                        <span>{formatTime(comment.createdAt)}</span>
+                        <button onClick={() => handleLikeComment(comment.id)} className={`hover:text-rose-500 flex items-center gap-0.5 ${comment.likedByMe ? 'text-rose-500' : ''}`}>
+                          {comment.likedByMe ? <FaHeart className="w-3.5 h-3.5 text-rose-500" /> : <FiHeart className="w-3.5 h-3.5" />}
+                          {(comment.likesCount || 0) > 0 && <span>{comment.likesCount}</span>}
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Quick Comment Input Form */}
-            <form onSubmit={handleAddComment} className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-white/5 shrink-0">
-              <input
-                type="text"
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Fikr yozing..."
-                className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
-              />
-              <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl transition active:scale-95 cursor-pointer">
-                <FiSend className="w-4 h-4" />
-              </button>
-            </form>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </BottomSheet>
-      )}
+
+          {/* Quick Comment Input Form */}
+          <form onSubmit={handleAddComment} className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-white/5 shrink-0">
+            <input
+              type="text"
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Fikr yozing..."
+              className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
+            />
+            <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-xl transition active:scale-95 cursor-pointer">
+              <FiSend className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
+      </BottomSheet>
     </>
   )
 }
