@@ -84,24 +84,24 @@ export const BottomSheet = forwardRef<any, BottomSheetProps>(({
 
     if (!mounted) return null
 
-    const containerVariants = {
-        closed: {
-            y: "100%",
-            transition: { type: "spring" as const, damping: 30, stiffness: 300 }
-        },
-        peek: {
-            y: "0%",
-            height: expandable ? "calc(var(--vh, 100vh) * 0.60)" : "auto",
-            maxHeight: expandable ? "calc(var(--vh, 100vh) * 0.60)" : "calc(var(--vh, 100vh) * 0.85)",
-            transition: { type: "spring" as const, damping: 25, stiffness: 220 }
-        },
-        full: {
-            y: "0%",
-            height: "calc(var(--vh, 100vh) * 0.95)",
-            maxHeight: "calc(var(--vh, 100vh) * 0.95)",
-            transition: { type: "spring" as const, damping: 25, stiffness: 220 }
-        }
+const containerVariants = {
+    closed: {
+        y: "100%",
+        transition: { type: "spring" as const, damping: 20, stiffness: 250 }
+    },
+    peek: {
+        y: "0%",
+        height: expandable ? "calc(var(--vh, 100vh) * 0.60)" : "auto",
+        maxHeight: expandable ? "calc(var(--vh, 100vh) * 0.60)" : "calc(var(--vh, 100vh) * 0.85)",
+        transition: { type: "spring" as const, damping: 15, stiffness: 200 }
+    },
+    full: {
+        y: "0%",
+        height: "calc(var(--vh, 100vh) * 0.95)",
+        maxHeight: "calc(var(--vh, 100vh) * 0.95)",
+        transition: { type: "spring" as const, damping: 15, stiffness: 200 }
     }
+}
 
     const backdropVariants = {
         closed: { opacity: 0 },
