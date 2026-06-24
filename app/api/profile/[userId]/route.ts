@@ -46,25 +46,40 @@ export async function GET(
     // Shu userning postlarini faqat shartlar bajarilganda olish
     let formattedPosts: any[] = []
     if (!hideContent) {
-        const { data: posts, error: postsError } = await supabase
-            .from('posts')
-            .select(`
+        const baseCols = `
                 id,
                 content,
                 image_url,
                 created_at,
                 likes:likes(count),
-                comments:comments(count)
-            `)
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
+                comments:comments(count)`
+        const runPostsQuery = (withMedia: boolean) => {
+            const select: string = withMedia
+                ? `${baseCols},\n                post_media(url, type, position, duration)`
+                : baseCols
+            return supabase
+                .from('posts')
+                .select(select)
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+        }
+
+        let { data: postsData, error: postsError } = await runPostsQuery(true)
+        if (postsError) {
+            // post_media jadvali yo'q bo'lishi mumkin — usiz qayta urinamiz
+            const fb = await runPostsQuery(false)
+            postsData = fb.data
+            postsError = fb.error
+        }
 
         if (postsError) {
             return NextResponse.json({ error: postsError.message }, { status: 500 })
         }
 
+        const posts: any[] = (postsData as any[]) || []
+
         // Joriy user ushbu postlarni like bosganmi, shuni tekshirish
-        const postIds = (posts || []).map(p => p.id)
+        const postIds = posts.map(p => p.id)
         let likedPostIds: (string | number)[] = []
 
         if (postIds.length > 0) {
@@ -77,16 +92,29 @@ export async function GET(
             likedPostIds = (myLikes || []).map(l => l.post_id)
         }
 
-        formattedPosts = (posts || []).map((p: any) => ({
-            id: p.id,
-            authorId: userId,
-            content: p.content,
-            image: p.image_url,
-            createdAt: p.created_at,
-            likes: p.likes?.[0]?.count || 0,
-            commentsCount: p.comments?.[0]?.count || 0,
-            likedByMe: likedPostIds.includes(p.id),
-        }))
+        formattedPosts = posts.map((p: any) => {
+            const mediaRows = Array.isArray(p.post_media) ? [...p.post_media] : []
+            mediaRows.sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+            let media = mediaRows.map((m: any) => ({
+                url: m.url,
+                type: (m.type === 'video' ? 'video' : 'image') as 'image' | 'video',
+                duration: m.duration ?? null,
+            }))
+            if (media.length === 0 && p.image_url) {
+                media = [{ url: p.image_url, type: 'image', duration: null }]
+            }
+            return {
+                id: p.id,
+                authorId: userId,
+                content: p.content,
+                image: p.image_url || (media[0]?.type === 'image' ? media[0].url : null),
+                media,
+                createdAt: p.created_at,
+                likes: p.likes?.[0]?.count || 0,
+                commentsCount: p.comments?.[0]?.count || 0,
+                likedByMe: likedPostIds.includes(p.id),
+            }
+        })
     }
 
     // Followers / following sonlari

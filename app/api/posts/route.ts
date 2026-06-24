@@ -44,15 +44,56 @@ export async function POST(request: Request) {
         if (!text.trim()) return NextResponse.json({ error: 'So\'rov tanasi bo\'sh' }, { status: 400 })
         
         const body = JSON.parse(text)
-        const { content, imageUrl, url, imageKey, key, ephemeral, ttlHours } = body
+        const { content, imageUrl, url, imageKey, key, ephemeral, ttlHours, media } = body
 
-        if (!content?.trim()) {
-            return NextResponse.json({ error: 'Post matni bo\'sh' }, { status: 400 })
+        // Media (rasm/video) ro'yxati — tartiblangan
+        type IncomingMedia = { url: string; key?: string; type?: 'image' | 'video'; duration?: number }
+        const mediaList: IncomingMedia[] = Array.isArray(media)
+            ? media.filter((m: IncomingMedia) => m && typeof m.url === 'string')
+            : []
+
+        // Post bo'sh bo'lmasligi kerak: matn YOKI media bo'lsin
+        if (!content?.trim() && mediaList.length === 0) {
+            return NextResponse.json({ error: 'Post bo\'sh bo\'lmasligi kerak' }, { status: 400 })
+        }
+
+        // ----- Subscription limitlari (server tomonida majburlash) -----
+        const FREE_IMAGE_LIMIT = 4
+        const PRO_IMAGE_LIMIT = 20
+        const MAX_VIDEO_SEC = 60
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_premium')
+            .eq('id', session.user.id)
+            .single()
+        const isPremium = !!profile?.is_premium
+
+        const imageItems = mediaList.filter((m) => (m.type ?? 'image') === 'image')
+        const videoItems = mediaList.filter((m) => m.type === 'video')
+        const imageLimit = isPremium ? PRO_IMAGE_LIMIT : FREE_IMAGE_LIMIT
+
+        if (imageItems.length > imageLimit) {
+            return NextResponse.json(
+                { error: isPremium ? `Maksimal ${imageLimit} ta rasm` : `Bepul rejada ${imageLimit} ta rasm — PRO ga o'ting` },
+                { status: 403 }
+            )
+        }
+        if (videoItems.length > 0 && !isPremium) {
+            return NextResponse.json({ error: 'Video qo\'shish faqat PRO uchun' }, { status: 403 })
+        }
+        if (videoItems.length > 1) {
+            return NextResponse.json({ error: 'Bitta postga faqat bitta video' }, { status: 403 })
+        }
+        if (videoItems.some((v) => Number(v.duration) > MAX_VIDEO_SEC + 1)) {
+            return NextResponse.json({ error: `Video ${MAX_VIDEO_SEC} soniyadan oshmasligi kerak` }, { status: 403 })
         }
 
         // MUAMMONI YECHIMI: Frontenddan 'imageUrl' yoki 'url' kelishidan qat'iy nazar aniqlab olamiz
-        const finalImageUrl = imageUrl || url || null
-        const finalImageKey = imageKey || key || null
+        // Birinchi rasmni orqaga moslik uchun image_url sifatida saqlaymiz
+        const firstImage = imageItems[0]
+        const finalImageUrl = imageUrl || url || firstImage?.url || null
+        const finalImageKey = imageKey || key || firstImage?.key || null
 
         // Kapsula tanlovi: ephemeral=true bo'lsa post TTL oladi (default 72 soat),
         // aks holda doimiy (expires_at = NULL).
@@ -63,8 +104,8 @@ export async function POST(request: Request) {
 
         const insertPayload: Record<string, unknown> = {
             user_id: session.user.id,
-            content: content.trim(),
-            image_url: finalImageUrl, // Endi NULL bo'lib qolmaydi!
+            content: (content?.trim() ?? ''),
+            image_url: finalImageUrl,
             image_key: finalImageKey,
         }
 
@@ -89,6 +130,25 @@ export async function POST(request: Request) {
         if (dbError) {
             throw dbError
         }
+
+        // post_media jadvaliga media (rasm/video)'ni tartib bilan yozamiz.
+        // Jadval mavjud bo'lmasa (migratsiya qo'llanmagan) — jim degrade qilamiz,
+        // post baribir image_url orqali ko'rinadi.
+        if (newPost?.id && mediaList.length > 0) {
+            const rows = mediaList.map((m, i) => ({
+                post_id: newPost!.id,
+                url: m.url,
+                storage_key: m.key ?? null,
+                type: (m.type ?? 'image'),
+                position: i,
+                duration: m.type === 'video' ? (Number(m.duration) || null) : null,
+            }))
+            const { error: mediaErr } = await supabase.from('post_media').insert(rows)
+            if (mediaErr) {
+                console.error('post_media yozishda xatolik (degrade):', mediaErr.message)
+            }
+        }
+
         return NextResponse.json({ success: true, post: newPost }, { status: 201 })
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })
@@ -110,12 +170,22 @@ export async function GET(request: Request) {
         // Kapsula (efemerlik) bilan boyitilgan so'rov. Agar migratsiya hali
         // qo'llanilmagan bo'lsa (post_saves / expires_at yo'q), oddiy so'rovga
         // qaytamiz — shunda ilova baribir ishlayveradi.
+        // To'liq: media galereyasi + kapsula saqlashlari bilan
+        const fullSelect = `
+                *,
+                profiles (nickname, avatar_url, is_premium),
+                likes (user_id),
+                post_saves (user_id),
+                post_media (url, type, position, duration)
+            `
+        // O'rta: media yo'q, lekin kapsula bor (post_media migratsiya qo'llanmagan)
         const enrichedSelect = `
                 *,
                 profiles (nickname, avatar_url, is_premium),
                 likes (user_id),
                 post_saves (user_id)
             `
+        // Eng oddiy: faqat profil + like
         const basicSelect = `
                 *,
                 profiles (nickname, avatar_url, is_premium),
@@ -128,9 +198,15 @@ export async function GET(request: Request) {
             return q.order('created_at', { ascending: false })
         }
 
-        let { data: posts, error } = await runQuery(enrichedSelect)
+        let { data: posts, error } = await runQuery(fullSelect)
         if (error) {
-            // Ehtimol post_saves jadvali hali mavjud emas — degrade qilamiz
+            // Ehtimol post_media jadvali hali mavjud emas — kapsula bilan urinamiz
+            const mid = await runQuery(enrichedSelect)
+            posts = mid.data
+            error = mid.error
+        }
+        if (error) {
+            // Ehtimol post_saves ham yo'q — oddiy so'rovga qaytamiz
             const fallback = await runQuery(basicSelect)
             posts = fallback.data
             error = fallback.error
@@ -150,6 +226,18 @@ export async function GET(request: Request) {
                 ? post.post_saves.some((s: any) => s.user_id === currentUserId)
                 : false
 
+            // Media galereyasi (tartiblangan). Migratsiya yo'q bo'lsa — image_url'ga qaytamiz.
+            const mediaRows = Array.isArray(post.post_media) ? [...post.post_media] : []
+            mediaRows.sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+            let media = mediaRows.map((m: any) => ({
+                url: m.url,
+                type: (m.type === 'video' ? 'video' : 'image') as 'image' | 'video',
+                duration: m.duration ?? null,
+            }))
+            if (media.length === 0 && post.image_url) {
+                media = [{ url: post.image_url, type: 'image', duration: null }]
+            }
+
             return {
                 id: post.id,
                 authorId: post.user_id, // Profilga o'tish uchun shart — postni yozgan userning UUID'si
@@ -157,7 +245,8 @@ export async function GET(request: Request) {
                 avatar: profile?.avatar_url ? `${profile.avatar_url}` : '/default-avatar.png',
                 time: post.created_at,
                 location: post.location || 'O\'zbekiston',
-                image: post.image_url || null, // Agar bazada rasm bo'lsa UI rasm ko'rsatadi
+                image: post.image_url || (media[0]?.type === 'image' ? media[0].url : null),
+                media,
                 content: post.content,
                 likes: totalLikes,
                 likedByMe: isLikedByMe,
@@ -213,11 +302,25 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Bu sizning postingiz emas' }, { status: 403 })
         }
 
-        if (post.image_key) {
+        // Uploadthing fayllarini tozalash: eski image_key + barcha post_media kalitlari
+        const keysToDelete: string[] = []
+        if (post.image_key) keysToDelete.push(post.image_key)
+        try {
+            const { data: mediaRows } = await supabase
+                .from('post_media')
+                .select('storage_key')
+                .eq('post_id', id)
+            for (const m of mediaRows ?? []) {
+                if (m.storage_key) keysToDelete.push(m.storage_key)
+            }
+        } catch {
+            /* post_media jadvali yo'q bo'lishi mumkin — e'tiborsiz qoldiramiz */
+        }
+        if (keysToDelete.length > 0) {
             try {
-                await utapi.deleteFiles(post.image_key)
+                await utapi.deleteFiles(Array.from(new Set(keysToDelete)))
             } catch (utErr) {
-                console.error("Uploadthing faylini o'chirishda xatolik:", utErr)
+                console.error("Uploadthing fayllarini o'chirishda xatolik:", utErr)
             }
         }
 

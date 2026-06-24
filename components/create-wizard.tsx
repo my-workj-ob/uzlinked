@@ -2,13 +2,40 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { HiOutlineCamera, HiOutlineDocumentText, HiOutlineShoppingBag, HiArrowLeft, HiXMark } from 'react-icons/hi2'
-import { motion, AnimatePresence } from 'framer-motion'
+import { LuInfinity, LuTimer, LuImagePlus, LuVideo, LuGripVertical, LuStar } from 'react-icons/lu'
+import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { toast } from 'sonner'
 import { FFmpeg } from "@ffmpeg/ffmpeg"
 import { fetchFile, toBlobURL } from "@ffmpeg/util"
 import { uploadFiles } from '@/utils/uploadthing/uploadthing'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/utils/supabase/client'
+
+// Postga qo'shilgan har bir media (rasm yoki video)
+interface PostMediaItem {
+    id: string
+    file: File
+    previewUrl: string
+    type: 'image' | 'video'
+    duration?: number
+}
+
+const MAX_VIDEO_SEC = 60
+const FREE_IMAGE_LIMIT = 4
+const PRO_IMAGE_LIMIT = 20
+
+const getVideoDuration = (file: File): Promise<number> =>
+    new Promise((resolve, reject) => {
+        const v = document.createElement('video')
+        v.preload = 'metadata'
+        v.onloadedmetadata = () => {
+            URL.revokeObjectURL(v.src)
+            resolve(v.duration || 0)
+        }
+        v.onerror = () => reject(new Error('Video o\'qib bo\'lmadi'))
+        v.src = URL.createObjectURL(file)
+    })
 
 interface CreateWizardProps {
     onClose: () => void
@@ -26,8 +53,12 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
     const queryClient = useQueryClient()
 
     const [postText, setPostText] = useState('')
-    // Kapsula tanlovi: false = Doimiy, true = Kapsula (72 soatda eriydi)
+    // Vaqtinchalik post tanlovi: false = Doimiy, true = 72 soatda o'chadi
     const [postEphemeral, setPostEphemeral] = useState(false)
+    // Postga qo'shilgan media (rasm/video) ro'yxati — draggable tartibda
+    const [postMedia, setPostMedia] = useState<PostMediaItem[]>([])
+    const [isPremium, setIsPremium] = useState(false)
+    const postMediaInputRef = useRef<HTMLInputElement>(null)
     const [marketTitle, setMarketTitle] = useState('')
     const [marketPrice, setMarketPrice] = useState('')
     const [marketCategory, setMarketCategory] = useState('digital')
@@ -65,6 +96,98 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
         }
         loadFFmpeg()
     }, [])
+
+    // Foydalanuvchi PRO yoki yo'qligini aniqlash (media limitlari uchun)
+    useEffect(() => {
+        const checkPremium = async () => {
+            try {
+                const supabase = createClient()
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('is_premium')
+                    .eq('id', user.id)
+                    .single()
+                setIsPremium(!!profile?.is_premium)
+            } catch {
+                /* default: bepul */
+            }
+        }
+        checkPremium()
+    }, [])
+
+    // Komponent yopilganda preview URL'larini tozalash (xotira oqishi oldini olish)
+    useEffect(() => {
+        return () => {
+            postMedia.forEach((m) => URL.revokeObjectURL(m.previewUrl))
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    const imageLimit = isPremium ? PRO_IMAGE_LIMIT : FREE_IMAGE_LIMIT
+    const imageCount = postMedia.filter((m) => m.type === 'image').length
+    const hasVideo = postMedia.some((m) => m.type === 'video')
+
+    const handlePostMediaChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || [])
+        if (files.length === 0) return
+        e.target.value = '' // bir xil faylni qayta tanlash uchun reset
+
+        const next: PostMediaItem[] = []
+        let curImages = imageCount
+        let curHasVideo = hasVideo
+
+        for (const file of files) {
+            const isVideo = file.type.startsWith('video/')
+            const isImage = file.type.startsWith('image/')
+
+            if (isVideo) {
+                if (!isPremium) {
+                    toast.error('Video qo\'shish faqat PRO foydalanuvchilar uchun')
+                    continue
+                }
+                if (curHasVideo) {
+                    toast.error('Bitta postga faqat bitta video qo\'shish mumkin')
+                    continue
+                }
+                let duration = 0
+                try {
+                    duration = await getVideoDuration(file)
+                } catch {
+                    toast.error('Videoni o\'qib bo\'lmadi')
+                    continue
+                }
+                if (duration > MAX_VIDEO_SEC + 0.5) {
+                    toast.error(`Video ${MAX_VIDEO_SEC} soniyadan oshmasligi kerak`)
+                    continue
+                }
+                curHasVideo = true
+                next.push({ id: `${Date.now()}-${file.name}`, file, previewUrl: URL.createObjectURL(file), type: 'video', duration })
+            } else if (isImage) {
+                if (curImages >= imageLimit) {
+                    toast.error(
+                        isPremium
+                            ? `Maksimal ${imageLimit} ta rasm`
+                            : `Bepul rejada ${imageLimit} ta rasm — ko'proq uchun PRO ga o'ting`
+                    )
+                    break
+                }
+                curImages += 1
+                next.push({ id: `${Date.now()}-${file.name}-${curImages}`, file, previewUrl: URL.createObjectURL(file), type: 'image', duration: undefined })
+            }
+        }
+
+        if (next.length > 0) setPostMedia((prev) => [...prev, ...next])
+    }
+
+    const removePostMedia = (id: string) => {
+        setPostMedia((prev) => {
+            const target = prev.find((m) => m.id === id)
+            if (target) URL.revokeObjectURL(target.previewUrl)
+            return prev.filter((m) => m.id !== id)
+        })
+    }
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -131,21 +254,32 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
     // 1. POST YUKLASH
     const handlePostSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!postText.trim() || isSubmitting) return
+        if (isSubmitting) return
+        if (!postText.trim() && postMedia.length === 0) {
+            toast.error("Post bo'sh bo'lmasligi kerak — matn yoki media qo'shing")
+            return
+        }
 
         setIsSubmitting(true)
         const toastId = toast.loading("Post tayyorlanmoqda...")
 
         try {
-            let uploadedUrl: string | null = null
-            let uploadedKey: string | null = null
+            // Media yuklash (tartibni saqlagan holda)
+            const media: { url: string; key: string; type: 'image' | 'video'; duration?: number }[] = []
 
-            if (selectedFile) {
-                toast.loading("Rasm yuklanmoqda...", { id: toastId })
-                const [res] = await uploadFiles('mediaUploader', { files: [selectedFile] })
-                uploadedUrl = res.url
-                uploadedKey = res.key
+            if (postMedia.length > 0) {
+                toast.loading(`Media yuklanmoqda (${postMedia.length})...`, { id: toastId })
+                const results = await uploadFiles('mediaUploader', { files: postMedia.map((m) => m.file) })
+                postMedia.forEach((m, i) => {
+                    const res = results[i]
+                    if (res?.url) {
+                        media.push({ url: res.url, key: res.key, type: m.type, duration: m.duration })
+                    }
+                })
             }
+
+            // Orqaga moslik uchun: birinchi rasmni image_url sifatida ham yuboramiz
+            const firstImage = media.find((m) => m.type === 'image')
 
             toast.loading("Ma'lumotlar saqlanmoqda...", { id: toastId })
             const response = await fetch('/api/posts', {
@@ -153,8 +287,9 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     content: postText,
-                    imageUrl: uploadedUrl,
-                    imageKey: uploadedKey,
+                    imageUrl: firstImage?.url ?? null,
+                    imageKey: firstImage?.key ?? null,
+                    media,
                     ephemeral: postEphemeral,
                 }),
             })
@@ -168,6 +303,8 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
 
             setPostText('')
             setPostEphemeral(false)
+            postMedia.forEach((m) => URL.revokeObjectURL(m.previewUrl))
+            setPostMedia([])
             removeImage()
             queryClient.invalidateQueries({ queryKey: ['posts'] })
             onClose()
@@ -344,24 +481,122 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                                 </button>
                             </div>
 
-                            <div className="relative">
-                                <label className="relative aspect-video w-full bg-slate-50/80 dark:bg-slate-900/30 border border-dashed border-slate-200 dark:border-slate-800/80 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden hover:bg-slate-100/70 dark:hover:bg-slate-800/40 transition-all group">
-                                    {imagePreview ? (
-                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <>
-                                            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:scale-110 transition-transform">
-                                                <HiOutlineCamera className="w-5 h-5" />
-                                            </div>
-                                            <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-2">Rasm yuklash (Ixtiyoriy)</span>
-                                        </>
-                                    )}
-                                    <input type="file" accept="image/*" disabled={isSubmitting} onChange={handleImageChange} className="hidden" />
-                                </label>
-                                {imagePreview && (
-                                    <button type="button" onClick={removeImage} disabled={isSubmitting} className="absolute top-2 right-2 w-7 h-7 bg-slate-900/70 hover:bg-slate-900 text-white rounded-full flex items-center justify-center active:scale-90 transition-all">
-                                        <HiXMark className="w-4 h-4" />
+                            {/* Media: rasm (max {imageLimit}) + video (PRO, 60s). Bir nechta bo'lsa drag bilan tartiblanadi */}
+                            <div className="space-y-2.5">
+                                <input
+                                    ref={postMediaInputRef}
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    multiple
+                                    disabled={isSubmitting}
+                                    onChange={handlePostMediaChange}
+                                    className="hidden"
+                                />
+
+                                {postMedia.length === 0 ? (
+                                    <button
+                                        type="button"
+                                        disabled={isSubmitting}
+                                        onClick={() => postMediaInputRef.current?.click()}
+                                        className="relative aspect-video w-full bg-slate-50/80 dark:bg-slate-900/30 border border-dashed border-slate-200 dark:border-slate-800/80 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden hover:bg-slate-100/70 dark:hover:bg-slate-800/40 transition-all group"
+                                    >
+                                        <div className="w-11 h-11 rounded-full bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:scale-110 transition-transform">
+                                            <LuImagePlus className="w-5 h-5" />
+                                        </div>
+                                        <span className="text-xs text-slate-600 dark:text-slate-300 font-bold mt-2.5">Rasm yoki video qo'shing</span>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-1">
+                                            {imageLimit} tagacha rasm{isPremium ? ' + 1 daqiqalik video' : ''} · ixtiyoriy
+                                        </span>
                                     </button>
+                                ) : (
+                                    <>
+                                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                                        <Reorder.Group
+                                            axis="x"
+                                            values={postMedia}
+                                            onReorder={setPostMedia}
+                                            className="flex gap-2"
+                                            as="div"
+                                        >
+                                            <AnimatePresence>
+                                                {postMedia.map((m, idx) => (
+                                                    <Reorder.Item
+                                                        key={m.id}
+                                                        value={m}
+                                                        as="div"
+                                                        layout
+                                                        initial={{ opacity: 0, scale: 0.85 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        exit={{ opacity: 0, scale: 0.85 }}
+                                                        whileDrag={{ scale: 1.06, zIndex: 50, boxShadow: '0 12px 30px rgba(0,0,0,0.25)' }}
+                                                        transition={{ type: 'spring', stiffness: 600, damping: 38 }}
+                                                        className="relative shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 cursor-grab active:cursor-grabbing touch-none select-none"
+                                                    >
+                                                        {m.type === 'video' ? (
+                                                            <video src={m.previewUrl} muted playsInline className="w-full h-full object-cover pointer-events-none" />
+                                                        ) : (
+                                                            <img src={m.previewUrl} alt="" className="w-full h-full object-cover pointer-events-none" draggable={false} />
+                                                        )}
+
+                                                        {/* Birinchi element = muqova */}
+                                                        {idx === 0 && (
+                                                            <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-extrabold shadow">
+                                                                <LuStar className="w-2.5 h-2.5" /> Muqova
+                                                            </span>
+                                                        )}
+
+                                                        {m.type === 'video' && (
+                                                            <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-900/75 text-white text-[9px] font-bold">
+                                                                <LuVideo className="w-2.5 h-2.5" /> {Math.round(m.duration ?? 0)}s
+                                                            </span>
+                                                        )}
+
+                                                        <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-md bg-slate-900/55 text-white/90 flex items-center justify-center pointer-events-none">
+                                                            <LuGripVertical className="w-3 h-3" />
+                                                        </span>
+
+                                                        <button
+                                                            type="button"
+                                                            onPointerDownCapture={(e) => e.stopPropagation()}
+                                                            onClick={() => removePostMedia(m.id)}
+                                                            disabled={isSubmitting}
+                                                            className="absolute top-1.5 right-1.5 w-5 h-5 bg-slate-900/70 hover:bg-rose-600 text-white rounded-md flex items-center justify-center active:scale-90 transition-all"
+                                                        >
+                                                            <HiXMark className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </Reorder.Item>
+                                                ))}
+                                            </AnimatePresence>
+                                        </Reorder.Group>
+
+                                        {(imageCount < imageLimit || (isPremium && !hasVideo)) && (
+                                            <button
+                                                type="button"
+                                                disabled={isSubmitting}
+                                                onClick={() => postMediaInputRef.current?.click()}
+                                                className="shrink-0 w-24 h-24 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                                            >
+                                                <LuImagePlus className="w-5 h-5" />
+                                                <span className="text-[9px] font-bold mt-1">Qo'shish</span>
+                                            </button>
+                                        )}
+                                      </div>
+
+                                        <div className="flex items-center justify-between px-1">
+                                            <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                                {postMedia.length > 1 ? 'Tartibni surib o\'zgartiring · birinchisi muqova' : 'Yana qo\'shishingiz mumkin'}
+                                            </p>
+                                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                                                {imageCount}/{imageLimit} rasm{hasVideo ? ' · 1 video' : ''}
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+
+                                {!isPremium && (
+                                    <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 px-1">
+                                        Bepul reja: {FREE_IMAGE_LIMIT} ta rasm, video yo'q. PRO: {PRO_IMAGE_LIMIT} ta rasm + 1 daqiqalik video.
+                                    </p>
                                 )}
                             </div>
 
@@ -390,17 +625,17 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                                         type="button"
                                         disabled={isSubmitting}
                                         onClick={() => setPostEphemeral(false)}
-                                        className={`relative z-10 py-2 text-[11px] font-bold rounded-xl transition-colors ${!postEphemeral ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                                        className={`relative z-10 flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold rounded-xl transition-colors ${!postEphemeral ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}
                                     >
-                                        ♾ Doimiy
+                                        <LuInfinity className="w-3.5 h-3.5" /> Doimiy
                                     </button>
                                     <button
                                         type="button"
                                         disabled={isSubmitting}
                                         onClick={() => setPostEphemeral(true)}
-                                        className={`relative z-10 py-2 text-[11px] font-bold rounded-xl transition-colors ${postEphemeral ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                                        className={`relative z-10 flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold rounded-xl transition-colors ${postEphemeral ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}
                                     >
-                                        ⏳ Kapsula (72 soat)
+                                        <LuTimer className="w-3.5 h-3.5" /> Vaqtinchalik (72 soat)
                                     </button>
                                 </div>
                                 <AnimatePresence mode="wait">
@@ -413,7 +648,7 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                                         className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 mt-1.5 px-1"
                                     >
                                         {postEphemeral
-                                            ? "Post 72 soatdan keyin eriydi — faqat kimdir Kapsulaga saqlasa qoladi."
+                                            ? "Post 72 soatdan keyin o'chadi — kimdir saqlab qolsa, o'shada qoladi."
                                             : "Post lentada doimiy qoladi."}
                                     </motion.p>
                                 </AnimatePresence>
@@ -421,7 +656,7 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
 
                             <button
                                 type="submit"
-                                disabled={!postText.trim() || isSubmitting}
+                                disabled={(!postText.trim() && postMedia.length === 0) || isSubmitting}
                                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 dark:disabled:bg-slate-900/60 text-white disabled:text-slate-400 dark:disabled:text-slate-600 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] flex items-center justify-center gap-2 border border-transparent"
                             >
                                 {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}

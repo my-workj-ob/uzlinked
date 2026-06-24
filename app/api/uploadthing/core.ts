@@ -4,8 +4,8 @@ const f = createUploadthing();
 
 export const ourFileRouter = {
   mediaUploader: f({
-    image: { maxFileSize: "4MB", maxFileCount: 1 },
-    video: { maxFileSize: "16MB", maxFileCount: 1 }
+    image: { maxFileSize: "8MB", maxFileCount: 20 },
+    video: { maxFileSize: "32MB", maxFileCount: 1 }
   })
   .onUploadComplete(async ({ metadata, file }) => {
     return { url: file.url, type: file.type.startsWith("video") ? "video" : "image" };

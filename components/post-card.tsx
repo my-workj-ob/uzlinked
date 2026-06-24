@@ -42,13 +42,15 @@ export interface PostType {
   likedByMe?: boolean
   commentsCount?: number
   authorIsPremium?: boolean
-  // Kapsula (efemerlik)
+  // Vaqtinchalik (efemer) post maydonlari
   expiresAt?: string | null
   savesCount?: number
   savedByMe?: boolean
+  // Ko'p media (rasm/video) galereyasi — tartiblangan
+  media?: { url: string; type: 'image' | 'video'; duration?: number | null }[]
 }
 
-// Kapsula countdown — postning "erib ketishi"gacha qolgan vaqt
+// Vaqtinchalik post countdown — o'chishigacha qolgan vaqt
 function KapsulaCountdown({ expiresAt, saved, className = '' }: { expiresAt: string; saved: boolean; className?: string }) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -59,7 +61,7 @@ function KapsulaCountdown({ expiresAt, saved, className = '' }: { expiresAt: str
   if (saved) {
     return (
       <span className={`inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 ${className}`}>
-        <FaBookmark className="w-2.5 h-2.5" /> Kapsulada
+        <FaBookmark className="w-2.5 h-2.5" /> Saqlangan
       </span>
     )
   }
@@ -68,7 +70,7 @@ function KapsulaCountdown({ expiresAt, saved, className = '' }: { expiresAt: str
   if (msLeft <= 0) {
     return (
       <span className={`inline-flex items-center gap-1 rounded-full bg-slate-500/15 text-slate-500 dark:text-slate-400 text-[10px] font-extrabold px-2 py-0.5 ${className}`}>
-        <FiClock className="w-2.5 h-2.5" /> Erimoqda…
+        <FiClock className="w-2.5 h-2.5" /> Vaqti tugadi
       </span>
     )
   }
@@ -79,13 +81,99 @@ function KapsulaCountdown({ expiresAt, saved, className = '' }: { expiresAt: str
   const urgent = msLeft < 6 * 3600000
   return (
     <span
-      title="Bu post efemer — saqlamasangiz erib ketadi"
+      title="Vaqtinchalik post — saqlamasangiz o'chib ketadi"
       className={`inline-flex items-center gap-1 rounded-full text-[10px] font-extrabold px-2 py-0.5 ${urgent
         ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 animate-pulse'
         : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'} ${className}`}
     >
       <FiClock className="w-2.5 h-2.5" /> {label}
     </span>
+  )
+}
+
+// Ko'p media (rasm/video) galereyasi — silliq swipe (scroll-snap) + nuqtali indikator
+function PostMediaCarousel({
+  media,
+  isDetailPage,
+  onImageClick,
+  overlay,
+}: {
+  media: { url: string; type: 'image' | 'video'; duration?: number | null }[]
+  isDetailPage: boolean
+  onImageClick: (e: React.MouseEvent) => void
+  overlay?: React.ReactNode
+}) {
+  const [active, setActive] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const multi = media.length > 1
+
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el || el.clientWidth === 0) return
+    const idx = Math.round(el.scrollLeft / el.clientWidth)
+    if (idx !== active) setActive(idx)
+  }
+
+  const goTo = (i: number) => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' })
+  }
+
+  return (
+    <div
+      className={`relative w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950 select-none group/img ${isDetailPage ? 'max-h-[70vh]' : 'aspect-4/3'}`}
+    >
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        {media.map((m, i) => (
+          <div key={i} className="relative shrink-0 w-full h-full snap-center flex items-center justify-center bg-slate-100 dark:bg-slate-950">
+            {m.type === 'video' ? (
+              <video
+                src={m.url}
+                controls
+                playsInline
+                preload="metadata"
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full h-full bg-black ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'}`}
+              />
+            ) : (
+              <img
+                src={m.url}
+                alt="Post media"
+                onClick={onImageClick}
+                className={`w-full h-full cursor-pointer ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'} transition-transform duration-700 ease-out group-hover/img:scale-[1.03]`}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {multi && (
+        <>
+          <div className="absolute top-3 left-3 z-20 backdrop-blur-md bg-black/45 border border-white/10 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">
+            {active + 1}/{media.length}
+          </div>
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 backdrop-blur-md bg-black/30 px-2 py-1 rounded-full">
+            {media.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); goTo(i) }}
+                aria-label={`${i + 1}-media`}
+                className={`rounded-full transition-all duration-300 ${i === active ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/80'}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {overlay}
+    </div>
   )
 }
 
@@ -514,6 +602,15 @@ const [isSheetReady, setIsSheetReady] = useState(false)
     }
   }
 
+  // Ko'rsatiladigan media: yangi `media` galereyasi bo'lsa o'shani, aks holda
+  // orqaga moslik uchun bitta `image`ni ishlatamiz.
+  const displayMedia: { url: string; type: 'image' | 'video'; duration?: number | null }[] =
+    post.media && post.media.length > 0
+      ? post.media
+      : post.image
+        ? [{ url: post.image, type: 'image' }]
+        : []
+
   return (
     <>
       <motion.div
@@ -622,51 +719,49 @@ const [isSheetReady, setIsSheetReady] = useState(false)
           </div>
         </div>
 
-        {post.image && (
+        {displayMedia.length > 0 && (
           <div className="px-4 relative z-10">
-            <div
-              onClick={(e) => handleImageClick(e)}
-              className={`relative w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950 cursor-pointer select-none group/img ${isDetailPage ? 'max-h-[70vh] flex items-center justify-center' : 'aspect-4/3'}`}
-            >
-              <img
-                src={post.image}
-                alt="Post content"
-                className={`w-full h-full ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'} transition-transform duration-700 ease-out group-hover/img:scale-[1.03]`}
-              />
+            <PostMediaCarousel
+              media={displayMedia}
+              isDetailPage={!!isDetailPage}
+              onImageClick={(e) => handleImageClick(e)}
+              overlay={
+                <>
+                  {post.location && (
+                    <motion.div
+                      drag={onWarp ? 'x' : false}
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.45}
+                      dragSnapToOrigin
+                      whileDrag={{ scale: 1.08 }}
+                      style={onWarp ? { touchAction: 'pan-y' } : undefined}
+                      onClick={(e) => e.stopPropagation()}
+                      onDragEnd={(_e, info) => {
+                        if (onWarp && info.offset.x > 90) onWarp(post.location, post.id)
+                      }}
+                      className={`absolute bottom-3 left-3 z-30 backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-colors duration-350 hover:bg-black/60 ${onWarp ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                      title={onWarp ? "O'ngga suring — shu hududdagi keyingi postga sakrang" : undefined}
+                    >
+                      <FiMapPin className="w-3.5 h-3.5 text-blue-400" />
+                      <span>{post.location}</span>
+                      {onWarp && <FiChevronsRight className="w-3.5 h-3.5 text-blue-300/90 animate-pulse" />}
+                    </motion.div>
+                  )}
 
-              {post.location && (
-                <motion.div
-                  drag={onWarp ? 'x' : false}
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.45}
-                  dragSnapToOrigin
-                  whileDrag={{ scale: 1.08 }}
-                  style={onWarp ? { touchAction: 'pan-y' } : undefined}
-                  onClick={(e) => e.stopPropagation()}
-                  onDragEnd={(_e, info) => {
-                    if (onWarp && info.offset.x > 90) onWarp(post.location, post.id)
-                  }}
-                  className={`absolute bottom-3 left-3 z-20 backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-colors duration-350 hover:bg-black/60 ${onWarp ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                  title={onWarp ? "O'ngga suring — shu hududdagi keyingi postga sakrang" : undefined}
-                >
-                  <FiMapPin className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{post.location}</span>
-                  {onWarp && <FiChevronsRight className="w-3.5 h-3.5 text-blue-300/90 animate-pulse" />}
-                </motion.div>
-              )}
+                  {post.expiresAt && (
+                    <div className="absolute top-3 right-3 z-30 backdrop-blur-md bg-black/40 border border-white/10 rounded-full">
+                      <KapsulaCountdown expiresAt={post.expiresAt} saved={saved} className="!bg-transparent !text-white px-2.5" />
+                    </div>
+                  )}
 
-              {post.expiresAt && (
-                <div className="absolute top-3 right-3 z-20 backdrop-blur-md bg-black/40 border border-white/10 rounded-full">
-                  <KapsulaCountdown expiresAt={post.expiresAt} saved={saved} className="!bg-transparent !text-white px-2.5" />
-                </div>
-              )}
-
-              {showDoubleTapHeart && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 animate-double-tap-heart">
-                  <FaHeart className="w-20 h-20 text-rose-500 drop-shadow-[0_0_20px_rgba(244,63,94,0.6)]" />
-                </div>
-              )}
-            </div>
+                  {showDoubleTapHeart && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 animate-double-tap-heart">
+                      <FaHeart className="w-20 h-20 text-rose-500 drop-shadow-[0_0_20px_rgba(244,63,94,0.6)]" />
+                    </div>
+                  )}
+                </>
+              }
+            />
           </div>
         )}
 
@@ -697,7 +792,7 @@ const [isSheetReady, setIsSheetReady] = useState(false)
 
             <button
               onClick={(e) => { e.stopPropagation(); handleSaveToggle(); }}
-              title="Kapsulaga saqlash"
+              title={saved ? 'Saqlanganlardan olib tashlash' : 'Saqlash'}
               className={`flex items-center gap-1.5 transition active:scale-90 ${saved
                 ? 'text-emerald-600 dark:text-emerald-400'
                 : 'text-slate-700 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400'}`}
@@ -1070,9 +1165,13 @@ const [isSheetReady, setIsSheetReady] = useState(false)
               </div>
             </div>
 
-            {post.image && (
-              <div className="rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950 aspect-4/3 max-h-[35vh]">
-                <img src={post.image} alt="" className="w-full h-full object-cover" />
+            {displayMedia.length > 0 && (
+              <div className="max-h-[35vh]">
+                <PostMediaCarousel
+                  media={displayMedia}
+                  isDetailPage={false}
+                  onImageClick={(e) => e.stopPropagation()}
+                />
               </div>
             )}
           </div>
