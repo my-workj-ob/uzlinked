@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { PostCard, PostType } from '@/components/post-card'
 import { Stories } from '@/components/stories'
 import { FeedSkeleton } from '@/components/skeleton-loader'
@@ -8,6 +9,8 @@ import { usePosts, useUpdatePost, useDeletePost } from '@/hooks/use-queries'
 import { useStories } from '@/hooks/use-stories'
 import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/utils/supabase/client'
+import { useVibe, matchesVibe, VIBES, VibeBar } from '@/components/vibe-bar'
+import { WarpOverlay } from '@/components/warp-overlay'
 
 export default function FeedList() {
     const { data: posts = [], isLoading: loading, error } = usePosts()
@@ -16,6 +19,37 @@ export default function FeedList() {
     const deletePostMutation = useDeletePost()
     const queryClient = useQueryClient()
     const supabase = createClient()
+
+    // QADAM 1 — Vibe Vector filtri (reload yo'q, faqat client-side dissolve)
+    const { activeVibe } = useVibe()
+    const currentVibe = VIBES.find(v => v.id === activeVibe) || VIBES[0]
+    const visiblePosts = posts.filter(p => matchesVibe(`${p.content} ${p.location}`, currentVibe))
+
+    // QADAM 2 — Gidro-Warp: geografik teleport holati
+    const [warping, setWarping] = useState(false)
+    const [warpLocation, setWarpLocation] = useState<string>('')
+    const postRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
+    const handleWarp = (location: string, postId: string | number) => {
+        const list = visiblePosts
+        const idx = list.findIndex(p => String(p.id) === String(postId))
+        if (idx === -1) return
+
+        let target: PostType | null = null
+        for (let i = 1; i <= list.length; i++) {
+            const cand = list[(idx + i) % list.length]
+            if (!cand || String(cand.id) === String(postId)) continue
+            if (cand.location === location) { target = cand; break }
+        }
+        if (!target) return
+
+        setWarpLocation(location)
+        setWarping(true)
+        window.setTimeout(() => {
+            postRefs.current[String(target!.id)]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 380)
+        window.setTimeout(() => setWarping(false), 900)
+    }
 
     // Realtime subscriptions for posts feed (posts, likes, comments)
     useEffect(() => {
@@ -265,6 +299,11 @@ export default function FeedList() {
                         </div>
                     </div>
 
+                    {/* QADAM 1 — Desktop Vibe Vector qatori (mobil header ichida ko'rsatiladi) */}
+                    <div className="hidden md:block sticky top-0 z-30 -mx-1 px-1 py-2 mb-1 bg-[#F8FAFC]/80 dark:bg-slate-950/80 backdrop-blur-xl">
+                        <VibeBar />
+                    </div>
+
                     {posts.length === 0 ? (
                         <div className="w-full py-16 bg-slate-50/50 dark:bg-slate-900/20 border border-dashed border-slate-200 dark:border-white/5 rounded-2xl text-center animate-fade-in-up">
                             <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">Hozircha hech qanday post yo'q 🏜️</p>
@@ -276,24 +315,47 @@ export default function FeedList() {
                             </button>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-4 relative">
-                            {posts.map((post, idx) => (
-                                <div
-                                    key={post.id}
-                                    className="animate-fade-in-up relative z-10 transition-all duration-300 transform hover:scale-[1.002]"
-                                    style={{ animationDelay: `${idx * 80}ms` }}
-                                >
-                                    <PostCard
-                                        post={post}
-                                        onDeletePost={handleDeletePost}
-                                        onUpdatePost={handleUpdatePost}
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={activeVibe}
+                                initial={{ opacity: 0, filter: 'blur(8px)' }}
+                                animate={{ opacity: 1, filter: 'blur(0px)' }}
+                                exit={{ opacity: 0, filter: 'blur(8px)' }}
+                                transition={{ duration: 0.2, ease: 'easeOut' }}
+                                className="flex flex-col gap-4 relative"
+                            >
+                                {visiblePosts.length === 0 ? (
+                                    <div className="w-full py-16 bg-slate-50/50 dark:bg-slate-900/20 border border-dashed border-slate-200 dark:border-white/5 rounded-2xl text-center">
+                                        <p className="text-2xl mb-1">{currentVibe.emoji}</p>
+                                        <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">
+                                            {`"${currentVibe.label}" chastotasida hozircha post yo'q`}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    visiblePosts.map((post, idx) => (
+                                        <div
+                                            key={post.id}
+                                            ref={(el) => { postRefs.current[String(post.id)] = el }}
+                                            className="animate-fade-in-up relative z-10 transition-all duration-300 transform hover:scale-[1.002]"
+                                            style={{ animationDelay: `${idx * 80}ms` }}
+                                        >
+                                            <PostCard
+                                                post={post}
+                                                onDeletePost={handleDeletePost}
+                                                onUpdatePost={handleUpdatePost}
+                                                onWarp={handleWarp}
+                                            />
+                                        </div>
+                                    ))
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
                     )}
                 </>
             )}
+
+            {/* QADAM 2 — Gidro-Warp giperfazo overlay */}
+            <WarpOverlay active={warping} location={warpLocation} />
         </div>
     )
 }

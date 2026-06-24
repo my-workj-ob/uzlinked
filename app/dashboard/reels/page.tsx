@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { FiHeart, FiMessageSquare, FiShare2, FiFlag, FiLink, FiSend } from 'react-icons/fi'
+import { FiHeart, FiMessageSquare, FiShare2, FiFlag, FiLink, FiSend, FiEdit3 } from 'react-icons/fi'
 import { FaHeart, FaTelegram, FaBookmark, FaRegBookmark } from 'react-icons/fa'
 import { HiSpeakerWave, HiSpeakerXMark, HiPlay, HiPause, HiXMark, HiChevronDown } from 'react-icons/hi2'
 import { BsFilm } from 'react-icons/bs'
@@ -477,6 +477,91 @@ function ReportModal({
     )
 }
 
+// ========== REEL EDIT MODAL ==========
+
+function EditReelModal({
+    reel,
+    onClose,
+    onUpdateReel,
+}: {
+    reel: ReelType
+    onClose: () => void
+    onUpdateReel: (id: string, updates: Partial<ReelType>) => void
+}) {
+    const [title, setTitle] = useState(reel.title || '')
+    const [description, setDescription] = useState(reel.description || '')
+    const [saving, setSaving] = useState(false)
+    const [error, setError] = useState('')
+
+    const handleSave = async () => {
+        if (saving) return
+        setSaving(true)
+        setError('')
+        try {
+            const res = await fetch('/api/reels', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: reel.id,
+                    title: title.trim(),
+                    description: description.trim(),
+                }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Xatolik yuz berdi')
+            onUpdateReel(reel.id, { title: title.trim(), description: description.trim() })
+            onClose()
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Saqlashda xatolik yuz berdi')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/70 animate-overlay-in" onClick={onClose} />
+            <div className="relative z-10 bg-neutral-900 w-full max-w-sm rounded-2xl p-5 animate-share-fade-in border border-white/10">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-white font-bold text-sm">Reelni tahrirlash</h3>
+                    <button onClick={onClose} className="p-1.5 text-white/60 hover:text-white transition-colors">
+                        <HiXMark className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <label className="block text-white/40 text-xs font-semibold mb-1.5">Sarlavha</label>
+                <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    maxLength={120}
+                    placeholder="Reel sarlavhasi"
+                    className="w-full mb-4 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
+                />
+
+                <label className="block text-white/40 text-xs font-semibold mb-1.5">Tavsif</label>
+                <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    placeholder="Tavsif (#hashtag qo'shishingiz mumkin)"
+                    className="w-full mb-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+                />
+
+                {error && <p className="text-rose-400 text-xs mb-3">{error}</p>}
+
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="w-full mt-2 py-3 bg-blue-600 disabled:bg-white/10 text-white disabled:text-white/30 font-bold text-xs rounded-xl transition-all active:scale-[0.98]"
+                >
+                    {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+                </button>
+            </div>
+        </div>
+    )
+}
+
 // ========== REEL CARD ==========
 
 function ReelCard({
@@ -509,6 +594,7 @@ function ReelCard({
     const [commentsOpen, setCommentsOpen] = useState(false)
     const [shareOpen, setShareOpen] = useState(false)
     const [reportOpen, setReportOpen] = useState(false)
+    const [editOpen, setEditOpen] = useState(false)
 
     // Watch time tracking
     const watchStartRef = useRef<number>(0)
@@ -731,6 +817,13 @@ function ReelCard({
                         <span className="text-white text-[10px] font-bold">Ulashish</span>
                     </button>
 
+                    {/* Tahrirlash (faqat egasi) */}
+                    {reel.isOwner && (
+                        <button onClick={() => setEditOpen(true)} className="mt-1 active:scale-90 transition-transform" title="Tahrirlash">
+                            <FiEdit3 className="w-5 h-5 text-white/60 hover:text-white transition-colors" />
+                        </button>
+                    )}
+
                     {/* Report */}
                     {!reel.isOwner && (
                         <button onClick={() => setReportOpen(true)} className="mt-1 active:scale-90 transition-transform">
@@ -789,6 +882,13 @@ function ReelCard({
                 <ReportModal
                     reelId={reel.id}
                     onClose={() => setReportOpen(false)}
+                />
+            )}
+            {editOpen && (
+                <EditReelModal
+                    reel={reel}
+                    onClose={() => setEditOpen(false)}
+                    onUpdateReel={onUpdateReel}
                 />
             )}
         </div>

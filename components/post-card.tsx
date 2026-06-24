@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy,
   FiAlertTriangle, FiUser, FiCornerDownLeft, FiMapPin, FiExternalLink,
-  FiCheckCircle, FiDollarSign
+  FiCheckCircle, FiDollarSign, FiChevronsRight
 } from 'react-icons/fi'
 import { Loader2 } from 'lucide-react'
 import { useLikeToggle } from '@/hooks/use-queries'
@@ -49,6 +49,8 @@ interface PostCardProps {
   onDeletePost?: (id: string | number) => void
   onUpdatePost?: (id: string | number, newContent: string) => void
   isDetailPage?: boolean
+  // QADAM 2 — Gidro-Warp: joylashuv kapsulasini o'ngga surganda chaqiriladi
+  onWarp?: (location: string, postId: string | number) => void
 }
 
 function formatTime(timeStr: string) {
@@ -77,7 +79,7 @@ function formatTime(timeStr: string) {
   }
 }
 
-export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = false }: PostCardProps) => {
+export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = false, onWarp }: PostCardProps) => {
   const router = useRouter()
   const supabase = createClient()
 
@@ -560,10 +562,24 @@ const [isSheetReady, setIsSheetReady] = useState(false)
               />
 
               {post.location && (
-                <div className="absolute bottom-3 left-3 backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-all duration-350 hover:bg-black/60">
+                <motion.div
+                  drag={onWarp ? 'x' : false}
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.45}
+                  dragSnapToOrigin
+                  whileDrag={{ scale: 1.08 }}
+                  style={onWarp ? { touchAction: 'pan-y' } : undefined}
+                  onClick={(e) => e.stopPropagation()}
+                  onDragEnd={(_e, info) => {
+                    if (onWarp && info.offset.x > 90) onWarp(post.location, post.id)
+                  }}
+                  className={`absolute bottom-3 left-3 z-20 backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-colors duration-350 hover:bg-black/60 ${onWarp ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  title={onWarp ? "O'ngga suring — shu hududdagi keyingi postga sakrang" : undefined}
+                >
                   <FiMapPin className="w-3.5 h-3.5 text-blue-400" />
                   <span>{post.location}</span>
-                </div>
+                  {onWarp && <FiChevronsRight className="w-3.5 h-3.5 text-blue-300/90 animate-pulse" />}
+                </motion.div>
               )}
 
               {showDoubleTapHeart && (

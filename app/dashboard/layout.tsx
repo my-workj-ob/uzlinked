@@ -17,6 +17,7 @@ import {
 import { CreateWizard } from '@/components/create-wizard'
 import { createClient } from '@/utils/supabase/client'
 import { Loader2 } from 'lucide-react'
+import { VibeProvider, VibeBar } from '@/components/vibe-bar'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -629,7 +630,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
 
 
+  const isHomePage = pathname === '/dashboard'
+
   return (
+    <VibeProvider>
     <div
       style={{ height: 'var(--vh, 100dvh)' }}
       className="w-full max-w-[100dvw] bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300"
@@ -638,9 +642,13 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       {/* MOBILE HEADER: Glassmorphism, hidden on Reels and Messages pages */}
       {!isReelsPage && !isMessagesPage && (
         <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 select-none transition-all duration-300 md:hidden">
-          <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-            {getPageTitle(pathname)}
-          </span>
+          {isHomePage ? (
+            <VibeBar className="flex-1 min-w-0 mr-2 py-1" />
+          ) : (
+            <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+              {getPageTitle(pathname)}
+            </span>
+          )}
 
           <div className="flex items-center gap-2 relative">
             {/* Theme Toggle */}
@@ -1031,6 +1039,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </div>
       )}
     </div>
+    </VibeProvider>
   )
 }
 

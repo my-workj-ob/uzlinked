@@ -239,6 +239,49 @@ html {
   animation: overlay-in 0.2s ease-out forwards;
 }
 
+/* Gidro-Warp giperfazo effekti (Star Wars uslubi) */
+.warp-tunnel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.warp-star {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 45vmax;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, rgba(147, 197, 253, 0.95));
+  transform-origin: left center;
+  animation: warp-streak 0.75s ease-in infinite;
+}
+
+@keyframes warp-streak {
+  0% {
+    transform: rotate(var(--angle)) translateX(0) scaleX(0.02);
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: rotate(var(--angle)) translateX(60vmax) scaleX(1);
+    opacity: 0;
+  }
+}
+
+/* Vibe Vector dissolve (teleport) o'tishi */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Shimmer loading effect */
 @keyframes shimmer {
   0% {

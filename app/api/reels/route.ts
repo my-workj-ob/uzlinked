@@ -218,6 +218,61 @@ export async function POST(request: Request) {
     }
 }
 
+// PUT /api/reels — reel sarlavhasi va tavsifini yangilash (faqat egasi).
+// SQL UPDATE policy (database/reels.sql) allaqachon yozilgan.
+export async function PUT(request: Request) {
+    try {
+        const supabase = await getSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+            return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
+        }
+
+        const body = await request.json()
+        const { id, title, description } = body
+        if (!id) {
+            return NextResponse.json({ error: 'Reel ID topilmadi' }, { status: 400 })
+        }
+
+        const { data: reel } = await supabase
+            .from('reels')
+            .select('user_id')
+            .eq('id', id)
+            .single()
+
+        if (!reel || reel.user_id !== session.user.id) {
+            return NextResponse.json({ error: 'Ruxsat yo\'q' }, { status: 403 })
+        }
+
+        const { data: updated, error: updateError } = await supabase
+            .from('reels')
+            .update({
+                title: title || '',
+                description: description || '',
+            })
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (updateError) throw updateError
+
+        // Hashtag'larni qayta hisoblaymiz (qidiruv indeksi yangilanishi uchun)
+        const tags = extractHashtags(`${title || ''} ${description || ''}`)
+        await supabase.from('reel_hashtags').delete().eq('reel_id', id)
+        if (tags.length > 0) {
+            await supabase.from('reel_hashtags').insert(
+                tags.map(tag => ({ reel_id: id, tag }))
+            )
+        }
+
+        return NextResponse.json({ success: true, reel: updated })
+    } catch (error) {
+        console.error("Reel PUT Error:", error)
+        const message = error instanceof Error ? error.message : 'Server xatosi'
+        return NextResponse.json({ error: message }, { status: 500 })
+    }
+}
+
 export async function DELETE(request: Request) {
     try {
         const supabase = await getSupabaseClient()
