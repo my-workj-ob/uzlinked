@@ -87,28 +87,48 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url)
         const postId = searchParams.get('id')
 
-        let dbQuery = supabase
-            .from('posts')
-            .select(`
+        // Kapsula (efemerlik) bilan boyitilgan so'rov. Agar migratsiya hali
+        // qo'llanilmagan bo'lsa (post_saves / expires_at yo'q), oddiy so'rovga
+        // qaytamiz — shunda ilova baribir ishlayveradi.
+        const enrichedSelect = `
+                *,
+                profiles (nickname, avatar_url, is_premium),
+                likes (user_id),
+                post_saves (user_id)
+            `
+        const basicSelect = `
                 *,
                 profiles (nickname, avatar_url, is_premium),
                 likes (user_id)
-            `)
+            `
 
-        if (postId) {
-            dbQuery = dbQuery.eq('id', postId)
+        const runQuery = (select: string) => {
+            let q = supabase.from('posts').select(select)
+            if (postId) q = q.eq('id', postId)
+            return q.order('created_at', { ascending: false })
         }
 
-        const { data: posts, error } = await dbQuery.order('created_at', { ascending: false })
+        let { data: posts, error } = await runQuery(enrichedSelect)
+        if (error) {
+            // Ehtimol post_saves jadvali hali mavjud emas — degrade qilamiz
+            const fallback = await runQuery(basicSelect)
+            posts = fallback.data
+            error = fallback.error
+        }
 
         if (error) {
             throw error
         }
 
-        const formattedPosts = posts.map((post: any) => {
+        const nowMs = Date.now()
+
+        const formattedPosts = (posts || []).map((post: any) => {
             const totalLikes = post.likes ? post.likes.length : 0
             const isLikedByMe = post.likes ? post.likes.some((l: any) => l.user_id === currentUserId) : false
             const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles
+            const savedByMe = Array.isArray(post.post_saves)
+                ? post.post_saves.some((s: any) => s.user_id === currentUserId)
+                : false
 
             return {
                 id: post.id,
@@ -122,8 +142,18 @@ export async function GET(request: Request) {
                 likes: totalLikes,
                 likedByMe: isLikedByMe,
                 isOwner: post.user_id === currentUserId,
-                authorIsPremium: profile?.is_premium || false
+                authorIsPremium: profile?.is_premium || false,
+                // Kapsula maydonlari
+                expiresAt: post.expires_at ?? null,
+                savesCount: post.saves_count ?? 0,
+                savedByMe,
             }
+        }).filter((post: any) => {
+            // Erib ketgan postlar yashiriladi — agar foydalanuvchi o'zi
+            // saqlamagan yoki egasi bo'lmasa. expiresAt yo'q = abadiy.
+            if (!post.expiresAt) return true
+            if (new Date(post.expiresAt).getTime() > nowMs) return true
+            return post.savedByMe || post.isOwner
         })
 
         return NextResponse.json(formattedPosts)

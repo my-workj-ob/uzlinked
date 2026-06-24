@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation'
 import {
   FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy,
   FiAlertTriangle, FiUser, FiCornerDownLeft, FiMapPin, FiExternalLink,
-  FiCheckCircle, FiDollarSign, FiChevronsRight
+  FiCheckCircle, FiDollarSign, FiChevronsRight, FiBookmark, FiClock
 } from 'react-icons/fi'
 import { Loader2 } from 'lucide-react'
 import { useLikeToggle } from '@/hooks/use-queries'
-import { FaHeart } from 'react-icons/fa'
+import { FaHeart, FaBookmark } from 'react-icons/fa'
 import { HiEllipsisHorizontal, HiXMark } from 'react-icons/hi2'
 import { BottomSheet, BottomSheetRef } from '@/components/bottom-sheet'
 import { motion } from 'framer-motion'
@@ -42,6 +42,51 @@ export interface PostType {
   likedByMe?: boolean
   commentsCount?: number
   authorIsPremium?: boolean
+  // Kapsula (efemerlik)
+  expiresAt?: string | null
+  savesCount?: number
+  savedByMe?: boolean
+}
+
+// Kapsula countdown — postning "erib ketishi"gacha qolgan vaqt
+function KapsulaCountdown({ expiresAt, saved, className = '' }: { expiresAt: string; saved: boolean; className?: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30000)
+    return () => clearInterval(t)
+  }, [])
+
+  if (saved) {
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 ${className}`}>
+        <FaBookmark className="w-2.5 h-2.5" /> Kapsulada
+      </span>
+    )
+  }
+
+  const msLeft = new Date(expiresAt).getTime() - now
+  if (msLeft <= 0) {
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-full bg-slate-500/15 text-slate-500 dark:text-slate-400 text-[10px] font-extrabold px-2 py-0.5 ${className}`}>
+        <FiClock className="w-2.5 h-2.5" /> Erimoqda…
+      </span>
+    )
+  }
+
+  const hours = Math.floor(msLeft / 3600000)
+  const mins = Math.floor((msLeft % 3600000) / 60000)
+  const label = hours >= 1 ? `${hours} soat qoldi` : `${mins} daqiqa qoldi`
+  const urgent = msLeft < 6 * 3600000
+  return (
+    <span
+      title="Bu post efemer — saqlamasangiz erib ketadi"
+      className={`inline-flex items-center gap-1 rounded-full text-[10px] font-extrabold px-2 py-0.5 ${urgent
+        ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 animate-pulse'
+        : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'} ${className}`}
+    >
+      <FiClock className="w-2.5 h-2.5" /> {label}
+    </span>
+  )
 }
 
 interface PostCardProps {
@@ -85,6 +130,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
   const [liked, setLiked] = useState(post.likedByMe || false)
   const [likesCount, setLikesCount] = useState(Number(post.likes) || 0)
+  const [saved, setSaved] = useState(post.savedByMe || false)
+  const [savesCount, setSavesCount] = useState(Number(post.savesCount) || 0)
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<CommentType[]>([])
   const [commentsCount, setCommentsCount] = useState(post.commentsCount || 0)
@@ -323,6 +370,29 @@ const [isSheetReady, setIsSheetReady] = useState(false)
     }
   }
 
+  const handleSaveToggle = async () => {
+    const next = !saved
+    setSaved(next)
+    setSavesCount(c => Math.max(0, c + (next ? 1 : -1)))
+    try {
+      const res = await fetch('/api/posts/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: post.id })
+      })
+      if (!res.ok) throw new Error('save failed')
+      const data = await res.json()
+      if (typeof data.saved === 'boolean' && data.saved !== next) {
+        setSaved(data.saved)
+        setSavesCount(c => Math.max(0, c + (data.saved ? 1 : -1)))
+      }
+    } catch {
+      // rollback
+      setSaved(!next)
+      setSavesCount(c => Math.max(0, c + (next ? -1 : 1)))
+    }
+  }
+
   const handleLikeComment = async (commentId: string | number) => {
     const toggle = (list: CommentType[]) => list.map(c => {
       if (c.id !== commentId) return c
@@ -483,6 +553,9 @@ const [isSheetReady, setIsSheetReady] = useState(false)
                 {post.authorIsPremium && (
                   <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
                 )}
+                {!post.image && post.expiresAt && (
+                  <KapsulaCountdown expiresAt={post.expiresAt} saved={saved} />
+                )}
               </div>
               <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-0.5 mt-0.5">
                 {formatTime(post.time)} {!post.image && post.location && (
@@ -582,6 +655,12 @@ const [isSheetReady, setIsSheetReady] = useState(false)
                 </motion.div>
               )}
 
+              {post.expiresAt && (
+                <div className="absolute top-3 right-3 z-20 backdrop-blur-md bg-black/40 border border-white/10 rounded-full">
+                  <KapsulaCountdown expiresAt={post.expiresAt} saved={saved} className="!bg-transparent !text-white px-2.5" />
+                </div>
+              )}
+
               {showDoubleTapHeart && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30 animate-double-tap-heart">
                   <FaHeart className="w-20 h-20 text-rose-500 drop-shadow-[0_0_20px_rgba(244,63,94,0.6)]" />
@@ -614,6 +693,17 @@ const [isSheetReady, setIsSheetReady] = useState(false)
             >
               <FiMessageSquare className="w-5 h-5" />
               <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{commentsCount}</span>
+            </button>
+
+            <button
+              onClick={(e) => { e.stopPropagation(); handleSaveToggle(); }}
+              title="Kapsulaga saqlash"
+              className={`flex items-center gap-1.5 transition active:scale-90 ${saved
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-slate-700 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400'}`}
+            >
+              {saved ? <FaBookmark className="w-5 h-5 animate-jump" /> : <FiBookmark className="w-5 h-5" />}
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{savesCount}</span>
             </button>
 
             <button
@@ -962,6 +1052,9 @@ const [isSheetReady, setIsSheetReady] = useState(false)
                     )}
                     {post.authorIsPremium && (
                       <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">PRO</span>
+                    )}
+                    {post.expiresAt && (
+                      <KapsulaCountdown expiresAt={post.expiresAt} saved={saved} />
                     )}
                   </div>
                   <span className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-0.5 mt-0.5">

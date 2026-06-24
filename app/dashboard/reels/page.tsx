@@ -159,11 +159,11 @@ function CommentsDrawer({
             <div className="fixed inset-0 bg-black/60 animate-overlay-in" onClick={onClose} />
 
             {/* Drawer */}
-            <div className="relative z-10 bg-neutral-900 w-full md:max-w-[420px] rounded-t-2xl max-h-[70vh] flex flex-col animate-drawer-slide-up">
+            <div className="relative z-10 bg-white dark:bg-slate-900 w-full md:max-w-[420px] rounded-t-2xl max-h-[70vh] flex flex-col animate-drawer-slide-up">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                    <span className="text-white font-bold text-sm">Izohlar ({commentsCount})</span>
-                    <button onClick={onClose} className="p-1.5 text-white/60 hover:text-white transition-colors">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10">
+                    <span className="text-slate-900 dark:text-white font-bold text-sm">Izohlar ({commentsCount})</span>
+                    <button onClick={onClose} className="p-1.5 text-slate-400 dark:text-white/60 hover:text-slate-700 dark:hover:text-white transition-colors">
                         <HiXMark className="w-5 h-5" />
                     </button>
                 </div>
@@ -172,12 +172,12 @@ function CommentsDrawer({
                 <div ref={listRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none">
                     {loading ? (
                         <div className="flex items-center justify-center py-8">
-                            <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            <div className="w-5 h-5 border-2 border-slate-300 dark:border-white/40 border-t-blue-600 dark:border-t-white rounded-full animate-spin" />
                         </div>
                     ) : comments.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <FiMessageSquare className="w-8 h-8 text-white/20 mb-2" />
-                            <p className="text-white/40 text-xs font-medium">Hali izohlar yo'q. Birinchi bo'ling!</p>
+                            <FiMessageSquare className="w-8 h-8 text-slate-300 dark:text-white/20 mb-2" />
+                            <p className="text-slate-400 dark:text-white/40 text-xs font-medium">Hali izohlar yo'q. Birinchi bo'ling!</p>
                         </div>
                     ) : (
                         comments.map((comment, i) => (
@@ -191,14 +191,14 @@ function CommentsDrawer({
                                     />
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-white font-bold text-xs">{comment.user.nickname}</span>
-                                            <span className="text-white/30 text-[10px]">{formatTimeAgo(comment.createdAt)}</span>
+                                            <span className="text-slate-900 dark:text-white font-bold text-xs">{comment.user.nickname}</span>
+                                            <span className="text-slate-400 dark:text-white/30 text-[10px]">{formatTimeAgo(comment.createdAt)}</span>
                                         </div>
-                                        <p className="text-white/80 text-xs leading-relaxed mt-0.5">{comment.text}</p>
+                                        <p className="text-slate-700 dark:text-white/80 text-xs leading-relaxed mt-0.5">{comment.text}</p>
                                         <div className="flex items-center gap-4 mt-1.5">
                                             <button
                                                 onClick={() => handleCommentLike(comment.id)}
-                                                className="flex items-center gap-1 text-[10px] font-bold text-white/40 hover:text-white/70 transition-colors"
+                                                className="flex items-center gap-1 text-[10px] font-bold text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/70 transition-colors"
                                             >
                                                 {comment.isLikedByMe ? (
                                                     <FaHeart className="w-3 h-3 text-rose-500" />
@@ -212,7 +212,7 @@ function CommentsDrawer({
                                                     setReplyTo({ id: comment.id, username: comment.user.nickname })
                                                     inputRef.current?.focus()
                                                 }}
-                                                className="text-[10px] font-bold text-white/40 hover:text-white/70 transition-colors"
+                                                className="text-[10px] font-bold text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/70 transition-colors"
                                             >
                                                 Javob
                                             </button>
@@ -222,19 +222,19 @@ function CommentsDrawer({
 
                                 {/* Reply'lar */}
                                 {comment.replies.length > 0 && (
-                                    <div className="ml-10 mt-2 space-y-3 border-l border-white/10 pl-3">
+                                    <div className="ml-10 mt-2 space-y-3 border-l border-slate-200 dark:border-white/10 pl-3">
                                         {comment.replies.map(reply => (
                                             <div key={reply.id} className="flex gap-2">
                                                 <img src={reply.user.avatar} alt="" className="w-6 h-6 rounded-full object-cover shrink-0 mt-0.5" />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-white font-bold text-[11px]">{reply.user.nickname}</span>
-                                                        <span className="text-white/30 text-[9px]">{formatTimeAgo(reply.createdAt)}</span>
+                                                        <span className="text-slate-900 dark:text-white font-bold text-[11px]">{reply.user.nickname}</span>
+                                                        <span className="text-slate-400 dark:text-white/30 text-[9px]">{formatTimeAgo(reply.createdAt)}</span>
                                                     </div>
-                                                    <p className="text-white/70 text-[11px] leading-relaxed mt-0.5">{reply.text}</p>
+                                                    <p className="text-slate-600 dark:text-white/70 text-[11px] leading-relaxed mt-0.5">{reply.text}</p>
                                                     <button
                                                         onClick={() => handleCommentLike(reply.id)}
-                                                        className="flex items-center gap-1 mt-1 text-[10px] font-bold text-white/40 hover:text-white/70 transition-colors"
+                                                        className="flex items-center gap-1 mt-1 text-[10px] font-bold text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/70 transition-colors"
                                                     >
                                                         {reply.isLikedByMe ? <FaHeart className="w-2.5 h-2.5 text-rose-500" /> : <FiHeart className="w-2.5 h-2.5" />}
                                                         {reply.likesCount > 0 && reply.likesCount}
@@ -250,11 +250,11 @@ function CommentsDrawer({
                 </div>
 
                 {/* Input */}
-                <form onSubmit={handleSubmit} className="p-3 border-t border-white/10 flex items-center gap-2 bg-neutral-900/95 backdrop-blur-sm">
+                <form onSubmit={handleSubmit} className="p-3 border-t border-slate-200 dark:border-white/10 flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
                     {replyTo && (
-                        <div className="absolute -top-7 left-3 right-3 bg-neutral-800 rounded-lg px-3 py-1 flex items-center justify-between">
-                            <span className="text-white/50 text-[10px]">↳ {replyTo.username} ga javob</span>
-                            <button type="button" onClick={() => setReplyTo(null)} className="text-white/40 hover:text-white/70">
+                        <div className="absolute -top-7 left-3 right-3 bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-1 flex items-center justify-between">
+                            <span className="text-slate-500 dark:text-white/50 text-[10px]">↳ {replyTo.username} ga javob</span>
+                            <button type="button" onClick={() => setReplyTo(null)} className="text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/70">
                                 <HiXMark className="w-3.5 h-3.5" />
                             </button>
                         </div>
@@ -265,12 +265,12 @@ function CommentsDrawer({
                         value={text}
                         onChange={e => setText(e.target.value)}
                         placeholder={replyTo ? `${replyTo.username} ga javob...` : "Izoh qoldiring..."}
-                        className="flex-1 bg-white/10 text-white placeholder-white/30 text-xs rounded-full px-4 py-2.5 outline-none focus:bg-white/15 transition-colors"
+                        className="flex-1 bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 text-xs rounded-full px-4 py-2.5 outline-none focus:bg-slate-200 dark:focus:bg-white/15 transition-colors"
                     />
                     <button
                         type="submit"
                         disabled={!text.trim() || sending}
-                        className="p-2.5 bg-blue-600 disabled:bg-white/10 text-white disabled:text-white/30 rounded-full transition-all active:scale-90"
+                        className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-white/10 text-white disabled:text-slate-400 dark:disabled:text-white/30 rounded-full transition-all active:scale-90"
                     >
                         <FiSend className="w-3.5 h-3.5" />
                     </button>
@@ -338,10 +338,10 @@ function ShareSheet({
     return (
         <div className="fixed inset-0 z-60 flex items-end justify-center">
             <div className="fixed inset-0 bg-black/60 animate-overlay-in" onClick={onClose} />
-            <div className="relative z-10 bg-neutral-900 w-full md:max-w-[420px] rounded-t-2xl p-5 animate-share-fade-in">
+            <div className="relative z-10 bg-white dark:bg-slate-900 w-full md:max-w-[420px] rounded-t-2xl p-5 animate-share-fade-in">
                 <div className="flex items-center justify-between mb-5">
-                    <span className="text-white font-bold text-sm">Ulashish</span>
-                    <button onClick={onClose} className="p-1.5 text-white/60 hover:text-white transition-colors">
+                    <span className="text-slate-900 dark:text-white font-bold text-sm">Ulashish</span>
+                    <button onClick={onClose} className="p-1.5 text-slate-400 dark:text-white/60 hover:text-slate-700 dark:hover:text-white transition-colors">
                         <HiXMark className="w-5 h-5" />
                     </button>
                 </div>
@@ -349,35 +349,35 @@ function ShareSheet({
                 <div className="grid grid-cols-3 gap-3 mb-4">
                     <button
                         onClick={handleCopyLink}
-                        className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all active:scale-95"
+                        className="flex flex-col items-center gap-2 p-4 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-2xl transition-all active:scale-95"
                     >
-                        <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center">
-                            <FiLink className="w-5 h-5 text-white" />
+                        <div className="w-12 h-12 bg-slate-200 dark:bg-white/10 rounded-full flex items-center justify-center">
+                            <FiLink className="w-5 h-5 text-slate-700 dark:text-white" />
                         </div>
-                        <span className="text-white/70 text-[10px] font-bold">
+                        <span className="text-slate-600 dark:text-white/70 text-[10px] font-bold">
                             {copied ? '✓ Nusxalandi' : 'Havola'}
                         </span>
                     </button>
 
                     <button
                         onClick={handleTelegramShare}
-                        className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all active:scale-95"
+                        className="flex flex-col items-center gap-2 p-4 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-2xl transition-all active:scale-95"
                     >
                         <div className="w-12 h-12 bg-sky-500/20 rounded-full flex items-center justify-center">
                             <FaTelegram className="w-6 h-6 text-sky-400" />
                         </div>
-                        <span className="text-white/70 text-[10px] font-bold">Telegram</span>
+                        <span className="text-slate-600 dark:text-white/70 text-[10px] font-bold">Telegram</span>
                     </button>
 
                     {'share' in navigator && (
                         <button
                             onClick={handleNativeShare}
-                            className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-all active:scale-95"
+                            className="flex flex-col items-center gap-2 p-4 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-2xl transition-all active:scale-95"
                         >
                             <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
                                 <FiShare2 className="w-5 h-5 text-green-400" />
                             </div>
-                            <span className="text-white/70 text-[10px] font-bold">Boshqa</span>
+                            <span className="text-slate-600 dark:text-white/70 text-[10px] font-bold">Boshqa</span>
                         </button>
                     )}
                 </div>
@@ -431,32 +431,32 @@ function ReportModal({
     return (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/70 animate-overlay-in" onClick={onClose} />
-            <div className="relative z-10 bg-neutral-900 w-full max-w-sm rounded-2xl p-5 animate-share-fade-in border border-white/10">
+            <div className="relative z-10 bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-5 animate-share-fade-in border border-slate-200 dark:border-white/10">
                 {sent ? (
                     <div className="flex flex-col items-center py-6 text-center">
                         <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mb-3">
                             <span className="text-2xl">✓</span>
                         </div>
-                        <h3 className="text-white font-bold text-sm">Shikoyat qabul qilindi</h3>
-                        <p className="text-white/40 text-xs mt-1">Tez orada ko'rib chiqiladi</p>
+                        <h3 className="text-slate-900 dark:text-white font-bold text-sm">Shikoyat qabul qilindi</h3>
+                        <p className="text-slate-400 dark:text-white/40 text-xs mt-1">Tez orada ko'rib chiqiladi</p>
                     </div>
                 ) : (
                     <>
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-white font-bold text-sm">Shikoyat qilish</h3>
-                            <button onClick={onClose} className="p-1.5 text-white/60 hover:text-white transition-colors">
+                            <h3 className="text-slate-900 dark:text-white font-bold text-sm">Shikoyat qilish</h3>
+                            <button onClick={onClose} className="p-1.5 text-slate-400 dark:text-white/60 hover:text-slate-700 dark:hover:text-white transition-colors">
                                 <HiXMark className="w-5 h-5" />
                             </button>
                         </div>
-                        <p className="text-white/40 text-xs mb-4">Bu kontent nima uchun noto'g'ri?</p>
+                        <p className="text-slate-400 dark:text-white/40 text-xs mb-4">Bu kontent nima uchun noto'g'ri?</p>
                         <div className="space-y-2 mb-5">
                             {reasons.map(reason => (
                                 <button
                                     key={reason}
                                     onClick={() => setSelectedReason(reason)}
                                     className={`w-full text-left px-4 py-3 rounded-xl text-xs font-medium transition-all ${selectedReason === reason
-                                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                        : 'bg-white/5 text-white/70 border border-transparent hover:bg-white/10'
+                                        ? 'bg-rose-500/20 text-rose-500 dark:text-rose-400 border border-rose-500/30'
+                                        : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/70 border border-transparent hover:bg-slate-200 dark:hover:bg-white/10'
                                         }`}
                                 >
                                     {reason}
@@ -466,7 +466,7 @@ function ReportModal({
                         <button
                             onClick={handleSubmit}
                             disabled={!selectedReason || sending}
-                            className="w-full py-3 bg-rose-600 disabled:bg-white/10 text-white disabled:text-white/30 font-bold text-xs rounded-xl transition-all active:scale-[0.98]"
+                            className="w-full py-3 bg-rose-600 disabled:bg-slate-200 dark:disabled:bg-white/10 text-white disabled:text-slate-400 dark:disabled:text-white/30 font-bold text-xs rounded-xl transition-all active:scale-[0.98]"
                         >
                             {sending ? 'Yuborilmoqda...' : 'Shikoyat yuborish'}
                         </button>
@@ -521,39 +521,39 @@ function EditReelModal({
     return (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/70 animate-overlay-in" onClick={onClose} />
-            <div className="relative z-10 bg-neutral-900 w-full max-w-sm rounded-2xl p-5 animate-share-fade-in border border-white/10">
+            <div className="relative z-10 bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-5 animate-share-fade-in border border-slate-200 dark:border-white/10">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-white font-bold text-sm">Reelni tahrirlash</h3>
-                    <button onClick={onClose} className="p-1.5 text-white/60 hover:text-white transition-colors">
+                    <h3 className="text-slate-900 dark:text-white font-bold text-sm">Reelni tahrirlash</h3>
+                    <button onClick={onClose} className="p-1.5 text-slate-400 dark:text-white/60 hover:text-slate-700 dark:hover:text-white transition-colors">
                         <HiXMark className="w-5 h-5" />
                     </button>
                 </div>
 
-                <label className="block text-white/40 text-xs font-semibold mb-1.5">Sarlavha</label>
+                <label className="block text-slate-400 dark:text-white/40 text-xs font-semibold mb-1.5">Sarlavha</label>
                 <input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={120}
                     placeholder="Reel sarlavhasi"
-                    className="w-full mb-4 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
+                    className="w-full mb-4 px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors"
                 />
 
-                <label className="block text-white/40 text-xs font-semibold mb-1.5">Tavsif</label>
+                <label className="block text-slate-400 dark:text-white/40 text-xs font-semibold mb-1.5">Tavsif</label>
                 <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     maxLength={500}
                     rows={3}
                     placeholder="Tavsif (#hashtag qo'shishingiz mumkin)"
-                    className="w-full mb-2 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
+                    className="w-full mb-2 px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-sm placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-blue-500/50 transition-colors resize-none"
                 />
 
-                {error && <p className="text-rose-400 text-xs mb-3">{error}</p>}
+                {error && <p className="text-rose-500 dark:text-rose-400 text-xs mb-3">{error}</p>}
 
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="w-full mt-2 py-3 bg-blue-600 disabled:bg-white/10 text-white disabled:text-white/30 font-bold text-xs rounded-xl transition-all active:scale-[0.98]"
+                    className="w-full mt-2 py-3 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-white/10 text-white disabled:text-slate-400 dark:disabled:text-white/30 font-bold text-xs rounded-xl transition-all active:scale-[0.98]"
                 >
                     {saving ? 'Saqlanmoqda...' : 'Saqlash'}
                 </button>

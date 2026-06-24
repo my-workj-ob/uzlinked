@@ -12,6 +12,7 @@ import {
   HiVideoCamera, HiOutlineVideoCamera,
   HiSun, HiMoon,
   HiUser, HiOutlineUser,
+  HiBolt,
   HiMagnifyingGlass, HiOutlineMagnifyingGlass
 } from 'react-icons/hi2'
 import { CreateWizard } from '@/components/create-wizard'
@@ -643,14 +644,21 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       {!isReelsPage && !isMessagesPage && (
         <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 select-none transition-all duration-300 md:hidden">
           {isHomePage ? (
-            <VibeBar className="flex-1 min-w-0 mr-2 py-1" />
+            <Link href="/dashboard" className="flex items-center gap-2 shrink-0 active:scale-95 transition-transform">
+              <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-600/30">
+                <HiBolt className="w-5 h-5" />
+              </span>
+              <span className="text-lg font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                VibeGrid
+              </span>
+            </Link>
           ) : (
             <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
               {getPageTitle(pathname)}
             </span>
           )}
 
-          <div className="flex items-center gap-2 relative">
+          <div className="flex items-center gap-2.5 relative">
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -702,6 +710,13 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             )}
           </div>
         </header>
+      )}
+
+      {/* MOBILE SUB-HEADER: Vibe Vector qatori (faqat bosh sahifada, header ostida) */}
+      {!isReelsPage && !isMessagesPage && isHomePage && (
+        <div className="md:hidden fixed top-16 left-0 right-0 z-40 bg-white/75 dark:bg-slate-900/75 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 px-2.5 py-1.5 transition-all duration-300">
+          <VibeBar />
+        </div>
       )}
 
       {/* DESKTOP SIDEBAR */}
@@ -829,7 +844,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             ? 'pt-0 pb-0 bg-black overflow-hidden'
             : isMessagesPage
               ? 'pt-0 pb-0 overflow-hidden'
-              : 'pt-16 pb-24 md:py-8 overflow-y-auto'
+              : `${isHomePage ? 'pt-28' : 'pt-16'} pb-24 md:py-8 overflow-y-auto`
             }`}
         >
           {/* Pull to Refresh Indicator */}
