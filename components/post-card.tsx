@@ -120,6 +120,18 @@ function PostMediaCarousel({
     el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' })
   }
 
+  // Telefonda rasmlar orasida swipe qilganda sahifa navigation'iga o'tib
+  // ketmasin deb touch event'larni ushlab qolamiz.
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (multi) e.stopPropagation()
+  }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (multi) e.stopPropagation()
+  }
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (multi) e.stopPropagation()
+  }
+
   return (
     <div
       onContextMenu={(e) => e.preventDefault()}
@@ -128,8 +140,11 @@ function PostMediaCarousel({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"
-        style={{ scrollbarWidth: 'none' }}
+        style={{ scrollbarWidth: 'none', touchAction: multi ? 'pan-x' : undefined }}
       >
         {media.map((m, i) => (
           <div key={i} className="relative shrink-0 w-full h-full snap-center flex items-center justify-center bg-slate-100 dark:bg-slate-950">
@@ -230,7 +245,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const [loadingComments, setLoadingComments] = useState(false)
   const [replyingTo, setReplyingTo] = useState<CommentType | null>(null)
   const commentInputRef = useRef<HTMLInputElement>(null)
-const [isSheetReady, setIsSheetReady] = useState(false)
+  const [isSheetReady, setIsSheetReady] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(post.content)
@@ -338,7 +353,7 @@ const [isSheetReady, setIsSheetReady] = useState(false)
       return part
     })
   }
-// Modal ochilgandan keyin 280ms (animatsiya tugaguncha) kommentlarni ushlab turadi
+  // Modal ochilgandan keyin 280ms (animatsiya tugaguncha) kommentlarni ushlab turadi
   useEffect(() => {
     if (isDetailModalOpen) {
       const timer = setTimeout(() => setIsSheetReady(true), 280)
@@ -370,7 +385,7 @@ const [isSheetReady, setIsSheetReady] = useState(false)
     const controller = new AbortController()
     loadComments(controller.signal)
 
-   
+
 
     const onlineIds = (window as any).supabaseOnlineUserIds || []
     setIsOnline(onlineIds.includes(post.authorId))
@@ -406,7 +421,7 @@ const [isSheetReady, setIsSheetReady] = useState(false)
   // race condition (modalning "sakrab" ochilishi) sababi edi.
   useEffect(() => {
     if (!showComments && !isDetailModalOpen) return
-     console.log("modal chiqdi yoki izohlar ochildi")
+    console.log("modal chiqdi yoki izohlar ochildi")
     const controller = new AbortController()
     loadComments(controller.signal)
 
@@ -424,14 +439,14 @@ const [isSheetReady, setIsSheetReady] = useState(false)
     return () => {
       controller.abort()
       supabase.removeChannel(channel)
-       console.log("modal yopildi yoki izohlar yopildi, channel olib tashlandi")
+      console.log("modal yopildi yoki izohlar yopildi, channel olib tashlandi")
     }
-  }, [ post.id, ])
+  }, [post.id,])
 
   // Faqat pastki inline "izohlar" drawer scroll'ni qotiradi — bu BottomSheet
   // komponentidan foydalanmaydigan mustaqil portal, shuning uchun o'zi
   // overflow'ni boshqarishi shart.
-  
+
 
   // Tahrirlash oynasi ochilganda inputni postning eng so'nggi content'i bilan
   // sinxronlash (oldin faqat birinchi mount'da olingan edi).
@@ -1255,40 +1270,40 @@ const [isSheetReady, setIsSheetReady] = useState(false)
               <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold text-center py-4">Birinchi bo'lib fikr bildiring!</p>
             ) : (
               <div className="space-y-3.5 pb-4 min-h-[150px]">
-            {!isSheetReady || (loadingComments && comments.length === 0) ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-              </div>
-            ) : comments.length === 0 ? (
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold text-center py-4 animate-fade-in">Birinchi bo'lib fikr bildiring!</p>
-            ) : (
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                transition={{ duration: 0.2 }}
-                className="space-y-3.5"
-              >
-                {comments.filter(c => !c.parentId).map((comment) => (
-                  <div key={comment.id} className="flex items-start gap-2.5 text-xs animate-comment-slide-in">
-                    <img src={comment.avatar} className="w-7 h-7 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
-                    <div className="flex-1 min-w-0">
-                      <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3 py-1.5">
-                        <span className="font-bold text-slate-900 dark:text-slate-100 block text-[10px] mb-0.5">{comment.user}</span>
-                        <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">{comment.text}</p>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1.5 ml-1 text-[9px] font-bold text-slate-400 dark:text-slate-500">
-                        <span>{formatTime(comment.createdAt)}</span>
-                        <button onClick={() => handleLikeComment(comment.id)} data-no-drag className={`hover:text-rose-500 flex items-center gap-0.5 ${comment.likedByMe ? 'text-rose-500' : ''}`}>
-                          {comment.likedByMe ? <FaHeart className="w-3.5 h-3.5 text-rose-500" /> : <FiHeart className="w-3.5 h-3.5" />}
-                          {(comment.likesCount || 0) > 0 && <span>{comment.likesCount}</span>}
-                        </button>
-                      </div>
-                    </div>
+                {!isSheetReady || (loadingComments && comments.length === 0) ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
                   </div>
-                ))}
-              </motion.div>
-            )}
-          </div>
+                ) : comments.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold text-center py-4 animate-fade-in">Birinchi bo'lib fikr bildiring!</p>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-3.5"
+                  >
+                    {comments.filter(c => !c.parentId).map((comment) => (
+                      <div key={comment.id} className="flex items-start gap-2.5 text-xs animate-comment-slide-in">
+                        <img src={comment.avatar} className="w-7 h-7 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
+                        <div className="flex-1 min-w-0">
+                          <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3 py-1.5">
+                            <span className="font-bold text-slate-900 dark:text-slate-100 block text-[10px] mb-0.5">{comment.user}</span>
+                            <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">{comment.text}</p>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1.5 ml-1 text-[9px] font-bold text-slate-400 dark:text-slate-500">
+                            <span>{formatTime(comment.createdAt)}</span>
+                            <button onClick={() => handleLikeComment(comment.id)} data-no-drag className={`hover:text-rose-500 flex items-center gap-0.5 ${comment.likedByMe ? 'text-rose-500' : ''}`}>
+                              {comment.likedByMe ? <FaHeart className="w-3.5 h-3.5 text-rose-500" /> : <FiHeart className="w-3.5 h-3.5" />}
+                              {(comment.likesCount || 0) > 0 && <span>{comment.likesCount}</span>}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
             )}
           </div>
         </div>
