@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PostCard, PostType } from '@/components/post-card'
+import { LivePostCard, LiveRoomFeed } from '@/components/live-post-card'
 import { Stories } from '@/components/stories'
 import { FeedSkeleton } from '@/components/skeleton-loader'
 import { usePosts, useUpdatePost, useDeletePost } from '@/hooks/use-queries'
@@ -19,6 +20,56 @@ export default function FeedList() {
     const deletePostMutation = useDeletePost()
     const queryClient = useQueryClient()
     const supabase = createClient()
+
+    // ── Live rooms — feed da ko'rsatish ───────────────────────────────────
+    const [liveRooms, setLiveRooms] = useState<LiveRoomFeed[]>([])
+
+    const fetchLiveRooms = async () => {
+        try {
+            const { data } = await supabase
+                .from('live_rooms')
+                .select('id, host_id, title, game, thumbnail_url, viewer_count, created_at')
+                .eq('is_live', true)
+                .order('viewer_count', { ascending: false })
+                .order('created_at', { ascending: false })
+                .limit(5)
+
+            if (!data || data.length === 0) { setLiveRooms([]); return }
+
+            // Host profil ma'lumotlarini olish
+            const hostIds = [...new Set(data.map((r: any) => r.host_id as string))]
+            const { data: profiles } = await supabase
+                .from('profiles')
+                .select('id, username, avatar_url, nickname')
+                .in('id', hostIds)
+
+            const profileMap: Record<string, any> = {}
+            ;(profiles || []).forEach((p: any) => { profileMap[p.id] = p })
+
+            setLiveRooms(data.map((r: any) => ({
+                ...r,
+                host_username:   profileMap[r.host_id]?.username   || null,
+                host_avatar_url: profileMap[r.host_id]?.avatar_url || null,
+                host_nickname:   profileMap[r.host_id]?.nickname   || null,
+            })))
+        } catch {
+            // live_rooms jadval yo'q bo'lsa, jim o'tamiz
+            setLiveRooms([])
+        }
+    }
+
+    useEffect(() => {
+        fetchLiveRooms()
+        // Real-time: yangi efir boshlanganda yoki tugaganda feed yangilanadi
+        const liveChannel = supabase
+            .channel('dashboard-live-feed')
+            .on('postgres_changes', {
+                event: '*', schema: 'public', table: 'live_rooms'
+            }, () => fetchLiveRooms())
+            .subscribe()
+        return () => { supabase.removeChannel(liveChannel) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     // QADAM 1 — Vibe Vector filtri (reload yo'q, faqat client-side dissolve)
     const { activeVibe } = useVibe()
@@ -315,6 +366,22 @@ export default function FeedList() {
                     <div className="hidden md:block xl:hidden sticky top-0 z-30 -mx-1 px-1 py-2 mb-1 bg-[#F8FAFC]/80 dark:bg-slate-950/80 backdrop-blur-xl">
                         <VibeBar />
                     </div>
+
+                    {/* ── LIVE kartochkalar — oddiy postlardan oldin ── */}
+                    <AnimatePresence>
+                        {liveRooms.length > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                className="flex flex-col gap-3"
+                            >
+                                {liveRooms.map((room, i) => (
+                                    <LivePostCard key={room.id} room={room} index={i} />
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {posts.length === 0 ? (
                         <div className="w-full py-16 bg-slate-50/50 dark:bg-slate-900/20 border border-dashed border-slate-200 dark:border-white/5 rounded-2xl text-center animate-fade-in-up">

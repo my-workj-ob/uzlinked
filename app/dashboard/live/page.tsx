@@ -11,6 +11,7 @@ import {
     HiXMark,
     HiOutlineComputerDesktop,
 } from 'react-icons/hi2'
+import { FiMonitor } from 'react-icons/fi'
 import { createClient } from '@/utils/supabase/client'
 
 interface LiveRoom {
@@ -22,6 +23,23 @@ interface LiveRoom {
     viewer_count: number
     created_at: string
     host?: { username: string | null; avatar_url: string | null } | null
+}
+
+const GAME_GRADIENTS: Record<string, [string, string]> = {
+    'Valorant': ['#ff4655', '#0f0e17'],
+    'Dota 2': ['#c23c2a', '#1a1a2e'],
+    'CS2': ['#f0b429', '#1c1c1e'],
+    'Minecraft': ['#5d8a3c', '#1a2e1a'],
+    'GTA': ['#000000', '#1a1a2e'],
+}
+
+function getGradient(game: string | null): [string, string] {
+    if (game) {
+        for (const [key, val] of Object.entries(GAME_GRADIENTS)) {
+            if (game.toLowerCase().includes(key.toLowerCase())) return val
+        }
+    }
+    return ['#7c3aed', '#0f0e17']
 }
 
 export default function LivePage() {
@@ -53,7 +71,6 @@ export default function LivePage() {
                 .order('created_at', { ascending: false })
 
             if (error || !data) {
-                // Jadval hali yaratilmagan bo'lishi mumkin — jim o'tamiz
                 setRooms([])
                 return
             }
@@ -81,7 +98,6 @@ export default function LivePage() {
     }, [supabase])
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchRooms()
         const channel = supabase
             .channel('live-rooms-lobby')
@@ -128,115 +144,150 @@ export default function LivePage() {
         }
     }
 
-    // Mobil: hozircha disable
-    if (!isDesktop) {
-        return (
-            <div className="min-h-[calc(100dvh-8rem)] flex flex-col items-center justify-center px-6 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                    <HiOutlineComputerDesktop className="w-8 h-8 text-slate-400 dark:text-slate-500" />
-                </div>
-                <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-1.5">
-                    Live Share faqat kompyuterda
-                </h1>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-xs">
-                    {"Jonli efir (gamerlar uchun) hozircha faqat desktop versiyada ishlaydi. Telefonda tez orada qo'shiladi."}
-                </p>
-                <button
-                    onClick={() => router.push('/dashboard')}
-                    className="mt-6 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors cursor-pointer"
-                >
-                    Bosh sahifaga qaytish
-                </button>
-            </div>
-        )
+    // Mobilda "Efirni boshlash" bosganda: ekran ulashish desktop only
+    const handleGoLiveClick = () => {
+        if (!isDesktop) {
+            alert("Jonli efirni boshlash faqat kompyuterda ishlaydi.\nTomosha qilish uchun efirni boshing!")
+            return
+        }
+        setShowCreate(true)
     }
 
     return (
-        <div className="w-full px-4 md:px-6 xl:px-8 py-6">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-                <div className="flex items-center gap-3">
-                    <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-rose-500/20">
-                        <HiSignal className="w-6 h-6 text-white" />
-                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-950 animate-pulse" />
+        <div className="w-full px-5 md:px-8 xl:px-10 py-8">
+
+            {/* ── Hero header ── */}
+            <div className="flex items-center justify-between mb-10 gap-4 flex-wrap">
+                <div className="flex items-center gap-4">
+                    {/* Icon */}
+                    <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500 to-fuchsia-600 flex items-center justify-center shadow-2xl shadow-rose-500/30 shrink-0">
+                        <HiSignal className="w-7 h-7 text-white" />
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-950 animate-pulse" />
                     </div>
                     <div>
-                        <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                        <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-100">
                             Live Share
                         </h1>
-                        <p className="text-[12px] md:text-[13px] font-medium text-slate-500 dark:text-slate-400">
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">
                             Gamerlar uchun jonli efir — ekraningizni real vaqtda ulashing
                         </p>
                     </div>
                 </div>
 
                 <button
-                    onClick={() => setShowCreate(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-rose-500 to-fuchsia-600 hover:from-rose-600 hover:to-fuchsia-700 text-white text-sm font-extrabold shadow-lg shadow-rose-500/25 active:scale-95 transition-all cursor-pointer"
+                    onClick={handleGoLiveClick}
+                    className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-fuchsia-600 hover:from-rose-600 hover:to-fuchsia-700 text-white text-sm font-extrabold shadow-xl shadow-rose-500/25 active:scale-95 transition-all cursor-pointer"
                 >
                     <HiPlay className="w-5 h-5" />
-                    Efirni boshlash
+                    {isDesktop ? 'Efirni boshlash' : 'Efirlar'}
                 </button>
             </div>
 
-            {/* Rooms grid */}
+            {/* ── Rooms grid ── */}
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                     {[0, 1, 2].map((i) => (
-                        <div key={i} className="aspect-video rounded-2xl bg-slate-100 dark:bg-slate-900 animate-pulse" />
+                        <div key={i} className="aspect-video rounded-3xl bg-slate-100 dark:bg-slate-900/60 animate-pulse" />
                     ))}
                 </div>
             ) : rooms.length === 0 ? (
-                <div className="w-full py-20 bg-slate-50/60 dark:bg-slate-900/20 border border-dashed border-slate-200 dark:border-white/5 rounded-3xl text-center">
-                    <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3">
-                        <HiOutlineVideoCamera className="w-7 h-7 text-slate-400 dark:text-slate-500" />
+                /* ── Empty state ── */
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full py-24 flex flex-col items-center gap-5 rounded-3xl border border-dashed border-slate-200 dark:border-white/8 bg-slate-50/50 dark:bg-slate-900/20 text-center"
+                >
+                    <div className="relative">
+                        <div className="absolute inset-0 rounded-3xl bg-slate-400/10 blur-xl scale-150" />
+                        <div className="relative w-20 h-20 rounded-3xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                            <HiOutlineVideoCamera className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+                        </div>
                     </div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-300">{"Hozircha jonli efir yo'q"}</p>
-                    <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mt-1">
-                        {"Birinchi bo'lib efirni boshlang va o'yiningizni ulashing 🎮"}
-                    </p>
-                </div>
+                    <div>
+                        <p className="text-base font-black text-slate-700 dark:text-slate-200">{"Hozircha jonli efir yo'q"}</p>
+                        <p className="text-sm font-medium text-slate-400 dark:text-slate-500 mt-1 max-w-xs mx-auto">
+                            {"Birinchi bo'lib efirni boshlang va o'yiningizni ulashing 🎮"}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setShowCreate(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-fuchsia-600 text-white text-sm font-bold shadow-lg shadow-rose-500/20 active:scale-95 transition-all cursor-pointer"
+                    >
+                        <HiPlay className="w-4 h-4" /> Efirni boshlash
+                    </button>
+                </motion.div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {rooms.map((room) => (
-                        <motion.button
-                            key={room.id}
-                            layout
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            onClick={() => router.push(`/dashboard/live/${room.id}`)}
-                            className="group text-left rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 hover:border-rose-300 dark:hover:border-rose-500/40 hover:shadow-xl transition-all cursor-pointer"
-                        >
-                            <div className="relative aspect-video bg-gradient-to-br from-slate-800 to-slate-950 flex items-center justify-center overflow-hidden">
-                                <HiOutlineVideoCamera className="w-12 h-12 text-white/15 group-hover:scale-110 transition-transform" />
-                                <span className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-600 text-white text-[10px] font-black uppercase tracking-wide">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                    Live
-                                </span>
-                                <span className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-black/55 backdrop-blur text-white text-[11px] font-bold">
-                                    <HiUserGroup className="w-3.5 h-3.5" />
-                                    {room.viewer_count}
-                                </span>
-                            </div>
-                            <div className="p-3.5 flex items-center gap-3">
-                                <img
-                                    src={room.host?.avatar_url || '/default-avatar.png'}
-                                    alt=""
-                                    className="w-9 h-9 rounded-full object-cover bg-slate-200 dark:bg-slate-800 shrink-0"
-                                />
-                                <div className="min-w-0">
-                                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{room.title}</p>
-                                    <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 truncate">
-                                        {room.host?.username || 'Anonim'}{room.game ? ` · ${room.game}` : ''}
-                                    </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                    {rooms.map((room, i) => {
+                        const [g1, g2] = getGradient(room.game)
+                        return (
+                            <motion.button
+                                key={room.id}
+                                layout
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                                onClick={() => router.push(`/dashboard/live/${room.id}`)}
+                                className="group text-left rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 hover:border-rose-300 dark:hover:border-rose-500/30 hover:shadow-2xl hover:shadow-rose-500/10 dark:hover:shadow-rose-500/5 transition-all duration-300 cursor-pointer"
+                            >
+                                {/* Thumbnail */}
+                                <div
+                                    className="relative aspect-video flex items-center justify-center overflow-hidden"
+                                    style={{ background: `linear-gradient(135deg, ${g1}cc, ${g2})` }}
+                                >
+                                    <FiMonitor className="w-14 h-14 text-white/10 group-hover:scale-110 group-hover:text-white/20 transition-all duration-500" />
+
+                                    {/* LIVE badge */}
+                                    <span className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-600 text-white text-[10px] font-black uppercase tracking-wider shadow-lg">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                        LIVE
+                                    </span>
+
+                                    {/* Viewer count */}
+                                    <span className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white text-[11px] font-bold">
+                                        <HiUserGroup className="w-3.5 h-3.5" />
+                                        {room.viewer_count}
+                                    </span>
+
+                                    {/* Game tag */}
+                                    {room.game && (
+                                        <span className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white/80 text-[10px] font-bold">
+                                            {room.game}
+                                        </span>
+                                    )}
+
+                                    {/* Hover overlay */}
+                                    <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-colors duration-300" />
                                 </div>
-                            </div>
-                        </motion.button>
-                    ))}
+
+                                {/* Info */}
+                                <div className="p-4 flex items-center gap-3">
+                                    <img
+                                        src={room.host?.avatar_url || '/default-avatar.png'}
+                                        alt=""
+                                        className="w-10 h-10 rounded-full object-cover bg-slate-200 dark:bg-slate-800 shrink-0 ring-2 ring-slate-100 dark:ring-white/5"
+                                    />
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate leading-tight">
+                                            {room.title}
+                                        </p>
+                                        <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 truncate mt-0.5">
+                                            {room.host?.username || 'Anonim'}
+                                        </p>
+                                    </div>
+                                    <div className="ml-auto shrink-0">
+                                        <div className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs font-bold">
+                                            Tomosha
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.button>
+                        )
+                    })}
                 </div>
             )}
 
-            {/* Create modal */}
+            {/* ── Create modal ── */}
             <AnimatePresence>
                 {showCreate && (
                     <motion.div
@@ -245,52 +296,98 @@ export default function LivePage() {
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[80] flex items-center justify-center p-4"
                     >
-                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCreate(false)} />
+                        {/* Backdrop */}
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                            onClick={() => setShowCreate(false)}
+                        />
+
+                        {/* Panel */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.94, y: 16 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 12 }}
-                            transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-                            className="relative z-10 w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 p-6 shadow-2xl"
+                            exit={{ opacity: 0, scale: 0.94, y: 16 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+                            className="relative z-10 w-full max-w-md"
                         >
-                            <div className="flex items-center justify-between mb-5">
-                                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">Yangi jonli efir</h2>
+                            {/* Glow */}
+                            <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-rose-500/20 to-fuchsia-600/20 blur-2xl scale-105" />
+
+                            <div className="relative rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/10 p-7 shadow-2xl">
+                                {/* Header */}
+                                <div className="flex items-center justify-between mb-7">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-fuchsia-600 flex items-center justify-center">
+                                            <HiSignal className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 leading-none">Yangi jonli efir</h2>
+                                            <p className="text-xs text-slate-400 mt-0.5">Hamma ko&apos;ra oladi</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowCreate(false)}
+                                        className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                                    >
+                                        <HiXMark className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                {/* Fields */}
+                                <div className="space-y-4 mb-6">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+                                            Efir nomi
+                                        </label>
+                                        <input
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            placeholder="Masalan: Valorant rank push 🔥"
+                                            maxLength={80}
+                                            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/8 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-400 dark:focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 transition-all"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+                                            {"O'yin"} <span className="font-medium normal-case text-slate-400">(ixtiyoriy)</span>
+                                        </label>
+                                        <input
+                                            value={game}
+                                            onChange={(e) => setGame(e.target.value)}
+                                            placeholder="Masalan: Dota 2, CS2, Valorant"
+                                            maxLength={40}
+                                            className="w-full rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/8 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:border-rose-400 dark:focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Submit */}
                                 <button
-                                    onClick={() => setShowCreate(false)}
-                                    className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                    onClick={handleGoLive}
+                                    disabled={creating}
+                                    className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl bg-gradient-to-r from-rose-500 to-fuchsia-600 hover:from-rose-600 hover:to-fuchsia-700 disabled:opacity-60 text-white text-sm font-extrabold shadow-xl shadow-rose-500/25 active:scale-[0.98] transition-all cursor-pointer"
                                 >
-                                    <HiXMark className="w-5 h-5" />
+                                    {creating ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            Boshlanmoqda...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <HiSignal className="w-5 h-5" />
+                                            Efirga chiqish
+                                        </>
+                                    )}
                                 </button>
+
+                                <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-4">
+                                    {"Keyingi qadamda ekran yoki o'yin oynasini tanlaysiz."}
+                                </p>
                             </div>
-
-                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">Efir nomi</label>
-                            <input
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Masalan: Valorant rank push 🔥"
-                                maxLength={80}
-                                className="w-full mb-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-rose-400 dark:focus:border-rose-500 transition-colors"
-                            />
-
-                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">{"O'yin (ixtiyoriy)"}</label>
-                            <input
-                                value={game}
-                                onChange={(e) => setGame(e.target.value)}
-                                placeholder="Masalan: Dota 2, CS2, Valorant"
-                                maxLength={40}
-                                className="w-full mb-5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-rose-400 dark:focus:border-rose-500 transition-colors"
-                            />
-
-                            <button
-                                onClick={handleGoLive}
-                                disabled={creating}
-                                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-fuchsia-600 hover:from-rose-600 hover:to-fuchsia-700 disabled:opacity-60 text-white text-sm font-extrabold shadow-lg shadow-rose-500/25 active:scale-95 transition-all cursor-pointer"
-                            >
-                                {creating ? 'Boshlanmoqda...' : (<><HiSignal className="w-5 h-5" /> Efirga chiqish</>)}
-                            </button>
-                            <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-3">
-                                {"Keyingi qadamda ekran yoki o'yin oynasini tanlaysiz."}
-                            </p>
                         </motion.div>
                     </motion.div>
                 )}

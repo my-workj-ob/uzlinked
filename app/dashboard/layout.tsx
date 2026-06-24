@@ -731,271 +731,271 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
   return (
     <VibeProvider>
-    <div
-      style={{ height: 'var(--vh, 100dvh)' }}
-      className="w-full max-w-[100dvw] bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300"
-    >
-
-      {/* MOBILE HEADER: Glassmorphism, hidden on Reels and Messages pages */}
-      {!isReelsPage && !isMessagesPage && (
-        <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 select-none transition-all duration-300 md:hidden">
-          {isHomePage ? (
-            <Link href="/dashboard" className="flex items-center gap-2 shrink-0 active:scale-95 transition-transform">
-              <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-600/30">
-                <HiBolt className="w-5 h-5" />
-              </span>
-              <span className="text-lg font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                VibeGrid
-              </span>
-            </Link>
-          ) : (
-            <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
-              {getPageTitle(pathname)}
-            </span>
-          )}
-
-          <div className="flex items-center gap-2.5 relative">
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 active:scale-90 transition-all"
-            >
-              {isDark ? <HiSun className="w-5 h-5 text-amber-500" /> : <HiMoon className="w-5 h-5" />}
-            </button>
-
-            {/* Qidiruv (Search) Button */}
-            {!pathname.startsWith('/dashboard/explore') && (
-              <button
-                onClick={() => router.push('/dashboard/explore?focus=true')}
-                className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 active:scale-90 transition-all cursor-pointer"
-              >
-                <HiOutlineMagnifyingGlass className="w-6 h-6" />
-              </button>
-            )}
-
-            {user && (
-              <>
-                {/* Bildirishnomalar link */}
-                <div className="relative">
-                  <button
-                    onClick={() => router.push('/dashboard/notifications')}
-                    className="p-2 rounded-full active:scale-90 transition-all duration-150 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer"
-                  >
-                    <HiOutlineBell className="w-6 h-6" />
-                    {unreadNotifCount > 0 && (
-                      <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-rose-500 text-white text-[9px] font-bold rounded-full ring-2 ring-white dark:ring-slate-900">
-                        {unreadNotifCount}
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {user ? (
-              <button
-                onClick={handleCreateClick}
-                className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 active:scale-90 transition-all cursor-pointer"
-              >
-                <HiPlus className="w-6 h-6" />
-              </button>
-            ) : (
-              <Link href="/login" className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl active:scale-95 transition-all shrink-0">
-                Kirish
-              </Link>
-            )}
-          </div>
-        </header>
-      )}
-
-      {/* MOBILE SUB-HEADER: Vibe Vector qatori (faqat bosh sahifada, header ostida) */}
-      {!isReelsPage && !isMessagesPage && isHomePage && (
-        <div className="md:hidden fixed top-16 left-0 right-0 z-40 bg-white/75 dark:bg-slate-900/75 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 px-2.5 py-1.5 transition-all duration-300">
-          <VibeBar />
-        </div>
-      )}
-
-      {/* DESKTOP SIDEBAR */}
       <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        className="flex w-full h-full relative"
+        style={{ height: 'var(--vh, 100dvh)' }}
+        className="w-full max-w-[100dvw] bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased overflow-hidden relative selection:bg-blue-500 selection:text-white transition-colors duration-300"
       >
-        <aside className="sticky top-0 h-screen hidden w-64 2xl:w-72 p-6 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-white/5 md:flex flex-col z-30 flex-shrink-0 transition-colors duration-300">
-          <Link href="/dashboard" className="mb-10 text-2xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent block">
-            VibeGrid
-          </Link>
 
-          <nav className="flex flex-col gap-1.5 flex-1">
-            {sidebarItems.map((item) => {
-              const isActive = pathname === item.path
-              const Icon = isActive ? item.IconActive : item.IconOutline
+        {/* MOBILE HEADER: Glassmorphism, hidden on Reels and Messages pages */}
+        {!isReelsPage && !isMessagesPage && (
+          <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 select-none transition-all duration-300 md:hidden">
+            {isHomePage ? (
+              <Link href="/dashboard" className="flex items-center gap-2 shrink-0 active:scale-95 transition-transform">
+                <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-600/30">
+                  <HiBolt className="w-5 h-5" />
+                </span>
+                <span className="text-lg font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  VibeGrid
+                </span>
+              </Link>
+            ) : (
+              <span className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100">
+                {getPageTitle(pathname)}
+              </span>
+            )}
 
-              let badgeCount = 0
-              if (item.id === 'messages') {
-                badgeCount = unreadMsgCount
-              } else if (item.id === 'notifications') {
-                badgeCount = unreadNotifCount
-              }
+            <div className="flex items-center gap-2.5 relative">
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 active:scale-90 transition-all"
+              >
+                {isDark ? <HiSun className="w-5 h-5 text-amber-500" /> : <HiMoon className="w-5 h-5" />}
+              </button>
 
-              return (
-                <Link
-                  key={item.id}
-                  href={item.path}
-                  className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-medium transition-all duration-200 active:scale-[0.98] text-left ${isActive
-                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 font-bold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-                    }`}
+              {/* Qidiruv (Search) Button */}
+              {!pathname.startsWith('/dashboard/explore') && (
+                <button
+                  onClick={() => router.push('/dashboard/explore?focus=true')}
+                  className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 active:scale-90 transition-all cursor-pointer"
                 >
-                  <div className="flex items-center gap-4">
-                    <Icon className={`w-6 h-6 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
-                    <span className="text-sm">{item.label}</span>
-                  </div>
-                  {badgeCount > 0 && (
-                    <span className={`min-w-[18px] h-4.5 px-1.5 flex items-center justify-center text-[10px] font-black rounded-full text-white ${item.id === 'messages' ? 'bg-blue-600' : 'bg-rose-500'
-                      }`}>
-                      {badgeCount}
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
+                  <HiOutlineMagnifyingGlass className="w-6 h-6" />
+                </button>
+              )}
 
-            {/* Desktop Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="flex items-center gap-4 px-4 py-3.5 rounded-xl font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 active:scale-[0.98] text-left w-full cursor-pointer"
-            >
-              {isDark ? (
+              {user && (
                 <>
-                  <HiSun className="w-6 h-6 text-amber-500" />
-                  <span className="text-sm">Yorug' rejim</span>
-                </>
-              ) : (
-                <>
-                  <HiMoon className="w-6 h-6 text-indigo-600" />
-                  <span className="text-sm">Tungi rejim</span>
+                  {/* Bildirishnomalar link */}
+                  <div className="relative">
+                    <button
+                      onClick={() => router.push('/dashboard/notifications')}
+                      className="p-2 rounded-full active:scale-90 transition-all duration-150 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer"
+                    >
+                      <HiOutlineBell className="w-6 h-6" />
+                      {unreadNotifCount > 0 && (
+                        <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-rose-500 text-white text-[9px] font-bold rounded-full ring-2 ring-white dark:ring-slate-900">
+                          {unreadNotifCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </>
               )}
-            </button>
 
-            {user ? (
-              <button
-                onClick={handleCreateClick}
-                className="mt-4 flex items-center justify-center gap-2 w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98]"
-              >
-                <HiPlus className="w-5 h-5" />
-                <span>Yangi qo'shish</span>
-              </button>
-            ) : (
-              <Link
-                href="/login"
-                className="mt-4 flex items-center justify-center gap-2 w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98]"
-              >
-                <span>Tizimga kirish</span>
-              </Link>
-            )}
-          </nav>
-
-          {/* DESKTOP USER SECTION & PREMIUM CARD */}
-          {user && (
-            <div className="mt-auto flex flex-col gap-4">
-              <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white relative overflow-hidden group">
-                <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
-                <h4 className="font-bold text-sm mb-0.5">Premiumga o'ting</h4>
-                <p className="text-[11px] text-blue-100 mb-3 leading-relaxed">Cheksiz video va darsliklar yuklash imkoniyati.</p>
-                <button className="w-full py-2 bg-white text-blue-600 font-bold text-xs rounded-xl hover:bg-blue-50 active:scale-95 transition-all relative z-10">
-                  Batafsil
-                </button>
-              </div>
-
-              <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-100 dark:border-white/5">
-                <div className="w-9 h-9 overflow-hidden rounded-full ring-2 ring-slate-200 dark:ring-slate-800 flex-shrink-0">
-                  {avatarUrl && <img src={avatarUrl} alt="Avatar" className="object-cover w-full h-full" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{user.user_metadata?.full_name || 'Foydalanuvchi'}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user.email}</p>
-                </div>
+              {user ? (
                 <button
-                  onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
-                  className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition-colors text-xs font-semibold"
-                  title="Chiqish"
+                  onClick={handleCreateClick}
+                  className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 active:scale-90 transition-all cursor-pointer"
                 >
-                  Chiqish
+                  <HiPlus className="w-6 h-6" />
                 </button>
-              </div>
+              ) : (
+                <Link href="/login" className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl active:scale-95 transition-all shrink-0">
+                  Kirish
+                </Link>
+              )}
             </div>
-          )}
-        </aside>
+          </header>
+        )}
 
-        {/* MAIN CONTENT AREA */}
-        <main
-          ref={mainRef}
-          onTouchStart={handleMainTouchStart}
-          onTouchMove={handleMainTouchMove}
-          onTouchEnd={handleMainTouchEnd}
-          className={`relative flex-1 min-w-0 h-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none ${isReelsPage
-            ? 'pt-0 pb-0 bg-black overflow-hidden'
-            : isMessagesPage
-              ? 'pt-0 pb-0 overflow-hidden'
-              : `${isHomePage ? 'pt-28' : 'pt-16'} pb-24 md:py-8 overflow-y-auto`
-            }`}
+        {/* MOBILE SUB-HEADER: Vibe Vector qatori (faqat bosh sahifada, header ostida) */}
+        {!isReelsPage && !isMessagesPage && isHomePage && (
+          <div className="md:hidden fixed top-16 left-0 right-0 z-40 bg-white/75 dark:bg-slate-900/75 backdrop-blur-xl border-b border-slate-100 dark:border-white/5 px-2.5 py-1.5 transition-all duration-300">
+            <VibeBar />
+          </div>
+        )}
+
+        {/* DESKTOP SIDEBAR */}
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className="flex w-full h-full relative"
         >
-          {/* Pull to Refresh Indicator */}
-          {pullDistance > 35 && (
-            <div
-              style={{
-                transform: `translateY(${pullDistance - 55}px)`,
-                opacity: Math.min(1, (pullDistance - 35) / 25),
-                transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94), opacity 0.3s'
-              }}
-              className="absolute left-0 right-0 top-0 z-[9999] flex items-center justify-center pointer-events-none pt-4"
-            >
-              <div className="bg-white/80 dark:bg-slate-900/85 backdrop-blur-md border border-slate-200/40 dark:border-white/10 shadow-lg px-4 py-2 rounded-2xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
-                {isRefreshing ? (
+          <aside className="sticky top-0 h-screen hidden w-64 2xl:w-72 p-6 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-white/5 md:flex flex-col z-30 flex-shrink-0 transition-colors duration-300">
+            <Link href="/dashboard" className="mb-10 text-2xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent block">
+              VibeGrid
+            </Link>
+
+            <nav className="flex flex-col gap-1.5 flex-1">
+              {sidebarItems.map((item) => {
+                const isActive = pathname === item.path
+                const Icon = isActive ? item.IconActive : item.IconOutline
+
+                let badgeCount = 0
+                if (item.id === 'messages') {
+                  badgeCount = unreadMsgCount
+                } else if (item.id === 'notifications') {
+                  badgeCount = unreadNotifCount
+                }
+
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.path}
+                    className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-medium transition-all duration-200 active:scale-[0.98] text-left ${isActive
+                      ? 'text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                      }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <Icon className={`w-6 h-6 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
+                      <span className="text-sm">{item.label}</span>
+                    </div>
+                    {badgeCount > 0 && (
+                      <span className={`min-w-[18px] h-4.5 px-1.5 flex items-center justify-center text-[10px] font-black rounded-full text-white ${item.id === 'messages' ? 'bg-blue-600' : 'bg-rose-500'
+                        }`}>
+                        {badgeCount}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+
+              {/* Desktop Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-4 px-4 py-3.5 rounded-xl font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 active:scale-[0.98] text-left w-full cursor-pointer"
+              >
+                {isDark ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <HiSun className="w-6 h-6 text-amber-500" />
+                    <span className="text-sm">Yorug' rejim</span>
                   </>
                 ) : (
                   <>
-                    <div
-                      style={{ transform: `rotate(${pullDistance * 4}deg)` }}
-                      className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full transition-transform duration-100"
-                    />
-
+                    <HiMoon className="w-6 h-6 text-indigo-600" />
+                    <span className="text-sm">Tungi rejim</span>
                   </>
                 )}
+              </button>
+
+              {user ? (
+                <button
+                  onClick={handleCreateClick}
+                  className="mt-4 flex items-center justify-center gap-2 w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98]"
+                >
+                  <HiPlus className="w-5 h-5" />
+                  <span>Yangi qo'shish</span>
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className="mt-4 flex items-center justify-center gap-2 w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98]"
+                >
+                  <span>Tizimga kirish</span>
+                </Link>
+              )}
+            </nav>
+
+            {/* DESKTOP USER SECTION & PREMIUM CARD */}
+            {user && (
+              <div className="mt-auto flex flex-col gap-4">
+                <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white relative overflow-hidden group">
+                  <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
+                  <h4 className="font-bold text-sm mb-0.5">Premiumga o'ting</h4>
+                  <p className="text-[11px] text-blue-100 mb-3 leading-relaxed">Cheksiz video va darsliklar yuklash imkoniyati.</p>
+                  <button className="w-full py-2 bg-white text-blue-600 font-bold text-xs rounded-xl hover:bg-blue-50 active:scale-95 transition-all relative z-10">
+                    Batafsil
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-100 dark:border-white/5">
+                  <div className="w-9 h-9 overflow-hidden rounded-full ring-2 ring-slate-200 dark:ring-slate-800 flex-shrink-0">
+                    {avatarUrl && <img src={avatarUrl} alt="Avatar" className="object-cover w-full h-full" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{user.user_metadata?.full_name || 'Foydalanuvchi'}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
+                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition-colors text-xs font-semibold"
+                    title="Chiqish"
+                  >
+                    Chiqish
+                  </button>
+                </div>
+              </div>
+            )}
+          </aside>
+
+          {/* MAIN CONTENT AREA */}
+          <main
+            ref={mainRef}
+            onTouchStart={handleMainTouchStart}
+            onTouchMove={handleMainTouchMove}
+            onTouchEnd={handleMainTouchEnd}
+            className={`relative flex-1 min-w-0 h-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] scrollbar-none ${isReelsPage
+              ? 'pt-0 pb-0 bg-black overflow-hidden'
+              : isMessagesPage
+                ? 'pt-0 pb-0 overflow-hidden'
+                : `${isHomePage ? 'pt-28' : 'pt-16'} pb-24 md:py-8 overflow-y-auto`
+              }`}
+          >
+            {/* Pull to Refresh Indicator */}
+            {pullDistance > 35 && (
+              <div
+                style={{
+                  transform: `translateY(${pullDistance - 55}px)`,
+                  opacity: Math.min(1, (pullDistance - 35) / 25),
+                  transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94), opacity 0.3s'
+                }}
+                className="absolute left-0 right-0 top-0 z-[9999] flex items-center justify-center pointer-events-none pt-4"
+              >
+                <div className="bg-white/80 dark:bg-slate-900/85 backdrop-blur-md border border-slate-200/40 dark:border-white/10 shadow-lg px-4 py-2 rounded-2xl flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+                  {isRefreshing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        style={{ transform: `rotate(${pullDistance * 4}deg)` }}
+                        className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full transition-transform duration-100"
+                      />
+
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className={`mx-auto ${isReelsPage || isMessagesPage
+              ? 'w-full h-full max-w-none px-0'
+              : 'w-full max-w-2xl 2xl:max-w-3xl px-4 md:px-6 xl:px-8'
+              }`}>
+              <div
+                key={pathname}
+                style={{
+                  transform: pullDistance > 0 && !isRefreshing ? `translateY(${pullDistance * 0.4}px)` : 'none',
+                  transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94)'
+                }}
+                className={`w-full h-full ${!pathname.includes('explore') && (slideDirection === 'left' ? 'animate-slide-from-right' : 'animate-slide-from-left')
+                  }`}
+              >
+                {children}
               </div>
             </div>
+          </main>
+
+          {/* DESKTOP RIGHT RAIL (xl+) — reels/messages'dan tashqari sahifalarda */}
+          {!isReelsPage && !isMessagesPage && (
+            <RightRail isHomePage={isHomePage} user={user} onCreate={handleCreateClick} />
           )}
+        </div>
 
-          <div className={`mx-auto ${isReelsPage || isMessagesPage
-            ? 'w-full h-full max-w-none px-0'
-            : 'w-full max-w-2xl 2xl:max-w-3xl px-4 md:px-6 xl:px-8'
-            }`}>
-            <div
-              key={pathname}
-              style={{
-                transform: pullDistance > 0 && !isRefreshing ? `translateY(${pullDistance * 0.4}px)` : 'none',
-                transition: isPullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.1, 0.76, 0.55, 0.94)'
-              }}
-              className={`w-full h-full ${!pathname.includes('explore') && (slideDirection === 'left' ? 'animate-slide-from-right' : 'animate-slide-from-left')
-                }`}
-            >
-              {children}
-            </div>
-          </div>
-        </main>
-
-        {/* DESKTOP RIGHT RAIL (xl+) — reels/messages'dan tashqari sahifalarda */}
-        {!isReelsPage && !isMessagesPage && (
-          <RightRail isHomePage={isHomePage} user={user} onCreate={handleCreateClick} />
-        )}
-      </div>
-
-      {/* UPDATE AVAILABLE BOTTOM SHEET
+        {/* UPDATE AVAILABLE BOTTOM SHEET
       {showUpdateModal && latestCommit && (
         <div className="fixed inset-0 z-70 flex items-end justify-center md:pb-10 p-0 md:p-4 animate-fade-in">
           {/* Backdrop 
@@ -1048,63 +1048,63 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </div>
       )}    */}
 
-      {/* MOBILE BOTTOM NAVIGATION */}
-      {!isMessagesPage && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 md:hidden px-3 flex justify-around items-center pb-[env(safe-area-inset-bottom)] transition-all duration-300 border-t bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-100 dark:border-white/5">
-          {bottomNavItems.map((item) => {
-            const isActive = pathname === item.path
-            const Icon = isActive ? item.IconActive : item.IconOutline
+        {/* MOBILE BOTTOM NAVIGATION */}
+        {!isMessagesPage && (
+          <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 md:hidden px-3 flex justify-around items-center pb-[env(safe-area-inset-bottom)] transition-all duration-300 border-t bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-slate-100 dark:border-white/5">
+            {bottomNavItems.map((item) => {
+              const isActive = pathname === item.path
+              const Icon = isActive ? item.IconActive : item.IconOutline
 
-            let badgeCount = 0
-            if (item.id === 'messages') {
-              badgeCount = unreadMsgCount
-            }
+              let badgeCount = 0
+              if (item.id === 'messages') {
+                badgeCount = unreadMsgCount
+              }
 
-            return (
-              <Link
-                key={item.id}
-                href={item.path}
-                className={`flex items-center justify-center transition-all duration-300 ease-in-out select-none active:scale-95 ${isActive
-                  ? 'bg-blue-600 text-white rounded-full px-4 py-2.5'
-                  : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-              >
-                <div className="relative">
-                  {item.id === 'profile' && user && avatarUrl ? (
-                    <div className={`w-5 h-5 overflow-hidden rounded-full ring-1 ${isActive
-                      ? 'ring-white'
-                      : 'ring-slate-350 dark:ring-slate-700'
-                      } shrink-0`}>
-                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
-                  )}
-                  {badgeCount > 0 && !isActive && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 flex items-center justify-center bg-blue-600 text-white text-[8px] font-black rounded-full ring-1 ring-white dark:ring-slate-900 animate-scale-in">
-                      {badgeCount}
-                    </span>
-                  )}
-                </div>
+              return (
+                <Link
+                  key={item.id}
+                  href={item.path}
+                  className={`flex items-center justify-center transition-all duration-300 ease-in-out select-none active:scale-95 ${isActive
+                    ? 'bg-blue-600 text-white rounded-full px-4 py-2.5'
+                    : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 p-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                  <div className="relative">
+                    {item.id === 'profile' && user && avatarUrl ? (
+                      <div className={`w-5 h-5 overflow-hidden rounded-full ring-1 ${isActive
+                        ? 'ring-white'
+                        : 'ring-slate-350 dark:ring-slate-700'
+                        } shrink-0`}>
+                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <Icon className={`w-5 h-5 transition-transform duration-300 ${isActive ? 'scale-105' : 'scale-100'}`} />
+                    )}
+                    {badgeCount > 0 && !isActive && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 flex items-center justify-center bg-blue-600 text-white text-[8px] font-black rounded-full ring-1 ring-white dark:ring-slate-900 animate-scale-in">
+                        {badgeCount}
+                      </span>
+                    )}
+                  </div>
 
-                <span className={`overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-semibold ${isActive
-                  ? 'max-w-24 opacity-100 ml-2'
-                  : 'max-w-0 opacity-0 ml-0'
-                  }`}>
-                  {item.label}
-                  {badgeCount > 0 && isActive && (
-                    <span className="ml-1 px-1.5 py-0.5 bg-white text-blue-600 text-[8px] font-black rounded-full">
-                      {badgeCount}
-                    </span>
-                  )}
-                </span>
-              </Link>
-            )
-          })}
-        </nav>
-      )}
+                  <span className={`overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-semibold ${isActive
+                    ? 'max-w-24 opacity-100 ml-2'
+                    : 'max-w-0 opacity-0 ml-0'
+                    }`}>
+                    {item.label}
+                    {badgeCount > 0 && isActive && (
+                      <span className="ml-1 px-1.5 py-0.5 bg-white text-blue-600 text-[8px] font-black rounded-full">
+                        {badgeCount}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              )
+            })}
+          </nav>
+        )}
 
-      <style jsx global>{`
+        <style jsx global>{`
         @keyframes slideFromRight {
           from { transform: translateX(100%); opacity: 0.95; }
           to { transform: translateX(0); opacity: 1; }
@@ -1122,7 +1122,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           will-change: transform, opacity;
         }
       `}</style>
-    </div>
+      </div>
     </VibeProvider>
   )
 }

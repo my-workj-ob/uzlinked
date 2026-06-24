@@ -11,8 +11,10 @@ import {
     HiStop,
     HiPaperAirplane,
     HiXMark,
+    HiChatBubbleLeftRight,
 } from 'react-icons/hi2'
 import { createClient } from '@/utils/supabase/client'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface RoomInfo {
     id: string
@@ -49,7 +51,10 @@ export default function LiveRoomPage() {
     const [isHost, setIsHost] = useState(false)
     const [loading, setLoading] = useState(true)
     const [notFound, setNotFound] = useState(false)
-    const [isDesktop, setIsDesktop] = useState(true)
+
+    // Mobil uchun isDesktop check olib tashlandi — hamma ko'ra oladi
+    // Lekin host faqat desktop da ulasha oladi (getDisplayMedia cheklov)
+    const [isDesktop, setIsDesktop] = useState(false)
 
     const [sharing, setSharing] = useState(false)
     const [viewerCount, setViewerCount] = useState(0)
@@ -57,6 +62,10 @@ export default function LiveRoomPage() {
 
     const [chat, setChat] = useState<ChatMsg[]>([])
     const [chatText, setChatText] = useState('')
+    // Mobilda chat / video almashtirish tab
+    const [mobileTab, setMobileTab] = useState<'video' | 'chat'>('video')
+    // Desktop da chat paneli toggle
+    const [chatOpen, setChatOpen] = useState(true)
 
     const videoRef = useRef<HTMLVideoElement>(null)
     const chatEndRef = useRef<HTMLDivElement>(null)
@@ -88,23 +97,17 @@ export default function LiveRoomPage() {
     // ====== Host: viewer uchun peer connection yaratish ======
     const createHostPc = (viewerId: string) => {
         const existing = hostPcsRef.current.get(viewerId)
-        if (existing) {
-            existing.close()
-            hostPcsRef.current.delete(viewerId)
-        }
+        if (existing) { existing.close(); hostPcsRef.current.delete(viewerId) }
         const pc = new RTCPeerConnection(ICE_CONFIG)
         hostPcsRef.current.set(viewerId, pc)
 
         const stream = localStreamRef.current
-        if (stream) {
-            stream.getTracks().forEach((track) => pc.addTrack(track, stream))
-        }
+        if (stream) stream.getTracks().forEach((track) => pc.addTrack(track, stream))
 
         pc.onicecandidate = (e) => {
             if (e.candidate) {
                 channelRef.current?.send({
-                    type: 'broadcast',
-                    event: 'ice-to-viewer',
+                    type: 'broadcast', event: 'ice-to-viewer',
                     payload: { to: viewerId, candidate: e.candidate.toJSON() },
                 })
             }
@@ -114,8 +117,7 @@ export default function LiveRoomPage() {
             .then((offer) => pc.setLocalDescription(offer).then(() => offer))
             .then((offer) => {
                 channelRef.current?.send({
-                    type: 'broadcast',
-                    event: 'offer',
+                    type: 'broadcast', event: 'offer',
                     payload: { to: viewerId, sdp: offer },
                 })
             })
@@ -134,13 +136,14 @@ export default function LiveRoomPage() {
             if (videoRef.current && e.streams[0]) {
                 videoRef.current.srcObject = e.streams[0]
                 setWaitingForHost(false)
+                // Video kelganda video tab ga o'tish
+                setMobileTab('video')
             }
         }
         pc.onicecandidate = (e) => {
             if (e.candidate) {
                 channelRef.current?.send({
-                    type: 'broadcast',
-                    event: 'ice-to-host',
+                    type: 'broadcast', event: 'ice-to-host',
                     payload: { from: clientIdRef.current, candidate: e.candidate.toJSON() },
                 })
             }
@@ -170,11 +173,7 @@ export default function LiveRoomPage() {
                 .single()
 
             if (cancelled) return
-            if (error || !roomData) {
-                setNotFound(true)
-                setLoading(false)
-                return
-            }
+            if (error || !roomData) { setNotFound(true); setLoading(false); return }
 
             const host = !!user && user.id === roomData.host_id
             isHostRef.current = host
@@ -184,10 +183,7 @@ export default function LiveRoomPage() {
 
             if (user) {
                 const { data: prof } = await supabase
-                    .from('profiles')
-                    .select('username, avatar_url')
-                    .eq('id', user.id)
-                    .single()
+                    .from('profiles').select('username, avatar_url').eq('id', user.id).single()
                 if (prof) meRef.current = { username: prof.username || 'Anonim', avatar: prof.avatar_url }
             }
 
@@ -202,47 +198,32 @@ export default function LiveRoomPage() {
             })
 
             if (host) {
-                // Host: viewer qo'shilganda offer yuboramiz
                 channel.on('broadcast', { event: 'viewer-join' }, ({ payload }: BroadcastArgs<{ viewerId: string }>) => {
-                    const viewerId = payload.viewerId
-                    if (localStreamRef.current) createHostPc(viewerId)
+                    if (localStreamRef.current) createHostPc(payload.viewerId)
                 })
                 channel.on('broadcast', { event: 'answer' }, async ({ payload }: BroadcastArgs<{ from: string; sdp: RTCSessionDescriptionInit }>) => {
-                    const { from, sdp } = payload
-                    const pc = hostPcsRef.current.get(from)
-                    if (pc) {
-                        try { await pc.setRemoteDescription(new RTCSessionDescription(sdp)) } catch { }
-                    }
+                    const pc = hostPcsRef.current.get(payload.from)
+                    if (pc) try { await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp)) } catch { }
                 })
                 channel.on('broadcast', { event: 'ice-to-host' }, async ({ payload }: BroadcastArgs<{ from: string; candidate: RTCIceCandidateInit }>) => {
-                    const { from, candidate } = payload
-                    const pc = hostPcsRef.current.get(from)
-                    if (pc) {
-                        try { await pc.addIceCandidate(new RTCIceCandidate(candidate)) } catch { }
-                    }
+                    const pc = hostPcsRef.current.get(payload.from)
+                    if (pc) try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)) } catch { }
                 })
             } else {
-                // Viewer: offer kelganda answer qaytaramiz
                 channel.on('broadcast', { event: 'offer' }, async ({ payload }: BroadcastArgs<{ to: string; sdp: RTCSessionDescriptionInit }>) => {
-                    const { to, sdp } = payload
-                    if (to !== clientIdRef.current) return
+                    if (payload.to !== clientIdRef.current) return
                     const pc = ensureViewerPc()
                     try {
-                        await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+                        await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
                         const answer = await pc.createAnswer()
                         await pc.setLocalDescription(answer)
-                        channel.send({
-                            type: 'broadcast',
-                            event: 'answer',
-                            payload: { from: clientIdRef.current, sdp: answer },
-                        })
+                        channel.send({ type: 'broadcast', event: 'answer', payload: { from: clientIdRef.current, sdp: answer } })
                     } catch { }
                 })
                 channel.on('broadcast', { event: 'ice-to-viewer' }, async ({ payload }: BroadcastArgs<{ to: string; candidate: RTCIceCandidateInit }>) => {
-                    const { to, candidate } = payload
-                    if (to !== clientIdRef.current) return
+                    if (payload.to !== clientIdRef.current) return
                     const pc = ensureViewerPc()
-                    try { await pc.addIceCandidate(new RTCIceCandidate(candidate)) } catch { }
+                    try { await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)) } catch { }
                 })
                 channel.on('broadcast', { event: 'host-ready' }, () => {
                     channel.send({ type: 'broadcast', event: 'viewer-join', payload: { viewerId: clientIdRef.current } })
@@ -256,9 +237,7 @@ export default function LiveRoomPage() {
             // Presence — tomoshabinlar soni
             channel.on('presence', { event: 'sync' }, () => {
                 const state = channel.presenceState()
-                const keys = Object.keys(state)
-                // host'ni ayirib tashlaymiz
-                const viewers = keys.filter((k) => {
+                const viewers = Object.keys(state).filter((k) => {
                     const meta = (state[k]?.[0] as { role?: string } | undefined)
                     return meta?.role !== 'host'
                 })
@@ -300,27 +279,13 @@ export default function LiveRoomPage() {
     // ====== Host: ekranni ulashishni boshlash ======
     const startSharing = async () => {
         try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({
-                video: { frameRate: 30 },
-                audio: true,
-            })
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: true })
             localStreamRef.current = stream
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream
-                videoRef.current.muted = true
-            }
+            if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.muted = true }
             setSharing(true)
-
-            // Foydalanuvchi "Stop sharing" bossa
-            stream.getVideoTracks()[0].addEventListener('ended', () => {
-                stopSharing()
-            })
-
-            // Mavjud va kelajakdagi viewerlarni xabardor qilamiz
+            stream.getVideoTracks()[0].addEventListener('ended', () => stopSharing())
             channelRef.current?.send({ type: 'broadcast', event: 'host-ready', payload: {} })
-        } catch {
-            // foydalanuvchi bekor qildi
-        }
+        } catch { }
     }
 
     const stopSharing = () => {
@@ -355,156 +320,332 @@ export default function LiveRoomPage() {
         setChatText('')
     }
 
-    if (!isDesktop) {
-        return (
-            <div className="min-h-[calc(100dvh-8rem)] flex flex-col items-center justify-center px-6 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                    <HiOutlineComputerDesktop className="w-8 h-8 text-slate-400 dark:text-slate-500" />
-                </div>
-                <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-1.5">Live Share faqat kompyuterda</h1>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-xs">
-                    Jonli efir hozircha faqat desktop versiyada ishlaydi.
-                </p>
-                <button onClick={() => router.push('/dashboard')} className="mt-6 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors cursor-pointer">
-                    Bosh sahifa
-                </button>
-            </div>
-        )
-    }
-
+    // ── Loading ─────────────────────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="min-h-[calc(100dvh-8rem)] flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+            <div className="min-h-[calc(100dvh-4rem)] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm text-slate-400 font-medium">Yuklanmoqda...</p>
+                </div>
             </div>
         )
     }
 
+    // ── Not found ───────────────────────────────────────────────────────────
     if (notFound || !room) {
         return (
-            <div className="min-h-[calc(100dvh-8rem)] flex flex-col items-center justify-center px-6 text-center">
-                <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-4">Efir topilmadi yoki tugagan</p>
-                <button onClick={() => router.push('/dashboard/live')} className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors cursor-pointer">
-                    {"Efirlar ro'yxati"}
+            <div className="min-h-[calc(100dvh-4rem)] flex flex-col items-center justify-center px-6 text-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <HiXMark className="w-8 h-8 text-slate-400" />
+                </div>
+                <div>
+                    <p className="text-base font-bold text-slate-700 dark:text-slate-200">Efir topilmadi yoki tugagan</p>
+                    <p className="text-sm text-slate-400 mt-1">Bu efir allaqachon yakunlangan bo&apos;lishi mumkin</p>
+                </div>
+                <button
+                    onClick={() => router.push('/dashboard/live')}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors cursor-pointer"
+                >
+                    Efirlarga qaytish
                 </button>
             </div>
         )
     }
 
-    return (
-        <div className="w-full h-[calc(100dvh-4rem)] flex flex-col xl:flex-row gap-4 p-4 md:p-6">
-            {/* Video maydon */}
-            <div className="flex-1 flex flex-col min-w-0">
-                <div className="flex items-center justify-between mb-3 gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <button onClick={() => router.push('/dashboard/live')} className="p-2 -ml-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-90 transition-all cursor-pointer">
-                            <HiArrowLeft className="w-5 h-5" />
-                        </button>
-                        <div className="min-w-0">
-                            <h1 className="text-base md:text-lg font-black text-slate-900 dark:text-slate-100 truncate">{room.title}</h1>
-                            {room.game && <p className="text-[12px] font-medium text-slate-500 dark:text-slate-400 truncate">{room.game}</p>}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-600 text-white text-[11px] font-black uppercase">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> Live
-                        </span>
-                        <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[12px] font-bold">
-                            <HiUserGroup className="w-4 h-4" /> {viewerCount}
-                        </span>
-                    </div>
-                </div>
+    // ── Shared sub-components ───────────────────────────────────────────────
 
-                <div className="relative flex-1 rounded-2xl overflow-hidden bg-slate-950 border border-slate-100 dark:border-white/5 flex items-center justify-center no-media-save" onContextMenu={(e) => e.preventDefault()}>
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        controlsList="nodownload noplaybackrate"
-                        disablePictureInPicture
-                        className="w-full h-full object-contain bg-black"
-                    />
+    // Video panel content
+    const VideoContent = (
+        <div
+            className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden no-media-save"
+            onContextMenu={(e) => e.preventDefault()}
+        >
+            <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                controlsList="nodownload noplaybackrate"
+                disablePictureInPicture
+                className="w-full h-full object-contain"
+            />
 
-                    {/* Host: hali ulashmagan */}
-                    {isHost && !sharing && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950/90 backdrop-blur-sm text-center px-6">
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-rose-500/30">
-                                <HiSignal className="w-8 h-8 text-white" />
+            {/* Host: hali ulashmagan */}
+            <AnimatePresence>
+                {isHost && !sharing && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-slate-950/95 backdrop-blur-sm px-6"
+                    >
+                        <div className="relative">
+                            <div className="absolute inset-0 rounded-full bg-rose-500/20 blur-2xl scale-150" />
+                            <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-rose-500 to-fuchsia-600 flex items-center justify-center shadow-2xl shadow-rose-500/40">
+                                <HiSignal className="w-10 h-10 text-white" />
                             </div>
-                            <div>
-                                <p className="text-white font-black text-lg">Efirga tayyormisiz?</p>
-                                <p className="text-slate-400 text-sm mt-1">{"Ekran yoki o'yin oynasini tanlab ulashing"}</p>
-                            </div>
-                            <button onClick={startSharing} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-fuchsia-600 hover:from-rose-600 hover:to-fuchsia-700 text-white font-extrabold shadow-lg shadow-rose-500/25 active:scale-95 transition-all cursor-pointer">
-                                <HiOutlineComputerDesktop className="w-5 h-5" /> Ekranni ulashish
-                            </button>
                         </div>
-                    )}
-
-                    {/* Viewer: host hali efirga chiqmagan */}
-                    {!isHost && waitingForHost && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-6">
-                            <div className="w-10 h-10 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
-                            <p className="text-slate-300 font-bold text-sm">Host efirni boshlashini kutyapmiz...</p>
+                        <div className="text-center">
+                            <p className="text-white font-black text-xl mb-1.5">Efirga tayyormisiz?</p>
+                            <p className="text-slate-400 text-sm max-w-xs">
+                                {isDesktop
+                                    ? "Ekran yoki o'yin oynasini tanlab, tomoshabinlarga ulashing"
+                                    : "Ekranni ulashish faqat kompyuterda ishlaydi"}
+                            </p>
                         </div>
-                    )}
-                </div>
-
-                {/* Host boshqaruvi */}
-                {isHost && (
-                    <div className="flex items-center gap-3 mt-3">
-                        {sharing ? (
-                            <button onClick={stopSharing} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm font-bold transition-colors cursor-pointer">
-                                <HiStop className="w-5 h-5" /> {"Ulashishni to'xtatish"}
-                            </button>
-                        ) : (
-                            <button onClick={startSharing} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors cursor-pointer">
-                                <HiOutlineComputerDesktop className="w-5 h-5" /> Ekranni ulashish
+                        {isDesktop && (
+                            <button
+                                onClick={startSharing}
+                                className="flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-fuchsia-600 hover:from-rose-600 hover:to-fuchsia-700 text-white font-extrabold text-sm shadow-2xl shadow-rose-500/30 active:scale-95 transition-all cursor-pointer"
+                            >
+                                <HiOutlineComputerDesktop className="w-5 h-5" />
+                                Ekranni ulashish
                             </button>
                         )}
-                        <button onClick={endLive} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold transition-colors cursor-pointer ml-auto">
-                            <HiXMark className="w-5 h-5" /> Efirni tugatish
-                        </button>
-                    </div>
+                    </motion.div>
                 )}
+            </AnimatePresence>
+
+            {/* Viewer: kutilmoqda */}
+            <AnimatePresence>
+                {!isHost && waitingForHost && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950/90 backdrop-blur-sm"
+                    >
+                        <div className="relative w-14 h-14 flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full border-2 border-rose-500/30 animate-ping" />
+                            <div className="w-10 h-10 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                        <div className="text-center px-6">
+                            <p className="text-white font-bold text-sm">Host efirni boshlashini kutyapmiz</p>
+                            <p className="text-slate-500 text-xs mt-1">Tez kunda ulanasiz...</p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    )
+
+    // Chat panel content
+    const ChatContent = (
+        <div className="flex flex-col h-full">
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-none min-h-0">
+                {chat.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-3 py-10 text-center">
+                        <div className="text-3xl">💬</div>
+                        <div>
+                            <p className="text-sm font-bold text-slate-400 dark:text-slate-400">Chat bo&apos;sh</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-600 mt-0.5">Birinchi bo&apos;ling!</p>
+                        </div>
+                    </div>
+                ) : (
+                    chat.map((m) => (
+                        <motion.div
+                            key={m.id}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex items-start gap-2.5"
+                        >
+                            <img
+                                src={m.avatar || '/default-avatar.png'} alt=""
+                                className="w-7 h-7 rounded-full object-cover bg-slate-800 shrink-0 ring-1 ring-white/5"
+                            />
+                            <div className="min-w-0 flex-1">
+                                <span className="text-[11px] font-extrabold text-rose-400">{m.user}</span>
+                                <p className="text-xs text-slate-300 dark:text-slate-300 break-words leading-relaxed mt-0.5">{m.text}</p>
+                            </div>
+                        </motion.div>
+                    ))
+                )}
+                <div ref={chatEndRef} />
             </div>
 
-            {/* Chat paneli */}
-            <div className="w-full xl:w-80 2xl:w-96 shrink-0 flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 flex items-center gap-2">
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100">Jonli chat</span>
-                    <span className="px-2 py-0.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-[11px] font-bold rounded-full">{viewerCount} tomoshabin</span>
-                </div>
+            {/* Input */}
+            <form
+                onSubmit={sendChat}
+                className="px-3 py-3 border-t border-white/5 flex items-center gap-2 shrink-0 bg-slate-950/40"
+            >
+                <input
+                    value={chatText}
+                    onChange={(e) => setChatText(e.target.value)}
+                    placeholder="Xabar yozing..."
+                    maxLength={300}
+                    className="flex-1 bg-white/5 border border-white/8 rounded-xl px-3 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-rose-500/50 focus:bg-white/8 transition-all"
+                />
+                <button
+                    type="submit"
+                    disabled={!chatText.trim()}
+                    className="p-2.5 bg-rose-600 disabled:bg-white/5 disabled:text-slate-600 text-white rounded-xl transition-all active:scale-90 cursor-pointer hover:bg-rose-500 disabled:cursor-default shrink-0"
+                >
+                    <HiPaperAirplane className="w-4 h-4" />
+                </button>
+            </form>
+        </div>
+    )
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-none min-h-0">
-                    {chat.length === 0 ? (
-                        <p className="text-center text-xs font-semibold text-slate-400 dark:text-slate-500 py-8">{"Hali xabar yo'q. Birinchi bo'ling! 💬"}</p>
-                    ) : (
-                        chat.map((m) => (
-                            <div key={m.id} className="flex items-start gap-2.5 animate-comment-slide-in">
-                                <img src={m.avatar || '/default-avatar.png'} alt="" className="w-7 h-7 rounded-full object-cover bg-slate-200 dark:bg-slate-800 shrink-0" />
-                                <div className="min-w-0">
-                                    <span className="text-[11px] font-bold text-slate-900 dark:text-slate-100">{m.user}</span>
-                                    <p className="text-xs text-slate-700 dark:text-slate-300 break-words leading-relaxed">{m.text}</p>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                    <div ref={chatEndRef} />
+    // ── Top bar (shared) ────────────────────────────────────────────────────
+    const TopBar = (
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                    onClick={() => router.push('/dashboard/live')}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/8 active:scale-90 transition-all cursor-pointer shrink-0"
+                >
+                    <HiArrowLeft className="w-5 h-5" />
+                </button>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-600/15 border border-rose-500/30 text-rose-400 text-[10px] font-black uppercase tracking-wider shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    LIVE
+                </span>
+                <div className="min-w-0">
+                    <h1 className="text-sm font-black text-white truncate leading-tight">{room.title}</h1>
+                    {room.game && <p className="text-[11px] font-medium text-slate-500 truncate">{room.game}</p>}
                 </div>
-
-                <form onSubmit={sendChat} className="p-3 border-t border-slate-100 dark:border-white/5 flex items-center gap-2">
-                    <input
-                        value={chatText}
-                        onChange={(e) => setChatText(e.target.value)}
-                        placeholder="Xabar yozing..."
-                        maxLength={300}
-                        className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:border-rose-400 dark:focus:border-rose-500 transition-colors"
-                    />
-                    <button type="submit" disabled={!chatText.trim()} className="p-2.5 bg-rose-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 rounded-full transition active:scale-90 cursor-pointer">
-                        <HiPaperAirplane className="w-4 h-4" />
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/8 text-slate-300 text-xs font-bold">
+                    <HiUserGroup className="w-3.5 h-3.5 text-rose-400" />
+                    {viewerCount}
+                </div>
+                {/* Desktop: chat toggle */}
+                {isDesktop && (
+                    <button
+                        onClick={() => setChatOpen((p) => !p)}
+                        className="px-3 py-1 rounded-full bg-white/5 border border-white/8 text-slate-400 text-xs font-bold hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                        {chatOpen ? 'Chatni yopish' : 'Chat'}
                     </button>
-                </form>
+                )}
+            </div>
+        </div>
+    )
+
+    // ── Host controls bar (shared, desktop only yoki host mobilda ham) ──────
+    const HostBar = isHost && (
+        <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 bg-slate-900/80 border-t border-white/5 backdrop-blur-xl">
+            {isDesktop && (
+                sharing ? (
+                    <button
+                        onClick={stopSharing}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/8 hover:bg-white/12 border border-white/10 text-slate-200 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                    >
+                        <HiStop className="w-4 h-4 text-amber-400" />
+                        Ulashishni to&apos;xtatish
+                    </button>
+                ) : (
+                    <button
+                        onClick={startSharing}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                    >
+                        <HiOutlineComputerDesktop className="w-4 h-4" />
+                        Ekranni ulashish
+                    </button>
+                )
+            )}
+            {sharing && (
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Uzatilmoqda
+                </span>
+            )}
+            <div className="ml-auto">
+                <button
+                    onClick={endLive}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-rose-400 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                >
+                    <HiXMark className="w-4 h-4" />
+                    Efirni tugatish
+                </button>
+            </div>
+        </div>
+    )
+
+    // ── MOBILE layout ───────────────────────────────────────────────────────
+    if (!isDesktop) {
+        return (
+            <div className="w-full flex flex-col bg-slate-950" style={{ height: 'calc(100dvh - 4rem)' }}>
+                {TopBar}
+
+                {/* Mobil tab switcher */}
+                <div className="flex shrink-0 border-b border-white/5 bg-slate-900/60">
+                    <button
+                        onClick={() => setMobileTab('video')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition-colors cursor-pointer ${mobileTab === 'video' ? 'text-white border-b-2 border-rose-500' : 'text-slate-500'}`}
+                    >
+                        <HiSignal className="w-3.5 h-3.5" />
+                        Efir
+                    </button>
+                    <button
+                        onClick={() => setMobileTab('chat')}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition-colors cursor-pointer relative ${mobileTab === 'chat' ? 'text-white border-b-2 border-rose-500' : 'text-slate-500'}`}
+                    >
+                        <HiChatBubbleLeftRight className="w-3.5 h-3.5" />
+                        Chat
+                        {chat.length > 0 && mobileTab !== 'chat' && (
+                            <span className="absolute top-2 right-6 w-1.5 h-1.5 rounded-full bg-rose-500" />
+                        )}
+                    </button>
+                </div>
+
+                {/* Tab content */}
+                <div className="flex-1 min-h-0 overflow-hidden">
+                    {mobileTab === 'video' ? VideoContent : (
+                        <div className="h-full bg-slate-900">
+                            {ChatContent}
+                        </div>
+                    )}
+                </div>
+
+                {HostBar}
+            </div>
+        )
+    }
+
+    // ── DESKTOP layout ──────────────────────────────────────────────────────
+    return (
+        <div className="w-full flex flex-col bg-slate-950" style={{ height: 'calc(100dvh - 4rem)' }}>
+            {TopBar}
+
+            <div className="flex-1 flex min-h-0 overflow-hidden">
+                {/* Video area */}
+                <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 min-h-0">
+                        {VideoContent}
+                    </div>
+                    {HostBar}
+                </div>
+
+                {/* Chat sidebar */}
+                <AnimatePresence initial={false}>
+                    {chatOpen && (
+                        <motion.div
+                            key="chat"
+                            initial={{ width: 0, opacity: 0 }}
+                            animate={{ width: 320, opacity: 1 }}
+                            exit={{ width: 0, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                            className="shrink-0 flex flex-col border-l border-white/5 bg-slate-900 overflow-hidden"
+                            style={{ minWidth: 0 }}
+                        >
+                            {/* Chat header */}
+                            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-extrabold text-sm text-white">Jonli chat</span>
+                                    <span className="px-2 py-0.5 bg-rose-500/15 border border-rose-500/25 text-rose-400 text-[10px] font-bold rounded-full">
+                                        {viewerCount} tomoshabin
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => setChatOpen(false)}
+                                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors cursor-pointer"
+                                >
+                                    <HiXMark className="w-4 h-4" />
+                                </button>
+                            </div>
+                            {ChatContent}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     )
