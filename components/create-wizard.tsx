@@ -26,6 +26,8 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
     const queryClient = useQueryClient()
 
     const [postText, setPostText] = useState('')
+    // Kapsula tanlovi: false = Doimiy, true = Kapsula (72 soatda eriydi)
+    const [postEphemeral, setPostEphemeral] = useState(false)
     const [marketTitle, setMarketTitle] = useState('')
     const [marketPrice, setMarketPrice] = useState('')
     const [marketCategory, setMarketCategory] = useState('digital')
@@ -152,7 +154,8 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                 body: JSON.stringify({
                     content: postText,
                     imageUrl: uploadedUrl,
-                    imageKey: uploadedKey
+                    imageKey: uploadedKey,
+                    ephemeral: postEphemeral,
                 }),
             })
 
@@ -164,6 +167,7 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
             toast.success("Post muvaffaqiyatli ulashildi!", { id: toastId })
 
             setPostText('')
+            setPostEphemeral(false)
             removeImage()
             queryClient.invalidateQueries({ queryKey: ['posts'] })
             onClose()
@@ -372,6 +376,47 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                                     className="w-full bg-slate-50/80 dark:bg-slate-900/40 text-slate-900 dark:text-slate-100 text-xs font-semibold p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900/80 outline-none resize-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                 />
                                 <p className="text-right text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 mr-1">{postText.length}/500</p>
+                            </div>
+
+                            {/* Kapsula tanlovi: Doimiy yoki 72 soatda eriydigan */}
+                            <div>
+                                <div className="relative grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-900/50 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
+                                    <motion.span
+                                        layout
+                                        transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+                                        className={`absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl shadow-sm ${postEphemeral ? 'bg-amber-500 left-[calc(50%+0rem)]' : 'bg-blue-600 left-1'}`}
+                                    />
+                                    <button
+                                        type="button"
+                                        disabled={isSubmitting}
+                                        onClick={() => setPostEphemeral(false)}
+                                        className={`relative z-10 py-2 text-[11px] font-bold rounded-xl transition-colors ${!postEphemeral ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                                    >
+                                        ♾ Doimiy
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={isSubmitting}
+                                        onClick={() => setPostEphemeral(true)}
+                                        className={`relative z-10 py-2 text-[11px] font-bold rounded-xl transition-colors ${postEphemeral ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}
+                                    >
+                                        ⏳ Kapsula (72 soat)
+                                    </button>
+                                </div>
+                                <AnimatePresence mode="wait">
+                                    <motion.p
+                                        key={postEphemeral ? 'eph' : 'perm'}
+                                        initial={{ opacity: 0, y: -3 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 3 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 mt-1.5 px-1"
+                                    >
+                                        {postEphemeral
+                                            ? "Post 72 soatdan keyin eriydi — faqat kimdir Kapsulaga saqlasa qoladi."
+                                            : "Post lentada doimiy qoladi."}
+                                    </motion.p>
+                                </AnimatePresence>
                             </div>
 
                             <button

@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         if (!text.trim()) return NextResponse.json({ error: 'So\'rov tanasi bo\'sh' }, { status: 400 })
         
         const body = JSON.parse(text)
-        const { content, imageUrl, url, imageKey, key } = body
+        const { content, imageUrl, url, imageKey, key, ephemeral, ttlHours } = body
 
         if (!content?.trim()) {
             return NextResponse.json({ error: 'Post matni bo\'sh' }, { status: 400 })
@@ -54,17 +54,37 @@ export async function POST(request: Request) {
         const finalImageUrl = imageUrl || url || null
         const finalImageKey = imageKey || key || null
 
-        // Supabase bazasiga yozish
-        const { data: newPost, error: dbError } = await supabase
+        // Kapsula tanlovi: ephemeral=true bo'lsa post TTL oladi (default 72 soat),
+        // aks holda doimiy (expires_at = NULL).
+        const hours = Number(ttlHours) > 0 ? Number(ttlHours) : 72
+        const expiresAt = ephemeral
+            ? new Date(Date.now() + hours * 60 * 60 * 1000).toISOString()
+            : null
+
+        const insertPayload: Record<string, unknown> = {
+            user_id: session.user.id,
+            content: content.trim(),
+            image_url: finalImageUrl, // Endi NULL bo'lib qolmaydi!
+            image_key: finalImageKey,
+        }
+
+        // Birinchi urinish: expires_at bilan. Agar ustun hali yo'q bo'lsa
+        // (migratsiya qo'llanmagan) — expires_at'siz qayta urinamiz.
+        let { data: newPost, error: dbError } = await supabase
             .from('posts')
-            .insert({ 
-                user_id: session.user.id, 
-                content: content.trim(), 
-                image_url: finalImageUrl, // Endi NULL bo'lib qolmaydi!
-                image_key: finalImageKey  
-            })
+            .insert({ ...insertPayload, expires_at: expiresAt })
             .select()
             .single()
+
+        if (dbError) {
+            const retry = await supabase
+                .from('posts')
+                .insert(insertPayload)
+                .select()
+                .single()
+            newPost = retry.data
+            dbError = retry.error
+        }
 
         if (dbError) {
             throw dbError

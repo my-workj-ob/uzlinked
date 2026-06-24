@@ -1,25 +1,28 @@
 -- ============================================================
 -- KAPSULA — Efemer (vaqtinchalik) kontent + "saqlab qolish"
 -- ------------------------------------------------------------
--- Falsafa: yangi postlar 72 soatdan keyin "erib ketadi".
--- Foydalanuvchi postni "Kapsula"ga solib saqlasagina u o'sha
+-- Falsafa: post yozayotganda foydalanuvchi TANLAYDI — "Doimiy"
+-- yoki "Kapsula (72 soat)". Kapsula post 72 soatdan keyin "erib
+-- ketadi", boshqa odam uni "Kapsula"ga solib saqlasagina o'sha
 -- foydalanuvchi uchun saqlanib qoladi. "Like" soni emas —
 -- "qancha odam saqlab qoldi" muhim (saves_count).
 --
 -- Bu migratsiya BUTUNLAY qo'shimcha (additive):
 --   * Mavjud postlar expires_at = NULL bo'lib qoladi = abadiy.
---   * Faqat shu migratsiyadan KEYIN yaratilgan postlar 72 soatlik
---     TTL oladi (DEFAULT orqali).
+--   * expires_at uchun DEFAULT yo'q — yangi postlar ham default
+--     bo'yicha DOIMIY (NULL). TTL faqat foydalanuvchi "Kapsula"
+--     tanlaganda API tomonidan o'rnatiladi (now() + 72 soat).
 -- Idempotent: bir necha marta ishga tushirsa ham xavfsiz.
 -- ============================================================
 
 -- ------------------------------------------------------------
 -- 1. posts.expires_at — TTL ustuni
---    Avval DEFAULT'siz qo'shamiz (eski qatorlar NULL = abadiy),
---    keyin kelajakdagi yangi postlar uchun DEFAULT o'rnatamiz.
+--    DEFAULT yo'q: barcha postlar default bo'yicha NULL = abadiy.
+--    "Kapsula" tanlangan postlarda expires_at'ni API o'rnatadi.
+--    (Avvalgi migratsiyada DEFAULT bo'lgan bo'lsa — DROP qilamiz.)
 -- ------------------------------------------------------------
 ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
-ALTER TABLE public.posts ALTER COLUMN expires_at SET DEFAULT (now() + interval '72 hours');
+ALTER TABLE public.posts ALTER COLUMN expires_at DROP DEFAULT;
 
 -- "qancha odam saqlab qoldi" hisoblagichi (denormalizatsiya, tez o'qish uchun)
 ALTER TABLE public.posts ADD COLUMN IF NOT EXISTS saves_count INT NOT NULL DEFAULT 0;
