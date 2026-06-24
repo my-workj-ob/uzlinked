@@ -27,10 +27,14 @@ export async function POST(request: Request) {
     try {
         const supabase = await getSupabaseClient()
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return NextResponse.json({ error: "Avtorizatsiyadan o'tilmagan" }, { status: 401 })
+        if (!session) {
+            return NextResponse.json({ error: "Avtorizatsiyadan o'tilmagan" }, { status: 401 })
+        }
 
         const { reelId } = await request.json()
-        if (!reelId) return NextResponse.json({ error: 'reelId kerak' }, { status: 400 })
+        if (!reelId) {
+            return NextResponse.json({ error: 'reelId kerak' }, { status: 400 })
+        }
 
         // Mavjudligini tekshirish
         const { data: existing } = await supabase
@@ -42,15 +46,25 @@ export async function POST(request: Request) {
 
         if (existing) {
             // Unsave
-            await supabase.from('reel_saves').delete().eq('id', existing.id)
-            return NextResponse.json({ saved: false })
+            try {
+                await supabase.from('reel_saves').delete().eq('id', existing.id)
+                return NextResponse.json({ saved: false })
+            } catch (error) {
+                console.error('Error unsaving reel:', error)
+                return NextResponse.json({ error: 'Reelni saqlashdan chiqarishda xatolik yuz berdi' }, { status: 500 })
+            }
         } else {
             // Save
-            await supabase.from('reel_saves').insert({
-                reel_id: reelId,
-                user_id: session.user.id,
-            })
-            return NextResponse.json({ saved: true })
+            try {
+                await supabase.from('reel_saves').insert({
+                    reel_id: reelId,
+                    user_id: session.user.id,
+                })
+                return NextResponse.json({ saved: true })
+            } catch (error) {
+                console.error('Error saving reel:', error)
+                return NextResponse.json({ error: 'Reelni saqlashda xatolik yuz berdi' }, { status: 500 })
+            }
         }
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })
@@ -62,7 +76,9 @@ export async function GET() {
     try {
         const supabase = await getSupabaseClient()
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return NextResponse.json({ error: "Avtorizatsiyadan o'tilmagan" }, { status: 401 })
+        if (!session) {
+            return NextResponse.json({ error: "Avtorizatsiyadan o'tilmagan" }, { status: 401 })
+        }
 
         const { data: saves, error } = await supabase
             .from('reel_saves')
@@ -74,7 +90,9 @@ export async function GET() {
             .eq('user_id', session.user.id)
             .order('created_at', { ascending: false })
 
-        if (error) throw error
+        if (error) {
+            throw error
+        }
 
         return NextResponse.json(saves || [])
     } catch (error: any) {

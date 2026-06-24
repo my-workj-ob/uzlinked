@@ -27,10 +27,14 @@ export async function POST(request: Request) {
     try {
         const supabase = await getSupabaseClient()
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
+        if (!session) {
+            return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
+        }
 
         const { reelId } = await request.json()
-        if (!reelId) return NextResponse.json({ error: 'Reel ID kerak' }, { status: 400 })
+        if (!reelId) {
+            return NextResponse.json({ error: 'Reel ID kerak' }, { status: 400 })
+        }
 
         // Like bor yoki yo'qligini tekshiramiz
         const { data: existing } = await supabase
@@ -42,75 +46,85 @@ export async function POST(request: Request) {
 
         if (existing) {
             // Like bor — o'chiramiz
-            await supabase.from('reel_likes').delete().eq('id', existing.id)
-
-            // Notification o'chirish
             try {
-                const { data: reel } = await supabase
-                    .from('reels')
-                    .select('user_id')
-                    .eq('id', reelId)
-                    .single()
-                if (reel) {
-                    await supabase
-                        .from('notifications')
-                        .delete()
-                        .eq('user_id', reel.user_id)
-                        .eq('actor_id', session.user.id)
-                        .eq('type', 'like')
-                        .eq('reel_id', reelId)
-                }
-            } catch (err) {
-                console.error("Like notification o'chirishda xatolik:", err)
-            }
+                await supabase.from('reel_likes').delete().eq('id', existing.id)
 
-            return NextResponse.json({ liked: false })
+                // Notification o'chirish
+                try {
+                    const { data: reel } = await supabase
+                        .from('reels')
+                        .select('user_id')
+                        .eq('id', reelId)
+                        .single()
+                    if (reel) {
+                        await supabase
+                            .from('notifications')
+                            .delete()
+                            .eq('user_id', reel.user_id)
+                            .eq('actor_id', session.user.id)
+                            .eq('type', 'like')
+                            .eq('reel_id', reelId)
+                    }
+                } catch (err) {
+                    console.error("Like notification o'chirishda xatolik:", err)
+                }
+
+                return NextResponse.json({ liked: false })
+            } catch (error) {
+                console.error('Error unliking reel:', error)
+                return NextResponse.json({ error: 'Reelni yoqtirmaslikda xatolik yuz berdi' }, { status: 500 })
+            }
         } else {
             // Like yo'q — qo'shamiz
-            await supabase.from('reel_likes').insert({
-                reel_id: reelId,
-                user_id: session.user.id,
-            })
-
-            // Notification yuborish
             try {
-                const { data: reel } = await supabase
-                    .from('reels')
-                    .select('user_id')
-                    .eq('id', reelId)
-                    .single()
-                if (reel && reel.user_id !== session.user.id) {
-                    await supabase.from('notifications').insert({
-                        user_id: reel.user_id,
-                        actor_id: session.user.id,
-                        type: 'like',
-                        reel_id: reelId
-                    })
+                await supabase.from('reel_likes').insert({
+                    reel_id: reelId,
+                    user_id: session.user.id,
+                })
 
-                    // Push yuborish
-                    const { data: likerProfile } = await supabase
-                        .from('profiles')
-                        .select('nickname')
-                        .eq('id', session.user.id)
+                // Notification yuborish
+                try {
+                    const { data: reel } = await supabase
+                        .from('reels')
+                        .select('user_id')
+                        .eq('id', reelId)
                         .single()
-                    const likerName = likerProfile?.nickname || 'Foydalanuvchi'
+                    if (reel && reel.user_id !== session.user.id) {
+                        await supabase.from('notifications').insert({
+                            user_id: reel.user_id,
+                            actor_id: session.user.id,
+                            type: 'like',
+                            reel_id: reelId
+                        })
 
-                    const { sendPushNotification } = await import('@/utils/push')
-                    await sendPushNotification(
-                        reel.user_id,
-                        {
-                            title: 'Yangi layk! ❤️',
-                            body: `${likerName} sizning videongizga layk bosdi.`,
-                            url: `/dashboard/notifications`,
-                        },
-                        'like'
-                    )
+                        // Push yuborish
+                        const { data: likerProfile } = await supabase
+                            .from('profiles')
+                            .select('nickname')
+                            .eq('id', session.user.id)
+                            .single()
+                        const likerName = likerProfile?.nickname || 'Foydalanuvchi'
+
+                        const { sendPushNotification } = await import('@/utils/push')
+                        await sendPushNotification(
+                            reel.user_id,
+                            {
+                                title: 'Yangi layk! ❤️',
+                                body: `${likerName} sizning videongizga layk bosdi.`,
+                                url: `/dashboard/notifications`,
+                            },
+                            'like'
+                        )
+                    }
+                } catch (err) {
+                    console.error("Like notification yuborishda xatolik:", err)
                 }
-            } catch (err) {
-                console.error("Like notification yuborishda xatolik:", err)
-            }
 
-            return NextResponse.json({ liked: true })
+                return NextResponse.json({ liked: true })
+            } catch (error) {
+                console.error('Error liking reel:', error)
+                return NextResponse.json({ error: 'Reelni yoqtirishda xatolik yuz berdi' }, { status: 500 })
+            }
         }
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })

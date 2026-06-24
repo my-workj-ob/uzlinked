@@ -297,8 +297,10 @@ const DashboardLayout = ({ children }: LayoutProps) => {
       } catch (err: any) {
         if (err?.message?.includes('Failed to fetch') || err?.message?.includes('fetch')) {
           console.warn("Profilni yuklashda tarmoq xatoligi:", err)
+          alert('Internet aloqasi yo\'q yoki server bilan aloqa muammosi mavjud. Iltimos, internetingizni tekshiring.')
         } else {
           console.error("Profilni yuklashda xatolik:", err)
+          alert('Profilni yuklashda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko\'ring.')
         }
       }
     }
@@ -365,8 +367,14 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         if (!error && count !== null) {
           setUnreadNotifCount(count)
         }
-      } catch (err) {
-        console.warn('Error fetching unread notifications count:', err)
+      } catch (err: any) {
+        if (err?.message?.includes('Failed to fetch') || err?.message?.includes('fetch')) {
+          console.warn('Bildirishnomalar sonini olishda tarmoq xatoligi:', err)
+          alert('Internet aloqasi yo\'q yoki server bilan aloqa muammosi mavjud. Iltimos, internetingizni tekshiring.')
+        } else {
+          console.error('Bildirishnomalar sonini olishda xatolik:', err)
+          alert('Bildirishnomalar sonini olishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko\'ring.')
+        }
       }
     }
 
@@ -411,8 +419,14 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         } else {
           setUnreadMsgCount(0)
         }
-      } catch (err) {
-        console.warn('Error fetching unread messages count:', err)
+      } catch (err: any) {
+        if (err?.message?.includes('Failed to fetch') || err?.message?.includes('fetch')) {
+          console.warn('Xabarlar sonini olishda tarmoq xatoligi:', err)
+          alert('Internet aloqasi yo\'q yoki server bilan aloqa muammosi mavjud. Iltimos, internetingizni tekshiring.')
+        } else {
+          console.error('Xabarlar sonini olishda xatolik:', err)
+          alert('Xabarlar sonini olishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko\'ring.')
+        }
       }
     }
 

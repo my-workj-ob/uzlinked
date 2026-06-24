@@ -218,10 +218,10 @@ export default function GroupDetailPage() {
             .single()
 
         if (error || !data) {
+            console.error('Error fetching group:', error)
             toast.error("Guruh topilmadi")
             router.push('/dashboard/messages')
             return
-        }
         setGroup(data)
         setEditName(data.name)
         setEditUsername(data.username || "")

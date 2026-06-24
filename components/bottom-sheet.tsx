@@ -1,263 +1,266 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react'
-import { createPortal } from 'react-dom'
-import { HiXMark } from 'react-icons/hi2'
-import { motion, AnimatePresence, useDragControls } from 'framer-motion'
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import { HiXMark } from "react-icons/hi2";
 
-interface BottomSheetProps {
-    isOpen: boolean
-    onClose: () => void
-    title?: string
-    children: React.ReactNode
-    expandable?: boolean
-    headerAction?: React.ReactNode
-    initialState?: 'peek' | 'full'
-    headerContent?: React.ReactNode
-    footerContent?: React.ReactNode
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+export interface BottomSheetRef {
+  expand: () => void;
+  collapse: () => void;
 }
 
-const INTERACTIVE_SELECTOR = 'input, textarea, button, a, select, [data-no-drag]'
+interface BottomSheetProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+  expandable?: boolean;
+  initialState?: "peek" | "full";
+  headerAction?: React.ReactNode;
+  headerContent?: React.ReactNode;
+  footerContent?: React.ReactNode;
+}
 
-export const BottomSheet = forwardRef<any, BottomSheetProps>(({
+// Interaktiv elementlar (tugma, link, inputlar) tortishdan himoyalanadi
+const INTERACTIVE_SELECTOR = "input, textarea, button, a, select, [data-no-drag], [role='button']";
+
+export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>((props, ref) => {
+  const {
     isOpen,
     onClose,
     title,
     children,
     expandable = false,
+    initialState = "peek",
     headerAction,
-    initialState = 'peek',
     headerContent,
-    footerContent
-}, ref) => {
-    const [mounted, setMounted] = useState(false)
-    const [sheetState, setSheetState] = useState<'peek' | 'full'>(initialState)
-    const contentRef = useRef<HTMLDivElement>(null)
-    const dragControls = useDragControls()
+    footerContent,
+  } = props;
 
-    useImperativeHandle(ref, () => ({
-        expand: () => setSheetState('full'),
-        collapse: () => setSheetState('peek')
-    }))
+  const contentRef = useRef<HTMLDivElement>(null);
+  const dragControls = useDragControls();
+  const [sheetState, setSheetState] = useState<"peek" | "full">(initialState);
 
-    useEffect(() => {
-        setMounted(true)
-    }, [])
-
-    useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden'
-            setSheetState(initialState)
-        } else {
-            document.body.style.overflow = 'unset'
-        }
-        return () => {
-            document.body.style.overflow = 'unset'
-        }
-    }, [isOpen, initialState])
-
-    useEffect(() => {
-        if (sheetState === 'peek' && contentRef.current) {
-            contentRef.current.scrollTop = 0
-        }
-    }, [sheetState])
-
-    useEffect(() => {
-        if (!isOpen) return
-
-        const setVh = () => {
-            const vh = window.visualViewport?.height ?? window.innerHeight
-            document.documentElement.style.setProperty('--vh', `${vh}px`)
-        }
-
-        setVh()
-        window.visualViewport?.addEventListener('resize', setVh)
-        window.visualViewport?.addEventListener('scroll', setVh)
-        window.addEventListener('resize', setVh)
-
-        return () => {
-            window.visualViewport?.removeEventListener('resize', setVh)
-            window.visualViewport?.removeEventListener('scroll', setVh)
-            window.removeEventListener('resize', setVh)
-        }
-    }, [isOpen])
-
-    if (!mounted) return null
-
-const containerVariants = {
-    closed: {
-        y: "100%",
-        transition: { type: "spring" as const, damping: 20, stiffness: 250 }
-    },
-    peek: {
-        y: "0%",
-        height: expandable ? "calc(var(--vh, 100vh) * 0.60)" : "auto",
-        maxHeight: expandable ? "calc(var(--vh, 100vh) * 0.60)" : "calc(var(--vh, 100vh) * 0.85)",
-        transition: { type: "spring" as const, damping: 15, stiffness: 200 }
-    },
-    full: {
-        y: "0%",
-        height: "calc(var(--vh, 100vh) * 0.95)",
-        maxHeight: "calc(var(--vh, 100vh) * 0.95)",
-        transition: { type: "spring" as const, damping: 15, stiffness: 200 }
+  // Birinchi renderda 0px bo'lib miltillamasligi uchun aqlli hisob-kitob
+  const [viewportHeight, setViewportHeight] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.visualViewport?.height || window.innerHeight;
     }
-}
+    return 800;
+  });
 
-    const backdropVariants = {
-        closed: { opacity: 0 },
-        open: { opacity: 1 }
+  useImperativeHandle(ref, () => ({
+    expand: () => setSheetState("full"),
+    collapse: () => setSheetState("peek"),
+  }));
+
+  // Ekran balandligini dinamik o'lchash (klaviatura ochilganda ham buzilmaydi)
+  useIsomorphicLayoutEffect(() => {
+    const updateVh = () => {
+      const vh = window.visualViewport?.height || window.innerHeight;
+      setViewportHeight(vh);
+      document.documentElement.style.setProperty("--vh", `${vh}px`);
+    };
+    updateVh();
+    window.visualViewport?.addEventListener("resize", updateVh);
+    window.addEventListener("resize", updateVh);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateVh);
+      window.removeEventListener("resize", updateVh);
+    };
+  }, []);
+
+  // Orqa fonni qotirish va holatlarni tiklash
+  useEffect(() => {
+    if (!isOpen) return;
+    setSheetState(initialState);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen, initialState]);
+
+  const isInteractive = (target: EventTarget | null) => {
+    if (!(target instanceof Element)) return false;
+    return !!target.closest(INTERACTIVE_SELECTOR);
+  };
+
+  // =========================================================================
+  // 1-TUTUVCHI: Modalning istalgan joyidan (bo'sh joy, sarlavha, qisqa matn) tortish
+  // =========================================================================
+  const handleGlobalPointerDown = (e: React.PointerEvent) => {
+    if (isInteractive(e.target)) return;
+
+    const scrollBox = contentRef.current;
+    if (scrollBox && scrollBox.contains(e.target as Node)) {
+      const hasScrollbar = scrollBox.scrollHeight > scrollBox.clientHeight;
+      if (hasScrollbar) {
+        // Barmog'i skroll bo'ladigan uzun matnga tegdi! Tortishni vaqtincha 
+        // bloklaymiz, mantiqni 2-tutuvchiga (handlePanStart) topshiramiz.
+        return;
+      }
     }
 
-    const handleDragEnd = (event: any, info: any) => {
-        const offset = info.offset.y
-        const velocity = info.velocity.y
+    dragControls.start(e);
+  };
 
-        if (expandable) {
-            if (sheetState === 'peek') {
-                if (offset < -120 || velocity < -400) {
-                    setSheetState('full')
-                } else if (offset > 120 || velocity > 400) {
-                    onClose()
-                }
-            } else if (sheetState === 'full') {
-                if (offset > 250 || velocity > 600) {
-                    onClose()
-                } else if (offset > 120 || velocity > 350) {
-                    setSheetState('peek')
-                }
-            }
-        } else {
-            if (offset > 150 || velocity > 400) {
-                onClose()
-            }
-        }
+  // =========================================================================
+  // 2-TUTUVCHI: Faqat skroll ichida, matnning eng tepasida turib pastga tortganda
+  // =========================================================================
+  const handlePanStart = (e: any, info: any) => {
+    if (e?.pointerType === "mouse") return;
+    if (isInteractive(e.target)) return;
+
+    const scrollBox = contentRef.current;
+    if (!scrollBox) return;
+
+    const isAtTop = scrollBox.scrollTop <= 0;
+    const isPullingDown = info.delta.y > 0;
+
+    if (isAtTop && isPullingDown) {
+      dragControls.start(e);
+    }
+  };
+
+  const handleDragEnd = (_: any, info: any) => {
+    const offset = info.offset.y;
+    const velocity = info.velocity.y;
+
+    if (!expandable) {
+      if (offset > 80 || velocity > 350) {
+        onClose();
+      }
+      return;
     }
 
-    const isInteractive = (target: EventTarget | null) => {
-        if (!(target instanceof Element)) return false
-        return !!target.closest(INTERACTIVE_SELECTOR)
+    if (sheetState === "peek") {
+      if (offset < -80 || velocity < -400) {
+        setSheetState("full");
+      } else if (offset > 80 || velocity > 350) {
+        onClose();
+      }
+    } else if (sheetState === "full") {
+      if (offset > 180 || velocity > 600) {
+        onClose();
+      } else if (offset > 80 || velocity > 350) {
+        setSheetState("peek");
+      }
     }
+  };
 
-    const startDragFromChrome = (e: React.PointerEvent) => {
-        if (isInteractive(e.target)) return
-        dragControls.start(e)
-    }
+  const targetHeight = expandable
+    ? sheetState === "full"
+      ? `${viewportHeight * 0.95}px`
+      : `${viewportHeight * 0.60}px`
+    : "auto";
 
-    const handlePanStart = (e: any, info: any) => {
-        if (e?.pointerType === 'mouse') return
-        if (isInteractive(e?.target)) return
+  if (typeof document === "undefined") return null;
 
-        const el = contentRef.current
-        const scrollTop = el?.scrollTop ?? 0
-        const goingDown = info.delta.y > 0
+  return createPortal(
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-[999999] flex items-end justify-center select-none"
+          initial={false}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          {/* Orqa xira fon */}
+          <motion.div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs cursor-pointer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+          />
 
-        if (!expandable) {
-            if (scrollTop <= 0 && goingDown) dragControls.start(e)
-            return
-        }
+          {/* ASOSIY MODAL KORPUSI */}
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            drag="y"
+            dragListener={false}
+            dragControls={dragControls}
+            dragDirectionLock
+            dragMomentum={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{
+              top: expandable && sheetState === "full" ? 0.05 : 0.15,
+              bottom: 0.85,
+            }}
+            onDragEnd={handleDragEnd}
+            onPointerDown={handleGlobalPointerDown} // <-- 1-TUTUVCHI SHU YERDA!
+            initial={{ y: "100%" }}
+            animate={{
+              y: 0,
+              height: targetHeight,
+            }}
+            exit={{ y: "100%" }}
+            transition={{
+              type: "spring",
+              stiffness: 320,
+              damping: 28,
+            }}
+            className="relative z-10 w-full md:max-w-[450px] bg-white dark:bg-slate-900 rounded-t-[28px] shadow-2xl flex flex-col overflow-hidden"
+            style={{
+              maxHeight: `${viewportHeight * 0.95}px`,
+              touchAction: "none",
+            }}
+          >
+            {/* Tepadagi mitti kulrang tutqich */}
+            <div className="py-3 flex justify-center cursor-grab active:cursor-grabbing shrink-0">
+              <div className="w-10 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800" />
+            </div>
 
-        if (sheetState === 'peek') {
-            dragControls.start(e)
-        } else if (scrollTop <= 0 && goingDown) {
-            dragControls.start(e)
-        }
-    }
-
-    return createPortal(
-        <AnimatePresence>
-            {isOpen && (
-                <div
-                    className="fixed top-0 left-0 right-0 z-[999999] flex items-end justify-center select-none"
-                    style={{ bottom: 'calc(100vh - var(--vh, 100vh))' }}
-                >
-                    {/* Backdrop */}
-                    <motion.div
-                        initial="closed"
-                        animate="open"
-                        exit="closed"
-                        variants={backdropVariants}
-                        transition={{ duration: 0.2 }}
-                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs cursor-pointer"
-                        onClick={onClose}
-                        data-no-pull="true"
-                    />
-
-                    {/* Sheet Container */}
-                    <motion.div
-                        drag="y"
-                        dragListener={false}
-                        dragControls={dragControls}
-                        dragDirectionLock
-                        dragMomentum={false}
-                        dragElastic={{ top: expandable && sheetState === 'full' ? 0.15 : 0.85, bottom: 0.85 }}
-                        dragConstraints={{ top: 0, bottom: 0 }}
-                        onDragEnd={handleDragEnd}
-                        initial="closed"
-                        animate={expandable ? sheetState : "peek"}
-                        exit="closed"
-                        variants={containerVariants}
-                        className="relative z-[1000000] bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 w-full md:max-w-[450px] rounded-t-[28px] flex flex-col shadow-2xl transition-colors"
-                        style={{ touchAction: 'none' }}
-                        data-no-pull="true"
-                    >
-                        {/* Drag / Pull Indicator Handle */}
-                        <div
-                            onPointerDown={startDragFromChrome}
-                            className="w-full py-3 shrink-0 cursor-grab active:cursor-grabbing flex justify-center"
-                        >
-                            <div className="w-10 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full" />
-                        </div>
-
-                        {/* Header */}
-                        {(title || headerAction) && (
-                            <div
-                                onPointerDown={startDragFromChrome}
-                                className={`flex items-center justify-between px-5 pb-3 shrink-0 ${title ? 'border-b border-slate-100 dark:border-white/5' : ''}`}
-                            >
-                                <span className="text-slate-900 dark:text-slate-100 font-extrabold text-sm truncate pr-4">
-                                    {title}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    {headerAction}
-                                    <button
-                                        onClick={onClose}
-                                        className="p-1.5 -mr-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350 transition-colors rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-                                    >
-                                        <HiXMark className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Optional fixed header content (does not scroll) */}
-                        {headerContent && (
-                            <div onPointerDown={startDragFromChrome} className="shrink-0">
-                                {headerContent}
-                            </div>
-                        )}
-
-                        {/* Scrollable content */}
-                        <motion.div
-                            ref={contentRef}
-                            onPanStart={handlePanStart}
-                            className="flex-1 overflow-y-auto p-3 scrollbar-none select-text text-xs sm:text-sm text-slate-700 dark:text-slate-300"
-                            style={{ overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
-                        >
-                            {children}
-                        </motion.div>
-
-                        {/* Optional fixed footer content (does not scroll) */}
-                        {footerContent && (
-                            <div onPointerDown={startDragFromChrome} className="shrink-0">
-                                {footerContent}
-                            </div>
-                        )}
-                    </motion.div>
+            {/* Header qismi */}
+            {(title || headerAction) && (
+              <div className="flex items-center justify-between px-5 pb-3 border-b border-slate-100 dark:border-white/5 shrink-0">
+                <span className="font-extrabold text-sm text-slate-900 dark:text-slate-100 truncate pr-4">
+                  {title}
+                </span>
+                <div className="flex items-center gap-2">
+                  {headerAction}
+                  <button
+                    onClick={onClose}
+                    className="p-1.5 -mr-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                  >
+                    <HiXMark className="w-5 h-5" />
+                  </button>
                 </div>
+              </div>
             )}
-        </AnimatePresence>,
-        document.body
-    )
-})
 
-BottomSheet.displayName = 'BottomSheet'
+            {headerContent && <div className="shrink-0">{headerContent}</div>}
+
+            {/* Skroll bo'ladigan asosiy tana */}
+            <motion.div
+              ref={contentRef}
+              onPanStart={handlePanStart} // <-- 2-TUTUVCHI SHU YERDA!
+              className="flex-1 overflow-y-auto p-3 scrollbar-none select-text text-xs sm:text-sm text-slate-700 dark:text-slate-300"
+              style={{ overscrollBehaviorY: "contain" }}
+            >
+              {children}
+            </motion.div>
+
+            {footerContent && <div className="shrink-0">{footerContent}</div>}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+});
+
+BottomSheet.displayName = "BottomSheet";

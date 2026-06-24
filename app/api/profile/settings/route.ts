@@ -5,9 +5,9 @@ export async function GET() {
   try {
     const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
-    }
+        if (!session) {
+          return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
+        }
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -15,7 +15,9 @@ export async function GET() {
       .eq('id', session.user.id)
       .single()
 
-    if (profileError) throw profileError
+        if (profileError) {
+          throw profileError
+        }
 
     // Xavfsizlik jurnallarini olish
     const { data: logs, error: logsError } = await supabase
@@ -59,11 +61,18 @@ export async function PUT(request: Request) {
     } = body
 
     // 1. Agar parol jo'natilgan bo'lsa, parolni yangilash
-    if (password && password.trim().length >= 6) {
-      const { error: passwordError } = await supabase.auth.updateUser({
-        password: password.trim()
-      })
-      if (passwordError) throw passwordError
+        if (password && password.trim().length >= 6) {
+          try {
+            const { error: passwordError } = await supabase.auth.updateUser({
+              password: password.trim()
+            })
+            if (passwordError) {
+              throw passwordError
+            }
+          } catch (error) {
+            console.error('Error updating password:', error)
+            return NextResponse.json({ error: 'Parolni yangilashda xatolik yuz berdi' }, { status: 500 })
+          }
 
       // Jurnalga yozish
       await supabase.from('security_logs').insert({
@@ -94,12 +103,15 @@ export async function PUT(request: Request) {
     if (chat_notifications_enabled !== undefined) updateData.chat_notifications_enabled = chat_notifications_enabled
     if (notification_settings !== undefined) updateData.notification_settings = notification_settings
 
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update(updateData)
-      .eq('id', session.user.id)
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', session.user.id)
 
-    if (updateError) throw updateError
+        if (updateError) {
+          console.error('Error updating profile:', updateError)
+          return NextResponse.json({ error: 'Profilni yangilashda xatolik yuz berdi' }, { status: 500 })
+        }
 
     // 4. Agar maxfiylik sozlamalari o'zgargan bo'lsa, jurnalga yozish
     if (currentProfile) {
@@ -131,9 +143,9 @@ export async function DELETE(request: Request) {
   try {
     const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
-    }
+        if (!session) {
+          return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
+        }
 
     // Hisobni o'chirish logikasi:
     // Supabase RLS va references ON DELETE CASCADE yordamida,
@@ -155,7 +167,9 @@ export async function DELETE(request: Request) {
       .delete()
       .eq('id', session.user.id)
 
-    if (deleteError) throw deleteError
+        if (deleteError) {
+          throw deleteError
+        }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

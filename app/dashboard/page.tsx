@@ -40,7 +40,7 @@ export default function FeedList() {
     const [showStories, setShowStories] = useState(false)
     const [pullOffset, setPullOffset] = useState(0)
     const [isDragging, setIsDragging] = useState(false)
-    
+
     const startY = useRef(0)
     const activeDrag = useRef(false)
     const containerRef = useRef<HTMLDivElement>(null)
@@ -106,7 +106,7 @@ export default function FeedList() {
             if (!activeDrag.current) return
             activeDrag.current = false
             setIsDragging(false)
-            
+
             const currentOffset = pullOffsetRef.current
             if (showStoriesRef.current) {
                 if (currentOffset < -45) {
@@ -205,7 +205,8 @@ export default function FeedList() {
         try {
             await updatePostMutation.mutateAsync({ id, content: newContent })
         } catch (err: any) {
-            alert(`Xatolik: ${err.message}`)
+            console.error('Error updating post:', err)
+            alert(`Postni yangilashda xatolik yuz berdi: ${err.message}`)
         }
     }
 
@@ -213,14 +214,15 @@ export default function FeedList() {
         try {
             await deletePostMutation.mutateAsync(id)
         } catch (err: any) {
-            alert(`Xatolik: ${err.message}`)
+            console.error('Error deleting post:', err)
+            alert(`Postni o'chirishda xatolik yuz berdi: ${err.message}`)
         }
     }
 
     // Calculate drag progress (0 to 1) for stories animation
     const rawProgress = isDragging
-        ? (showStories 
-            ? Math.max(0, 1 + pullOffset / 45) 
+        ? (showStories
+            ? Math.max(0, 1 + pullOffset / 45)
             : Math.min(pullOffset / 75, 1))
         : (showStories ? 1 : 0)
     const progress = Math.max(0, Math.min(rawProgress, 1))
@@ -235,15 +237,21 @@ export default function FeedList() {
             ) : error ? (
                 <div className="w-full p-4 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold text-center border border-red-100 dark:border-red-900/10">
                     {error instanceof Error ? error.message : String(error)}. Sahifani qayta yangilang.
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="ml-2 px-2 py-1 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded text-xs font-bold hover:bg-red-200 dark:hover:bg-red-800/30 transition-colors"
+                    >
+                        Yangilash
+                    </button>
                 </div>
             ) : (
                 <>
                     {/* Collapsible Stories Tray */}
                     <div
                         style={{
-                            height: isDragging 
-                                ? (showStories 
-                                    ? `${Math.max(104 + pullOffset, 0)}px` 
+                            height: isDragging
+                                ? (showStories
+                                    ? `${Math.max(104 + pullOffset, 0)}px`
                                     : `${Math.max(pullOffset, 0)}px`)
                                 : (showStories ? '104px' : '0px'),
                             opacity: showStories || (isDragging && (showStories ? (104 + pullOffset > 15) : (pullOffset > 15))) ? 1 : 0,
@@ -260,12 +268,18 @@ export default function FeedList() {
                     {posts.length === 0 ? (
                         <div className="w-full py-16 bg-slate-50/50 dark:bg-slate-900/20 border border-dashed border-slate-200 dark:border-white/5 rounded-2xl text-center animate-fade-in-up">
                             <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">Hozircha hech qanday post yo'q 🏜️</p>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="mt-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors"
+                            >
+                                Yangilash
+                            </button>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4 relative">
                             {posts.map((post, idx) => (
-                                <div 
-                                    key={post.id} 
+                                <div
+                                    key={post.id}
                                     className="animate-fade-in-up relative z-10 transition-all duration-300 transform hover:scale-[1.002]"
                                     style={{ animationDelay: `${idx * 80}ms` }}
                                 >

@@ -7,18 +7,19 @@ export async function GET() {
 
     const { data: authData } = await supabase.auth.getUser()
     const user = authData?.user
-    if (!user) {
-        return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
-    }
+        if (!user) {
+            return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
+        }
 
     const { data, error } = await supabase
         .from('active_stories_grouped')
         .select('*')
         .order('user_id', { ascending: false })
 
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+        if (error) {
+            console.error('Error fetching stories:', error)
+            return NextResponse.json({ error: 'Story\'larni olishda xatolik yuz berdi' }, { status: 500 })
+        }
 
     return NextResponse.json({ data })
 }
@@ -29,20 +30,20 @@ export async function POST(req: Request) {
 
     const { data: authData } = await supabase.auth.getUser()
     const user = authData?.user
-    if (!user) {
-        return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
-    }
+        if (!user) {
+            return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
+        }
 
     const body = await req.json()
     const { mediaUrl, mediaKey, mediaType } = body
 
-    if (!mediaUrl || !mediaKey || !mediaType) {
-        return NextResponse.json({ error: 'Media ma\'lumotlari to\'liq emas' }, { status: 400 })
-    }
+        if (!mediaUrl || !mediaKey || !mediaType) {
+            return NextResponse.json({ error: 'Media ma\'lumotlari to\'liq emas' }, { status: 400 })
+        }
 
-    if (!['image', 'video'].includes(mediaType)) {
-        return NextResponse.json({ error: 'Noto\'g\'ri media turi' }, { status: 400 })
-    }
+        if (!['image', 'video'].includes(mediaType)) {
+            return NextResponse.json({ error: 'Noto\'g\'ri media turi' }, { status: 400 })
+        }
 
     const { data, error } = await supabase
         .from('stories')
@@ -55,9 +56,10 @@ export async function POST(req: Request) {
         .select()
         .single()
 
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+        if (error) {
+            console.error('Error creating story:', error)
+            return NextResponse.json({ error: 'Story yaratishda xatolik yuz berdi' }, { status: 500 })
+        }
 
     return NextResponse.json({ data })
 }

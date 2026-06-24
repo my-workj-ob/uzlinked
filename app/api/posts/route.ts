@@ -35,7 +35,9 @@ export async function POST(request: Request) {
     try {
         const supabase = await getSupabaseClient()
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
+        if (!session) {
+            return NextResponse.json({ error: 'Avtorizatsiyadan o\'tilmagan' }, { status: 401 })
+        }
 
         // Xavfsiz JSON parslash (SyntaxError oldini olish uchun)
         const text = await request.text()
@@ -44,7 +46,9 @@ export async function POST(request: Request) {
         const body = JSON.parse(text)
         const { content, imageUrl, url, imageKey, key } = body
 
-        if (!content?.trim()) return NextResponse.json({ error: 'Post matni bo\'sh' }, { status: 400 })
+        if (!content?.trim()) {
+            return NextResponse.json({ error: 'Post matni bo\'sh' }, { status: 400 })
+        }
 
         // MUAMMONI YECHIMI: Frontenddan 'imageUrl' yoki 'url' kelishidan qat'iy nazar aniqlab olamiz
         const finalImageUrl = imageUrl || url || null
@@ -62,7 +66,9 @@ export async function POST(request: Request) {
             .select()
             .single()
 
-        if (dbError) throw dbError
+        if (dbError) {
+            throw dbError
+        }
         return NextResponse.json({ success: true, post: newPost }, { status: 201 })
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })
@@ -95,7 +101,9 @@ export async function GET(request: Request) {
 
         const { data: posts, error } = await dbQuery.order('created_at', { ascending: false })
 
-        if (error) throw error
+        if (error) {
+            throw error
+        }
 
         const formattedPosts = posts.map((post: any) => {
             const totalLikes = post.likes ? post.likes.length : 0
@@ -131,12 +139,16 @@ export async function DELETE(request: Request) {
     try {
         const supabase = await getSupabaseClient()
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return NextResponse.json({ error: 'Ruxsat yo\'q' }, { status: 401 })
+        if (!session) {
+            return NextResponse.json({ error: 'Ruxsat yo\'q' }, { status: 401 })
+        }
 
         const { searchParams } = new URL(request.url)
         const id = searchParams.get('id')
 
-        if (!id) return NextResponse.json({ error: 'Post ID topilmadi' }, { status: 400 })
+        if (!id) {
+            return NextResponse.json({ error: 'Post ID topilmadi' }, { status: 400 })
+        }
 
         const { data: post, error: fetchError } = await supabase
             .from('posts')
@@ -144,8 +156,12 @@ export async function DELETE(request: Request) {
             .eq('id', id)
             .single()
 
-        if (fetchError || !post) return NextResponse.json({ error: 'Post topilmadi' }, { status: 404 })
-        if (post.user_id !== session.user.id) return NextResponse.json({ error: 'Bu sizning postingiz emas' }, { status: 403 })
+        if (fetchError || !post) {
+            return NextResponse.json({ error: 'Post topilmadi' }, { status: 404 })
+        }
+        if (post.user_id !== session.user.id) {
+            return NextResponse.json({ error: 'Bu sizning postingiz emas' }, { status: 403 })
+        }
 
         if (post.image_key) {
             try {
@@ -160,7 +176,9 @@ export async function DELETE(request: Request) {
             .delete()
             .eq('id', id)
 
-        if (deleteError) throw deleteError
+        if (deleteError) {
+            throw deleteError
+        }
         return NextResponse.json({ success: true }, { status: 200 })
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 })
@@ -174,11 +192,15 @@ export async function PUT(request: Request) {
     try {
         const supabase = await getSupabaseClient()
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 })
+        if (!session) {
+            return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 })
+        }
 
         const { id, content } = await request.json()
 
-        if (!id || !content?.trim()) return NextResponse.json({ error: 'ID yoki matn yuborilmadi' }, { status: 400 })
+        if (!id || !content?.trim()) {
+            return NextResponse.json({ error: 'ID yoki matn yuborilmadi' }, { status: 400 })
+        }
 
         const { data: updatedPost, error: dbError } = await supabase
             .from('posts')
@@ -188,9 +210,13 @@ export async function PUT(request: Request) {
             .select()
             .maybeSingle() 
 
-        if (dbError) throw dbError
+        if (dbError) {
+            throw dbError
+        }
       
-        if (!updatedPost) return NextResponse.json({ error: 'Post topilmadi yoki uni tahrirlashga ruxsatingiz yo\'q' }, { status: 404 })
+        if (!updatedPost) {
+            return NextResponse.json({ error: 'Post topilmadi yoki uni tahrirlashga ruxsatingiz yo\'q' }, { status: 404 })
+        }
 
         return NextResponse.json({ success: true, post: updatedPost }, { status: 200 })
     } catch (error: any) {

@@ -67,6 +67,7 @@ export async function POST(request: Request) {
             )
         } catch (pushErr) {
             console.error('Push notification yuborishda xatolik:', pushErr)
+            return NextResponse.json({ error: 'Push bildirishnoma yuborishda xatolik yuz berdi' }, { status: 500 })
         }
 
         return NextResponse.json({ success: true })

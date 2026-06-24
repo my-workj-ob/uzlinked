@@ -34,13 +34,20 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'reelId kerak' }, { status: 400 })
         }
 
-        const { error } = await supabase.from('reel_shares').insert({
-            reel_id: reelId,
-            user_id: session?.user?.id || null,
-            method: method || 'link',
-        })
+        try {
+            const { error } = await supabase.from('reel_shares').insert({
+                reel_id: reelId,
+                user_id: session?.user?.id || null,
+                method: method || 'link',
+            })
 
-        if (error) throw error
+            if (error) {
+                throw error
+            }
+        } catch (error) {
+            console.error('Error recording share event:', error)
+            return NextResponse.json({ error: 'Ulashish hodisasini qayd qilishda xatolik yuz berdi' }, { status: 500 })
+        }
 
         return NextResponse.json({ success: true })
     } catch (error: any) {

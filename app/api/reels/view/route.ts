@@ -50,12 +50,16 @@ export async function POST(request: Request) {
             completed: !!completed,
         })
 
-        if (error) throw error
+        if (error) {
+            console.error('Error recording view event:', error)
+            return NextResponse.json({ error: 'Ko\'rish hodisasini qayd qilishda xatolik yuz berdi' }, { status: 500 })
+        }
 
         // views_count'ni asosiy jadvalda ham oshiramiz (tezkor ko'rsatish uchun)
         try {
             await supabase.rpc('increment_views_count', { p_reel_id: reelId })
-        } catch {
+        } catch (error) {
+            console.error('Error incrementing views count:', error)
             // Agar RPC funksiyasi yo'q bo'lsa, oddiy update bilan fallback qilamiz
         }
 

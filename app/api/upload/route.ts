@@ -36,8 +36,9 @@ export async function POST(request: Request) {
       });
 
     if (uploadError) {
+      console.error('Error uploading file:', uploadError)
       return NextResponse.json(
-        { error: uploadError.message },
+        { error: 'Faylni yuklashda xatolik yuz berdi' },
         { status: 400 }
       );
     }

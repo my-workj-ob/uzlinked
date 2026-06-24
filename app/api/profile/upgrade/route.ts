@@ -14,7 +14,10 @@ export async function POST() {
             .update({ is_premium: true })
             .eq('id', session.user.id)
 
-        if (error) throw error
+        if (error) {
+            console.error('Error upgrading account:', error)
+            return NextResponse.json({ error: 'Hisobni yangilashda xatolik yuz berdi' }, { status: 500 })
+        }
 
         return NextResponse.json({ success: true, message: 'Hisobingiz PRO darajasiga ko\'tarildi!' })
     } catch (err: any) {

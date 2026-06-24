@@ -38,6 +38,7 @@ export async function GET(request: Request) {
         const response = await s3.send(command)
 
         if (!response.Body) {
+            console.error('Video content is empty for key:', key)
             return NextResponse.json({ error: 'Video ma\'lumoti bo\'sh' }, { status: 404 })
         }
 

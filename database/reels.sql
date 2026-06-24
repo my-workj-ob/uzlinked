@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS reels (
     title TEXT,
     description TEXT,
     views_count INT DEFAULT 0,
+    likes_count INT DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -24,6 +25,15 @@ CREATE POLICY "Foydalanuvchilar o'z reellarini qo'sha oladi" ON reels
 CREATE POLICY "Foydalanuvchilar o'z reellarini o'chira oladi" ON reels
     FOR DELETE TO authenticated
     USING (auth.uid() = user_id);
+
+CREATE POLICY "Foydalanuvchilar o'z reellarini yangilay oladi" ON reels
+    FOR UPDATE TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Hamma ko'rishlar sonini yangilay oladi" ON reels
+    FOR UPDATE USING (true)
+    WITH CHECK (true);
 
 -- ==========================================
 -- REEL LIKES JADVALI
@@ -77,7 +87,7 @@ CREATE POLICY "Foydalanuvchilar o'z e'lonlarini qo'sha oladi" ON listings
 CREATE POLICY "Foydalanuvchilar o'z e'lonlarini yangilay oladi" ON listings
     FOR UPDATE TO authenticated
     USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK (auth.uid() = user_id AND (SELECT user_id FROM listings WHERE id = id) = user_id);
 
 CREATE POLICY "Foydalanuvchilar o'z e'lonlarini o'chira oladi" ON listings
     FOR DELETE TO authenticated
@@ -106,3 +116,50 @@ CREATE POLICY "Foydalanuvchilar obuna bo'la oladi" ON follows
 CREATE POLICY "Foydalanuvchilar obunani bekor qila oladi" ON follows
     FOR DELETE TO authenticated
     USING (auth.uid() = follower_id);
+
+-- Reellar tartibi va foydalanuvchi bo'yicha qidiruv uchun
+CREATE INDEX IF NOT EXISTS idx_reels_user_id ON reels(user_id);
+CREATE INDEX IF NOT EXISTS idx_reels_created_at ON reels(created_at DESC);
+
+-- Layklar tez hisoblanishi va tekshirilishi uchun
+CREATE INDEX IF NOT EXISTS idx_reel_likes_reel_id ON reel_likes(reel_id);
+
+-- E'lonlarni filtrlash uchun
+CREATE INDEX IF NOT EXISTS idx_listings_user_id ON listings(user_id);
+CREATE INDEX IF NOT EXISTS idx_listings_is_active ON listings(is_active);
+
+-- Obunachilarni tezkor tekshirish uchun
+CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_follows_following_id ON follows(following_id);
+
+-- ==========================================
+-- REEL LIKES HISOBLASH TRIGGERI
+-- ==========================================
+CREATE OR REPLACE FUNCTION update_reel_likes_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE reels SET likes_count = likes_count + 1 WHERE id = NEW.reel_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE reels SET likes_count = likes_count - 1 WHERE id = OLD.reel_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER reel_likes_count_trigger
+AFTER INSERT OR DELETE ON reel_likes
+FOR EACH ROW EXECUTE FUNCTION update_reel_likes_count();
+
+-- ==========================================
+-- REEL LIKES SONINI OLISH FUNKSIYASI
+-- ==========================================
+CREATE OR REPLACE FUNCTION get_reel_likes_count(reel_id UUID)
+RETURNS INT AS $$
+DECLARE
+    likes_count INT;
+BEGIN
+    SELECT COUNT(*) INTO likes_count FROM reel_likes WHERE reel_id = get_reel_likes_count.reel_id;
+    RETURN likes_count;
+END;
+$$ LANGUAGE plpgsql;

@@ -48,8 +48,10 @@ export const useStories = () => {
         } catch (e: any) {
             if (e?.message?.includes('Failed to fetch') || e?.message?.includes('fetch')) {
                 console.warn('Story\'larni olishda tarmoq xatoligi:', e)
+                alert('Internet aloqasi yo\'q yoki server bilan aloqa muammosi mavjud. Iltimos, internetingizni tekshiring.')
             } else {
                 console.error('Story\'larni olishda xatolik:', e)
+                alert('Story\'larni olishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko\'ring.')
             }
         } finally {
             setIsLoading(false)

@@ -50,7 +50,9 @@ export async function GET(request: Request) {
             .eq('is_deleted', false)
             .order('created_at', { ascending: true })
 
-        if (error) throw error
+        if (error) {
+            throw error
+        }
 
         // Joriy foydalanuvchining layklari
         const { data: { session } } = await supabase.auth.getSession()
@@ -145,7 +147,9 @@ export async function POST(request: Request) {
             `)
             .single()
 
-        if (error) throw error
+        if (error) {
+            throw error
+        }
 
         // Notification yuborish (reel egasiga)
         try {
@@ -164,53 +168,61 @@ export async function POST(request: Request) {
             const { sendPushNotification } = await import('@/utils/push')
 
             if (reel && reel.user_id !== session.user.id) {
-                await supabase.from('notifications').insert({
-                    user_id: reel.user_id,
-                    actor_id: session.user.id,
-                    type: parentId ? 'reply' : 'comment',
-                    reel_id: reelId,
-                    comment_id: newComment.id,
-                })
-
-                await sendPushNotification(
-                    reel.user_id,
-                    {
-                        title: parentId ? 'Izohingizga javob! 💬' : 'Yangi izoh! 💬',
-                        body: parentId 
-                            ? `${commenterName} sizning videongizdagi izohga javob qaytardi.`
-                            : `${commenterName} sizning videongizga izoh yozdi.`,
-                        url: `/dashboard/notifications`,
-                    },
-                    parentId ? 'reply' : 'comment'
-                )
-            }
-
-            // Agar bu reply bo'lsa — parent komment egasiga ham notification
-            if (parentId) {
-                const { data: parentComment } = await supabase
-                    .from('reel_comments')
-                    .select('user_id')
-                    .eq('id', parentId)
-                    .single()
-
-                if (parentComment && parentComment.user_id !== session.user.id && parentComment.user_id !== reel?.user_id) {
+                try {
                     await supabase.from('notifications').insert({
-                        user_id: parentComment.user_id,
+                        user_id: reel.user_id,
                         actor_id: session.user.id,
-                        type: 'reply',
+                        type: parentId ? 'reply' : 'comment',
                         reel_id: reelId,
                         comment_id: newComment.id,
                     })
 
                     await sendPushNotification(
-                        parentComment.user_id,
+                        reel.user_id,
                         {
-                            title: 'Izohingizga javob! 💬',
-                            body: `${commenterName} siz qoldirgan izohga javob qaytardi.`,
+                            title: parentId ? 'Izohingizga javob! 💬' : 'Yangi izoh! 💬',
+                            body: parentId
+                                ? `${commenterName} sizning videongizdagi izohga javob qaytardi.`
+                                : `${commenterName} sizning videongizga izoh yozdi.`,
                             url: `/dashboard/notifications`,
                         },
-                        'reply'
+                        parentId ? 'reply' : 'comment'
                     )
+                } catch (error) {
+                    console.error('Error sending reel owner notification:', error)
+                }
+            }
+
+            // Agar bu reply bo'lsa — parent komment egasiga ham notification
+            if (parentId) {
+                try {
+                    const { data: parentComment } = await supabase
+                        .from('reel_comments')
+                        .select('user_id')
+                        .eq('id', parentId)
+                        .single()
+
+                    if (parentComment && parentComment.user_id !== session.user.id && parentComment.user_id !== reel?.user_id) {
+                        await supabase.from('notifications').insert({
+                            user_id: parentComment.user_id,
+                            actor_id: session.user.id,
+                            type: 'reply',
+                            reel_id: reelId,
+                            comment_id: newComment.id,
+                        })
+
+                        await sendPushNotification(
+                            parentComment.user_id,
+                            {
+                                title: 'Izohingizga javob! 💬',
+                                body: `${commenterName} siz qoldirgan izohga javob qaytardi.`,
+                                url: `/dashboard/notifications`,
+                            },
+                            'reply'
+                        )
+                    }
+                } catch (error) {
+                    console.error('Error sending parent comment owner notification:', error)
                 }
             }
         } catch (err) {

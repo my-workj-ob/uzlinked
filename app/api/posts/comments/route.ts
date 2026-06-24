@@ -7,7 +7,9 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url)
         const postId = searchParams.get('postId')
 
-        if (!postId) return NextResponse.json({ error: 'Post ID topilmadi' }, { status: 400 })
+        if (!postId) {
+            return NextResponse.json({ error: 'Post ID topilmadi' }, { status: 400 })
+        }
 
         // Get current user id to check likedByMe
         const { data: authData } = await supabase.auth.getUser()
@@ -53,7 +55,9 @@ export async function GET(request: Request) {
                 .eq('post_id', postId)
                 .order('created_at', { ascending: true })
 
-            if (oldError) throw oldError
+            if (oldError) {
+                throw oldError
+            }
             comments = oldComments || []
         } else {
             comments = newComments || []
@@ -101,11 +105,15 @@ export async function POST(request: Request) {
         const supabase = await createClient()
         const { data: { session } } = await supabase.auth.getSession()
 
-        if (!session) return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 })
+        if (!session) {
+            return NextResponse.json({ error: 'Ruxsat berilmagan' }, { status: 401 })
+        }
 
         const { postId, content, parentId } = await request.json()
 
-        if (!content?.trim()) return NextResponse.json({ error: 'Matn bo\'sh' }, { status: 400 })
+        if (!content?.trim()) {
+            return NextResponse.json({ error: 'Matn bo\'sh' }, { status: 400 })
+        }
 
         let newComment: any = null
 
@@ -153,7 +161,9 @@ export async function POST(request: Request) {
                 `)
                 .single()
 
-            if (errOld) throw errOld
+            if (errOld) {
+                throw errOld
+            }
             newComment = resOld
         } else {
             newComment = resNew

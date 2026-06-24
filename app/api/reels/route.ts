@@ -43,31 +43,36 @@ export async function GET(request: Request) {
 
         let reelIds: string[] | null = null
 
-        if (mode === 'foryou') {
-            // Algoritmik ranking — SQL funksiyasi get_ranked_reels orqali
-            const { data: ranked, error: rankError } = await supabase.rpc('get_ranked_reels', {
-                p_user_id: currentUserId || null,
-                p_limit: 50,
-                p_offset: 0,
-            })
-            if (!rankError && ranked) {
-                reelIds = ranked.map((r: any) => r.reel_id)
+        try {
+            if (mode === 'foryou') {
+                // Algoritmik ranking — SQL funksiyasi get_ranked_reels orqali
+                const { data: ranked, error: rankError } = await supabase.rpc('get_ranked_reels', {
+                    p_user_id: currentUserId || null,
+                    p_limit: 50,
+                    p_offset: 0,
+                })
+                if (!rankError && ranked) {
+                    reelIds = ranked.map((r: any) => r.reel_id)
+                }
+            } else if (mode === 'following' && currentUserId) {
+                const { data: following } = await supabase
+                    .from('follows')
+                    .select('following_id')
+                    .eq('follower_id', currentUserId)
+                const followingIds = (following || []).map((f: any) => f.following_id)
+                if (followingIds.length === 0) {
+                    return NextResponse.json([])
+                }
+                const { data: followedReels } = await supabase
+                    .from('reels')
+                    .select('id')
+                    .in('user_id', followingIds)
+                    .order('created_at', { ascending: false })
+                reelIds = (followedReels || []).map((r: any) => r.id)
             }
-        } else if (mode === 'following' && currentUserId) {
-            const { data: following } = await supabase
-                .from('follows')
-                .select('following_id')
-                .eq('follower_id', currentUserId)
-            const followingIds = (following || []).map((f: any) => f.following_id)
-            if (followingIds.length === 0) {
-                return NextResponse.json([])
-            }
-            const { data: followedReels } = await supabase
-                .from('reels')
-                .select('id')
-                .in('user_id', followingIds)
-                .order('created_at', { ascending: false })
-            reelIds = (followedReels || []).map((r: any) => r.id)
+        } catch (error) {
+            console.error('Error fetching reels:', error)
+            return NextResponse.json({ error: 'Reellarni olishda xatolik yuz berdi' }, { status: 500 })
         }
 
         let query = supabase

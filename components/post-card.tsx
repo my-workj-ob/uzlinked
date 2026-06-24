@@ -1,15 +1,19 @@
 "use client"
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy, FiAlertTriangle, FiUser, FiCornerDownLeft, FiMapPin, FiExternalLink, FiCheckCircle, FiDollarSign } from 'react-icons/fi'
+import {
+  FiHeart, FiMessageSquare, FiSend, FiTrash2, FiEdit3, FiCopy,
+  FiAlertTriangle, FiUser, FiCornerDownLeft, FiMapPin, FiExternalLink,
+  FiCheckCircle, FiDollarSign
+} from 'react-icons/fi'
 import { Loader2 } from 'lucide-react'
 import { useLikeToggle } from '@/hooks/use-queries'
 import { FaHeart } from 'react-icons/fa'
 import { HiEllipsisHorizontal, HiXMark } from 'react-icons/hi2'
-import { BottomSheet } from '@/components/bottom-sheet'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { BottomSheet, BottomSheetRef } from '@/components/bottom-sheet'
+import { motion } from 'framer-motion'
 import { createClient } from '@/utils/supabase/client'
 
 export interface CommentType {
@@ -26,17 +30,17 @@ export interface CommentType {
 
 export interface PostType {
   id: string | number
-  authorId: string // profilga o'tish uchun shart
+  authorId: string
   author: string
   avatar: string
   time: string
   location: string
   image: string | null
   content: string
-  likes: string | number // bazadan keladigan likelar soni
+  likes: string | number
   isOwner: boolean
-  likedByMe?: boolean // joriy user like bosganmi?
-  commentsCount?: number // kommentlar soni
+  likedByMe?: boolean
+  commentsCount?: number
   authorIsPremium?: boolean
 }
 
@@ -77,9 +81,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const router = useRouter()
   const supabase = createClient()
 
-  // Hydration uchun mounted state
-  const [mounted, setMounted] = useState(false)
-
   const [liked, setLiked] = useState(post.likedByMe || false)
   const [likesCount, setLikesCount] = useState(Number(post.likes) || 0)
   const [showComments, setShowComments] = useState(false)
@@ -88,12 +89,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const [loadingComments, setLoadingComments] = useState(false)
   const [replyingTo, setReplyingTo] = useState<CommentType | null>(null)
   const commentInputRef = useRef<HTMLInputElement>(null)
-
-  const closeComments = () => {
-    setShowComments(false)
-    setReplyingTo(null)
-  }
-
+const [isSheetReady, setIsSheetReady] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(post.content)
@@ -104,22 +100,27 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const likeMutation = useLikeToggle()
 
-  // Custom states for Tipping and Real-time detail modal
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(false)
-
-  // Ref for the BottomSheet to command its expansion
-  const sheetRef = useRef<{ expand: () => void; collapse: () => void } | null>(null)
-
-  const handleInputFocus = () => {
-    sheetRef.current?.expand()
-  }
+  const sheetRef = useRef<BottomSheetRef>(null)
 
   const [showTipModal, setShowTipModal] = useState(false)
   const [tipAmount, setTipAmount] = useState('5000')
   const [customTip, setCustomTip] = useState('')
   const [isSendingTip, setIsSendingTip] = useState(false)
   const [tipSuccess, setTipSuccess] = useState(false)
+
+  const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  const closeComments = () => {
+    setShowComments(false)
+    setReplyingTo(null)
+  }
+
+  const handleInputFocus = () => {
+    sheetRef.current?.expand()
+  }
 
   const handleTipClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -151,7 +152,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           setCustomTip('')
         }, 2000)
       } else {
-        const data = await res.json()
+        const data = await res.json().catch(() => ({}))
         alert(data.error || "Tip yuborishda xatolik yuz berdi")
       }
     } catch {
@@ -196,28 +197,57 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       return part
     })
   }
-
+// Modal ochilgandan keyin 280ms (animatsiya tugaguncha) kommentlarni ushlab turadi
   useEffect(() => {
-    setMounted(true)
-    loadComments()
-
-    if (typeof window !== 'undefined') {
-      const onlineIds = (window as any).supabaseOnlineUserIds || []
-      setIsOnline(onlineIds.includes(post.authorId))
+    if (isDetailModalOpen) {
+      const timer = setTimeout(() => setIsSheetReady(true), 280)
+      return () => clearTimeout(timer)
+    } else {
+      setIsSheetReady(false)
     }
+  }, [isDetailModalOpen])
+  const loadComments = useCallback(async (signal?: AbortSignal) => {
+    try {
+      setLoadingComments(true)
+      const res = await fetch(`/api/posts/comments?postId=${post.id}`, { signal })
+      if (res.ok) {
+        const data = await res.json()
+        setComments(data)
+        setCommentsCount(data.length)
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.error("Kommentlarni yuklashda xato:", err)
+      }
+    } finally {
+      setLoadingComments(false)
+    }
+  }, [post.id])
+
+  // Boshlang'ich yuklash + foydalanuvchining online holatini kuzatish
+  useEffect(() => {
+    const controller = new AbortController()
+    loadComments(controller.signal)
+
+   
+
+    const onlineIds = (window as any).supabaseOnlineUserIds || []
+    setIsOnline(onlineIds.includes(post.authorId))
 
     const handleOnlineUsersChange = (e: Event) => {
-      const onlineIds = (e as CustomEvent).detail || []
-      setIsOnline(onlineIds.includes(post.authorId))
+      const ids = (e as CustomEvent).detail || []
+      setIsOnline(ids.includes(post.authorId))
     }
     window.addEventListener('supabase-online-users', handleOnlineUsersChange)
 
     return () => {
+      controller.abort()
       if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current)
       window.removeEventListener('supabase-online-users', handleOnlineUsersChange)
     }
-  }, [post.authorId])
+  }, [post.authorId, loadComments])
 
+  // Tashqariga bosilganda kontekst menyusini yopish
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -228,48 +258,46 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
+  // Izohlar oynasi (drawer yoki detail modal) ochilganda real-time obuna + yangilash.
+  // DIQQAT: bu yerda document.body.style.overflow ataylab boshqarilmaydi.
+  // BottomSheet komponenti o'zining isOpen holatiga mos overflow'ni mustaqil
+  // boshqaradi — ikki joydan bitta DOM xususiyatini yozish aynan shu state
+  // race condition (modalning "sakrab" ochilishi) sababi edi.
   useEffect(() => {
-    if (showComments || isDetailModalOpen) {
-      loadComments()
-      document.body.style.overflow = 'hidden'
+    if (!showComments && !isDetailModalOpen) return
+     console.log("modal chiqdi yoki izohlar ochildi")
+    const controller = new AbortController()
+    loadComments(controller.signal)
 
-      const channel = supabase.channel(`post-comments-${post.id}`)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'comments',
-          filter: `post_id=eq.${post.id}`
-        }, () => {
-          loadComments()
-        })
-        .subscribe()
+    const channel = supabase.channel(`post-comments-${post.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'comments',
+        filter: `post_id=eq.${post.id}`
+      }, () => {
+        loadComments()
+      })
+      .subscribe()
 
-      return () => {
-        document.body.style.overflow = 'unset'
-        supabase.removeChannel(channel)
-      }
-    } else {
-      document.body.style.overflow = 'unset'
+    return () => {
+      controller.abort()
+      supabase.removeChannel(channel)
+       console.log("modal yopildi yoki izohlar yopildi, channel olib tashlandi")
     }
-  }, [showComments, isDetailModalOpen, post.id])
+  }, [ post.id, ])
 
-  const loadComments = async () => {
-    try {
-      setLoadingComments(true)
-      const res = await fetch(`/api/posts/comments?postId=${post.id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setComments(data)
-        setCommentsCount(data.length)
-      }
-    } catch (err) {
-      console.error("Kommentlarni yuklashda xato:", err)
-    } finally {
-      setLoadingComments(false)
-    }
-  }
+  // Faqat pastki inline "izohlar" drawer scroll'ni qotiradi — bu BottomSheet
+  // komponentidan foydalanmaydigan mustaqil portal, shuning uchun o'zi
+  // overflow'ni boshqarishi shart.
+  
 
-  // Like bosish/o'chirish logikasi
+  // Tahrirlash oynasi ochilganda inputni postning eng so'nggi content'i bilan
+  // sinxronlash (oldin faqat birinchi mount'da olingan edi).
+  useEffect(() => {
+    if (isEditing) setEditContent(post.content)
+  }, [isEditing, post.content])
+
   const handleLikeToggle = async () => {
     const nextLiked = !liked
     const previousLiked = liked
@@ -282,7 +310,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       await likeMutation.mutateAsync(post.id)
     } catch (err: any) {
       console.error("Like bosishda xatolik:", err)
-      if (err.message === 'UNAUTHORIZED') {
+      if (err?.message === 'UNAUTHORIZED') {
         alert("Iltimos, postga like bosish uchun tizimga kiring!")
         router.push('/login')
       } else {
@@ -294,18 +322,17 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   }
 
   const handleLikeComment = async (commentId: string | number) => {
-    // Optimistic UI Update
-    setComments(prev => prev.map(c => {
-      if (c.id === commentId) {
-        const nextLiked = !c.likedByMe
-        return {
-          ...c,
-          likedByMe: nextLiked,
-          likesCount: nextLiked ? (c.likesCount || 0) + 1 : Math.max(0, (c.likesCount || 0) - 1)
-        }
+    const toggle = (list: CommentType[]) => list.map(c => {
+      if (c.id !== commentId) return c
+      const nextLiked = !c.likedByMe
+      return {
+        ...c,
+        likedByMe: nextLiked,
+        likesCount: nextLiked ? (c.likesCount || 0) + 1 : Math.max(0, (c.likesCount || 0) - 1)
       }
-      return c
-    }))
+    })
+
+    setComments(prev => toggle(prev))
 
     try {
       const res = await fetch('/api/posts/comments/like', {
@@ -314,19 +341,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         body: JSON.stringify({ commentId })
       })
       if (!res.ok) throw new Error('Like toggle failed')
-    } catch (err) {
-      // Revert changes on failure
-      setComments(prev => prev.map(c => {
-        if (c.id === commentId) {
-          const nextLiked = !c.likedByMe
-          return {
-            ...c,
-            likedByMe: nextLiked,
-            likesCount: nextLiked ? (c.likesCount || 0) + 1 : Math.max(0, (c.likesCount || 0) - 1)
-          }
-        }
-        return c
-      }))
+    } catch {
+      setComments(prev => toggle(prev))
     }
   }
 
@@ -337,7 +353,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
     }, 100)
   }
 
-  // Kommentariya qo'shish logikasi
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!commentText.trim()) return
@@ -367,7 +382,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         }
         alert("Komment qoldirishda xatolik yuz berdi")
       }
-    } catch (err) {
+    } catch {
       alert("Komment qoldirishda xatolik yuz berdi")
     }
   }
@@ -375,7 +390,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!editContent.trim()) return
-    if (onUpdatePost) onUpdatePost(post.id, editContent)
+    onUpdatePost?.(post.id, editContent)
     setIsEditing(false)
   }
 
@@ -386,10 +401,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
     setShowMenu(false)
   }
 
-  // Profilga o'tish — agar o'zining posti bo'lsa, shaxsiy profilga,
-  // aks holda boshqa userning dinamik profil sahifasiga
-  const goToProfile = (e: React.MouseEvent) => {
-    e.stopPropagation()
+  const navigateToProfile = () => {
     if (post.isOwner) {
       router.push('/dashboard/profile')
     } else {
@@ -397,13 +409,15 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
     }
   }
 
-  const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false)
+  const goToProfile = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigateToProfile()
+  }
 
   const handleImageClick = (e: React.MouseEvent) => {
     e.stopPropagation()
 
     if (clickTimeoutRef.current) {
-      // Double tap detected: trigger like, cancel navigation
       clearTimeout(clickTimeoutRef.current)
       clickTimeoutRef.current = null
 
@@ -413,7 +427,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         handleLikeToggle()
       }
     } else {
-      // Potential single tap: wait to differentiate from double tap
       clickTimeoutRef.current = setTimeout(() => {
         clickTimeoutRef.current = null
         if (!isDetailPage) {
@@ -429,8 +442,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
     }
   }
 
-  const cardRef = useRef<HTMLDivElement>(null)
-
   return (
     <>
       <motion.div
@@ -442,7 +453,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         transition={{ type: "spring", stiffness: 120, damping: 16, mass: 0.8 }}
         className={`group bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-3xl overflow-hidden relative transition-all duration-500 ${showMenu ? 'z-50' : 'z-10'} ${isDetailPage ? '' : 'cursor-pointer hover:shadow-[0_20px_50px_rgba(8,112,184,0.05)] hover:border-slate-200/80 dark:hover:border-white/10 dark:hover:shadow-[0_20px_50px_rgba(59,130,246,0.02)]'}`}
       >
-        {/* Ambient Backlight Glow for Hover in Dark Mode */}
         {!isDetailPage && (
           <div className="absolute -inset-px rounded-[24px] bg-gradient-to-tr from-blue-500/10 via-indigo-500/5 to-purple-500/10 opacity-0 group-hover:opacity-100 blur-xl transition duration-700 pointer-events-none" />
         )}
@@ -454,7 +464,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           >
             <div className="relative">
               <img
-                src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
+                src={post.avatar}
                 className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-800 group-hover/author:ring-blue-500/60 transition-all duration-300"
                 alt=""
               />
@@ -487,7 +497,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           <div className="relative" ref={menuRef}>
             <button
               onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-              className={`p-1.5 rounded-full transition-colors ${showMenu ? 'bg-slate-150 dark:bg-slate-800 text-slate-700 dark:text-slate-300' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}
+              className={`p-1.5 rounded-full transition-colors ${showMenu ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}
             >
               <HiEllipsisHorizontal className="w-5 h-5" />
             </button>
@@ -549,7 +559,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                 className={`w-full h-full ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'} transition-transform duration-700 ease-out group-hover/img:scale-[1.03]`}
               />
 
-              {/* Floating location tag inside the image */}
               {post.location && (
                 <div className="absolute bottom-3 left-3 backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-all duration-350 hover:bg-black/60">
                   <FiMapPin className="w-3.5 h-3.5 text-blue-400" />
@@ -570,10 +579,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
           <div className="flex items-center gap-4">
             <button
               onClick={(e) => { e.stopPropagation(); handleLikeToggle(); }}
-              className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-455 transition active:scale-90"
+              className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-500 transition active:scale-90"
             >
               {liked ? <FaHeart className="w-5 h-5 text-rose-500 animate-jump" /> : <FiHeart className="w-5 h-5" />}
-              <span className="text-xs font-semibold text-slate-655 dark:text-slate-400">{likesCount}</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{likesCount}</span>
             </button>
 
             <button
@@ -585,25 +594,24 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                   setIsDetailModalOpen(true)
                 }
               }}
-              className={`flex items-center gap-1.5 transition active:scale-90 ${isDetailPage || showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-450'
-                }`}>
+              className={`flex items-center gap-1.5 transition active:scale-90 ${isDetailPage || showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400'}`}
+            >
               <FiMessageSquare className="w-5 h-5" />
-              <span className="text-xs font-semibold text-slate-655 dark:text-slate-400">{commentsCount}</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">{commentsCount}</span>
             </button>
 
             <button
               onClick={(e) => e.stopPropagation()}
-              className="text-slate-700 dark:text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-405 transition"
+              className="text-slate-700 dark:text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition"
             >
               <FiSend className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Premium Tipping Button */}
           <button
             onClick={handleTipClick}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${post.authorIsPremium
-              ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs shadow-amber-500/5'
+              ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-400 border-amber-500/25 shadow-xs shadow-amber-500/5'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
               }`}
           >
@@ -620,7 +628,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         <div className="px-4 pb-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed border-b border-slate-50 dark:border-white/5 relative z-10 select-text">
           <span
             onClick={(e) => { e.stopPropagation(); goToProfile(e); }}
-            className="font-bold text-slate-900 dark:text-slate-100 mr-1.5 cursor-pointer hover:text-blue-600 dark:hover:text-blue-450 transition-colors"
+            className="font-bold text-slate-900 dark:text-slate-100 mr-1.5 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             {post.author}
           </span>
@@ -630,7 +638,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         {!isDetailPage && (
           <div
             onClick={(e) => { e.stopPropagation(); setIsDetailModalOpen(true); }}
-            className="p-3.5 bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-50 dark:border-white/5 flex items-center justify-between cursor-pointer text-xs text-slate-400 dark:text-slate-500 hover:text-slate-655 dark:hover:text-slate-350 transition-colors relative z-10"
+            className="p-3.5 bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-50 dark:border-white/5 flex items-center justify-between cursor-pointer text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors relative z-10"
           >
             <span>Fikr bildiring...</span>
             <FiSend className="w-3.5 h-3.5 text-slate-300 dark:text-slate-700" />
@@ -638,7 +646,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         )}
       </motion.div>
 
-      {mounted && showComments && createPortal(
+      {showComments && createPortal(
         <div className="fixed inset-0 z-[999999] flex items-end justify-center">
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300 animate-fade-in"
@@ -651,8 +659,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             </div>
 
             <div className="flex items-center justify-between px-4 pt-6 pb-3 border-b border-slate-100 dark:border-white/5">
-              <span className="text-slate-955 dark:text-slate-100 font-extrabold text-sm">Izohlar ({commentsCount})</span>
-              <button onClick={closeComments} className="p-1.5 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors">
+              <span className="text-slate-900 dark:text-slate-100 font-extrabold text-sm">Izohlar ({commentsCount})</span>
+              <button onClick={closeComments} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
                 <HiXMark className="w-5 h-5" />
               </button>
             </div>
@@ -663,7 +671,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                   <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
                 </div>
               ) : comments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center text-slate-450">
+                <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400">
                   <p className="text-xs font-semibold">Birinchi bo'lib izoh qoldiring 💬</p>
                 </div>
               ) : (
@@ -672,15 +680,14 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                     const replies = comments.filter(c => c.parentId === comment.id)
                     return (
                       <div key={comment.id} className="space-y-3">
-                        {/* Parent Comment */}
                         <div className="flex items-start gap-3 text-xs animate-comment-slide-in [will-change:transform,opacity]">
                           <img src={comment.avatar} className="w-8 h-8 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
                           <div className="flex-1 min-w-0">
                             <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3.5 py-2">
-                              <span className="font-bold text-slate-950 dark:text-slate-100 block text-[11px] mb-0.5">{comment.user}</span>
-                              <p className="text-slate-850 dark:text-slate-100 leading-relaxed font-normal break-words select-text">{comment.text}</p>
+                              <span className="font-bold text-slate-900 dark:text-slate-100 block text-[11px] mb-0.5">{comment.user}</span>
+                              <p className="text-slate-800 dark:text-slate-100 leading-relaxed font-normal break-words select-text">{comment.text}</p>
                             </div>
-                            <div className="flex items-center gap-4 mt-1.5 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-550 select-none">
+                            <div className="flex items-center gap-4 mt-1.5 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 select-none">
                               <span>{formatTime(comment.createdAt)}</span>
                               <button
                                 onClick={() => handleLikeComment(comment.id)}
@@ -699,7 +706,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                           </div>
                         </div>
 
-                        {/* Nested Replies */}
                         {replies.length > 0 && (
                           <div className="ml-10 pl-3 border-l-2 border-slate-100 dark:border-white/5 space-y-3">
                             {replies.map((reply) => (
@@ -707,10 +713,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                                 <img src={reply.avatar} className="w-8 h-8 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
                                 <div className="flex-1 min-w-0">
                                   <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3.5 py-2">
-                                    <span className="font-bold text-slate-950 dark:text-slate-100 block text-[11px] mb-0.5">{reply.user}</span>
-                                    <p className="text-slate-850 dark:text-slate-100 leading-relaxed font-normal break-words select-text">{reply.text}</p>
+                                    <span className="font-bold text-slate-900 dark:text-slate-100 block text-[11px] mb-0.5">{reply.user}</span>
+                                    <p className="text-slate-800 dark:text-slate-100 leading-relaxed font-normal break-words select-text">{reply.text}</p>
                                   </div>
-                                  <div className="flex items-center gap-4 mt-1.5 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-550 select-none">
+                                  <div className="flex items-center gap-4 mt-1.5 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 select-none">
                                     <span>{formatTime(reply.createdAt)}</span>
                                     <button
                                       onClick={() => handleLikeComment(reply.id)}
@@ -732,9 +738,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               )}
             </div>
 
-            {/* Replying to indicator preview */}
             {replyingTo && (
-              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-white/10 text-xs text-slate-650 dark:text-slate-450 select-none">
+              <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-white/10 text-xs text-slate-600 dark:text-slate-400 select-none">
                 <span>
                   <strong>@{replyingTo.user}</strong> ga javob berilmoqda
                 </span>
@@ -756,7 +761,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                 placeholder={replyingTo ? "Javob yozing..." : "Fikr bildiring..."}
                 className="w-full text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-2.5 outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-900 dark:text-slate-100"
               />
-              <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-450 dark:disabled:text-slate-650 rounded-2xl transition active:scale-95">
+              <button type="submit" disabled={!commentText.trim()} className="p-2.5 bg-blue-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 dark:disabled:text-slate-600 rounded-2xl transition active:scale-95">
                 <FiSend className="w-4 h-4" />
               </button>
             </form>
@@ -801,10 +806,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       <BottomSheet isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Postni o'chirish">
         <div className="flex flex-col gap-4 text-center select-none">
           <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/20 rounded-full flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900/10">
-            <FiTrash2 className="w-5 h-5 text-rose-600 dark:text-rose-455" />
+            <FiTrash2 className="w-5 h-5 text-rose-600 dark:text-rose-500" />
           </div>
           <div>
-            <h4 className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">Postni o'chirib tashlaysizmi?</h4>
+            <h4 className="text-slate-900 dark:text-slate-100 font-extrabold text-sm">Postni o'chirib tashlaysizmi?</h4>
             <p className="text-slate-500 dark:text-slate-400 text-[11px] font-semibold mt-1">Ushbu harakatni ortga qaytarib bo'lmaydi va post butunlay o'chiriladi.</p>
           </div>
           <div className="flex gap-2.5 mt-2">
@@ -818,8 +823,8 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             <button
               type="button"
               onClick={() => {
-                if (onDeletePost) onDeletePost(post.id);
-                setShowDeleteConfirm(false);
+                onDeletePost?.(post.id)
+                setShowDeleteConfirm(false)
               }}
               className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-2xl active:scale-95 transition-all cursor-pointer"
             >
@@ -833,10 +838,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
       <BottomSheet isOpen={showTipModal} onClose={() => setShowTipModal(false)} title="Ijodkorni qo'llab-quvvatlash">
         {tipSuccess ? (
           <div className="flex flex-col items-center justify-center py-6 text-center select-none animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-14 h-14 bg-green-50 dark:bg-green-950/20 rounded-full flex items-center justify-center border border-green-150 mb-3">
+            <div className="w-14 h-14 bg-green-50 dark:bg-green-950/20 rounded-full flex items-center justify-center border border-green-100 mb-3">
               <FiCheckCircle className="w-6 h-6 text-green-500" />
             </div>
-            <h4 className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">To'lov muvaffaqiyatli yuborildi!</h4>
+            <h4 className="text-slate-900 dark:text-slate-100 font-extrabold text-sm">To'lov muvaffaqiyatli yuborildi!</h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-1">Siz @{post.author} ijodini qo'llab-quvvatlash uchun pul yubordingiz. Rahmat!</p>
           </div>
         ) : (
@@ -845,7 +850,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/20 rounded-full flex items-center justify-center mx-auto border border-amber-100/30 mb-3">
                 <FiDollarSign className="w-5 h-5 text-amber-500 animate-pulse" />
               </div>
-              <h4 className="text-slate-950 dark:text-slate-100 font-extrabold text-sm">Ijodkorni rag'batlantirish (Tip)</h4>
+              <h4 className="text-slate-900 dark:text-slate-100 font-extrabold text-sm">Ijodkorni rag'batlantirish (Tip)</h4>
               <p className="text-slate-500 dark:text-slate-400 text-[11px] font-semibold mt-0.5">@{post.author} uchun moddiy rag'bat summasini tanlang</p>
             </div>
 
@@ -857,7 +862,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                   onClick={() => { setTipAmount(amount); setCustomTip(''); }}
                   className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${tipAmount === amount && !customTip
                     ? 'bg-amber-500 border-amber-500 text-white shadow-xs'
-                    : 'bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-350 border-slate-200 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-slate-900/60'
+                    : 'bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-slate-900/60'
                     }`}
                 >
                   {Number(amount).toLocaleString('uz-UZ')} UZS
@@ -866,7 +871,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Boshqa miqdor</label>
+              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Boshqa miqdor</label>
               <input
                 type="number"
                 value={customTip}
@@ -879,7 +884,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             <button
               type="submit"
               disabled={isSendingTip || (!customTip && !tipAmount)}
-              className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-650 hover:to-yellow-600 text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-extrabold text-xs rounded-2xl active:scale-95 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isSendingTip ? (
                 <>
@@ -896,6 +901,7 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
 
       {/* Quick View Post Details Bottom Sheet */}
       <BottomSheet
+        key={`detail-sheet-${post.id}`}
         ref={sheetRef}
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
@@ -916,17 +922,16 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         }
         headerContent={
           <div className="px-5 pt-5 pb-3 border-b border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900 flex flex-col gap-4 select-none">
-            {/* Author Header */}
             <div className="flex items-center justify-between">
               <div
-                onClick={() => { setIsDetailModalOpen(false); goToProfile({ stopPropagation: () => { } } as any); }}
+                onClick={() => { setIsDetailModalOpen(false); navigateToProfile(); }}
                 className="flex items-center gap-3 cursor-pointer group/det"
                 data-no-drag
               >
                 <div className="relative">
                   <img
-                    src={post.avatar.startsWith('http') ? post.avatar : `${window.location.origin}${post.avatar}`}
-                    className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-855"
+                    src={post.avatar}
+                    className="w-10 h-10 object-cover rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-800"
                     alt=""
                   />
                   {isOnline && (
@@ -956,7 +961,6 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               </div>
             </div>
 
-            {/* Post Image */}
             {post.image && (
               <div className="rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950 aspect-4/3 max-h-[35vh]">
                 <img src={post.image} alt="" className="w-full h-full object-cover" />
@@ -985,12 +989,10 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
         }
       >
         <div className="flex flex-col gap-4 select-none">
-          {/* Post Content */}
           <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">
             {renderContentWithHashtags(post.content)}
           </p>
 
-          {/* Post Actions */}
           <div className="flex items-center justify-between py-2 border-y border-slate-100 dark:border-white/5">
             <div className="flex items-center gap-4">
               <button
@@ -1007,13 +1009,12 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
               </div>
             </div>
 
-            {/* Tip Button inside modal */}
             <button
               onClick={handleTipClick}
               data-no-drag
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition active:scale-95 border ${post.authorIsPremium
-                ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-450 border-amber-500/25 shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-550 border-transparent cursor-not-allowed'
+                ? 'bg-gradient-to-r from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 text-amber-600 dark:text-amber-400 border-amber-500/25 shadow-xs'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-transparent cursor-not-allowed'
                 }`}
             >
               {post.authorIsPremium && (
@@ -1026,26 +1027,38 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
             </button>
           </div>
 
-          {/* Quick View Comments List */}
-          <div className="text-[10px] font-bold text-slate-450 dark:text-slate-555 uppercase tracking-wider mt-1 shrink-0">Munozaralar ({commentsCount})</div>
+          <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-1 shrink-0">Munozaralar ({commentsCount})</div>
           <div className="space-y-3.5 pb-4">
             {loadingComments && comments.length === 0 ? (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
               </div>
             ) : comments.length === 0 ? (
-              <p className="text-[11px] text-slate-450 dark:text-slate-500 font-semibold text-center py-4">Birinchi bo'lib fikr bildiring!</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold text-center py-4">Birinchi bo'lib fikr bildiring!</p>
             ) : (
-              <div className="space-y-3.5">
+              <div className="space-y-3.5 pb-4 min-h-[150px]">
+            {!isSheetReady || (loadingComments && comments.length === 0) ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              </div>
+            ) : comments.length === 0 ? (
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold text-center py-4 animate-fade-in">Birinchi bo'lib fikr bildiring!</p>
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                transition={{ duration: 0.2 }}
+                className="space-y-3.5"
+              >
                 {comments.filter(c => !c.parentId).map((comment) => (
                   <div key={comment.id} className="flex items-start gap-2.5 text-xs animate-comment-slide-in">
                     <img src={comment.avatar} className="w-7 h-7 object-cover rounded-full bg-slate-200 dark:bg-slate-800 shrink-0 mt-0.5" alt="" />
                     <div className="flex-1 min-w-0">
                       <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 rounded-2xl px-3 py-1.5">
-                        <span className="font-bold text-slate-950 dark:text-slate-100 block text-[10px] mb-0.5">{comment.user}</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100 block text-[10px] mb-0.5">{comment.user}</span>
                         <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-normal break-words select-text">{comment.text}</p>
                       </div>
-                      <div className="flex items-center gap-3 mt-1.5 ml-1 text-[9px] font-bold text-slate-400 dark:text-slate-550">
+                      <div className="flex items-center gap-3 mt-1.5 ml-1 text-[9px] font-bold text-slate-400 dark:text-slate-500">
                         <span>{formatTime(comment.createdAt)}</span>
                         <button onClick={() => handleLikeComment(comment.id)} data-no-drag className={`hover:text-rose-500 flex items-center gap-0.5 ${comment.likedByMe ? 'text-rose-500' : ''}`}>
                           {comment.likedByMe ? <FaHeart className="w-3.5 h-3.5 text-rose-500" /> : <FiHeart className="w-3.5 h-3.5" />}
@@ -1055,7 +1068,9 @@ export const PostCard = ({ post, onDeletePost, onUpdatePost, isDetailPage = fals
                     </div>
                   </div>
                 ))}
-              </div>
+              </motion.div>
+            )}
+          </div>
             )}
           </div>
         </div>

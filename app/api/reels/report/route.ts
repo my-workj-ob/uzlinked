@@ -56,7 +56,9 @@ export async function POST(request: Request) {
             reason: reason.trim(),
         })
 
-        if (error) throw error
+        if (error) {
+            throw error
+        }
 
         return NextResponse.json({ success: true, message: "Shikoyatingiz qabul qilindi. Tez orada ko'rib chiqiladi." })
     } catch (error: any) {

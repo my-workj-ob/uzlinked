@@ -31,6 +31,7 @@ export async function GET() {
         })
 
         if (!response.ok) {
+            console.error('GitHub API error:', response.status, response.statusText)
             throw new Error(`GitHub API error: ${response.status} ${response.statusText}`)
         }
 
@@ -65,4 +66,3 @@ export async function GET() {
         })
     }
 }
-

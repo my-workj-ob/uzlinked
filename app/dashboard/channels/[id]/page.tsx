@@ -210,6 +210,7 @@ export default function ChannelDetailPage() {
             .single()
 
         if (error || !data) {
+            console.error('Error fetching channel:', error)
             toast.error("Kanal topilmadi")
             router.push('/dashboard/messages')
             return
@@ -325,6 +326,7 @@ export default function ChannelDetailPage() {
         if (!currentUserId || !channelId) return
         const { error } = await supabase.from('group_members').insert([{ group_id: channelId, user_id: currentUserId, role: 'member' }])
         if (error) {
+            console.error('Error subscribing to channel:', error)
             toast.error("Obuna bo'lishda xatolik yuz berdi")
         } else {
             toast.success("Kanalga obuna bo'ldingiz")
@@ -377,6 +379,7 @@ export default function ChannelDetailPage() {
             toast.success("Kanal o'chirildi")
             router.push('/dashboard/messages')
         } else {
+            console.error('Error deleting channel:', error)
             toast.error("O'chirishda xatolik yuz berdi")
         }
     }
@@ -395,6 +398,7 @@ export default function ChannelDetailPage() {
             .eq('id', channelId)
 
         if (error) {
+            console.error('Error saving channel:', error)
             toast.error("Saqlashda xatolik yuz berdi")
         } else {
             toast.success("Kanal ma'lumotlari yangilandi")
@@ -417,6 +421,7 @@ export default function ChannelDetailPage() {
             setEditingMessageId(null)
             const { error } = await supabase.from('messages').update({ text, is_edited: true }).eq('id', msgId)
             if (error) {
+                console.error('Error editing message:', error)
                 toast.error("Xabarni o'zgartirib bo'lmadi")
             } else {
                 setMessages(prev => prev.map(m => m.id === msgId ? { ...m, text, is_edited: true } : m))
@@ -453,6 +458,7 @@ export default function ChannelDetailPage() {
             .single()
 
         if (error) {
+            console.error('Error sending message:', error)
             setMessages(prev => prev.filter(m => m.id !== tempId))
             setTypedMessage(text)
             toast.error("Xabar yuborishda xatolik yuz berdi")
@@ -565,7 +571,7 @@ export default function ChannelDetailPage() {
     }
 
     return (
-        <div 
+        <div
             onTouchStart={handlePageTouchStart}
             onTouchMove={handlePageTouchMove}
             onTouchEnd={handlePageTouchEnd}
