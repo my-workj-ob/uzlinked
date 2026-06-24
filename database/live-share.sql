@@ -147,7 +147,9 @@ end $$;
 -- $$;
 
 -- ──────────────────────────────────────────────
--- 6. VIEW: jonli efirlar profil bilan (feed uchun qulay)
+-- 6. VIEW: jonli efirlar + so'nggi 24 soatda tugagan efirlar
+-- Feed da ham aktiv, ham tugagan efirlar ko'rinadi.
+-- Aktiv efirlar birinchi (is_live = true), keyin tugaganlar.
 -- ──────────────────────────────────────────────
 create or replace view public.live_rooms_with_host as
     select
@@ -160,11 +162,50 @@ create or replace view public.live_rooms_with_host as
         r.viewer_count,
         r.peak_viewers,
         r.created_at,
+        r.ended_at,
         r.updated_at,
         p.username   as host_username,
         p.avatar_url as host_avatar_url,
         p.nickname   as host_nickname
     from public.live_rooms r
     left join public.profiles p on p.id = r.host_id
-    where r.is_live = true
-    order by r.viewer_count desc, r.created_at desc;
+    where
+        -- Aktiv efirlar
+        r.is_live = true
+        or
+        -- So'nggi 24 soatda tugagan efirlar
+        (r.is_live = false and r.ended_at >= now() - interval '24 hours')
+    order by
+        -- Aktiv efirlar birinchi
+        r.is_live desc,
+        -- Aktiv: tomoshabinlar soni bo'yicha
+        case when r.is_live then r.viewer_count end desc nulls last,
+        -- Tugagan: eng so'nggi birinchi
+        case when not r.is_live then r.ended_at end desc nulls last;
+
+-- ──────────────────────────────────────────────
+-- 7. Eskirgan efirlarni tozalash
+-- Supabase Dashboard > Database > Extensions > pg_cron yoqilsa:
+--
+--   select cron.schedule(
+--       'cleanup-old-live-rooms',
+--       '0 3 * * *',
+--       $$ delete from public.live_rooms
+--          where is_live = false
+--          and ended_at < now() - interval '7 days' $$
+--   );
+--
+-- Yoki Supabase Edge Function orqali har kuni ishlatiladi.
+-- ──────────────────────────────────────────────
+create or replace function public.cleanup_old_live_rooms()
+returns integer language plpgsql as $$
+declare
+    deleted_count integer;
+begin
+    delete from public.live_rooms
+    where is_live = false
+      and ended_at < now() - interval '7 days';
+    get diagnostics deleted_count = row_count;
+    return deleted_count;
+end;
+$$;

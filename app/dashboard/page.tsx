@@ -26,18 +26,30 @@ export default function FeedList() {
 
     const fetchLiveRooms = async () => {
         try {
-            const { data } = await supabase
+            const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+            // Aktiv efirlar
+            const { data: active } = await supabase
                 .from('live_rooms')
-                .select('id, host_id, title, game, thumbnail_url, viewer_count, created_at')
+                .select('id, host_id, title, game, thumbnail_url, viewer_count, peak_viewers, is_live, created_at, ended_at')
                 .eq('is_live', true)
                 .order('viewer_count', { ascending: false })
-                .order('created_at', { ascending: false })
                 .limit(5)
 
-            if (!data || data.length === 0) { setLiveRooms([]); return }
+            // So'nggi 24 soatda tugagan efirlar
+            const { data: ended } = await supabase
+                .from('live_rooms')
+                .select('id, host_id, title, game, thumbnail_url, viewer_count, peak_viewers, is_live, created_at, ended_at')
+                .eq('is_live', false)
+                .gte('ended_at', since24h)
+                .order('ended_at', { ascending: false })
+                .limit(5)
+
+            const allRooms = [...(active || []), ...(ended || [])]
+            if (allRooms.length === 0) { setLiveRooms([]); return }
 
             // Host profil ma'lumotlarini olish
-            const hostIds = [...new Set(data.map((r: any) => r.host_id as string))]
+            const hostIds = [...new Set(allRooms.map((r: any) => r.host_id as string))]
             const { data: profiles } = await supabase
                 .from('profiles')
                 .select('id, username, avatar_url, nickname')
@@ -46,7 +58,7 @@ export default function FeedList() {
             const profileMap: Record<string, any> = {}
             ;(profiles || []).forEach((p: any) => { profileMap[p.id] = p })
 
-            setLiveRooms(data.map((r: any) => ({
+            setLiveRooms(allRooms.map((r: any) => ({
                 ...r,
                 host_username:   profileMap[r.host_id]?.username   || null,
                 host_avatar_url: profileMap[r.host_id]?.avatar_url || null,
