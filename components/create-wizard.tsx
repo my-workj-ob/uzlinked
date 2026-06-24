@@ -72,12 +72,16 @@ export const CreateWizard = ({ onClose, variant = 'modal' }: CreateWizardProps) 
     // Video siqish progressi
     const [compressionProgress, setCompressionProgress] = useState<number | null>(null)
 
-    const ffmpegRef = useRef(new FFmpeg())
+    const ffmpegRef = useRef<FFmpeg | null>(null)
+    const getFfmpeg = () => {
+        if (!ffmpegRef.current) ffmpegRef.current = new FFmpeg()
+        return ffmpegRef.current
+    }
 
     useEffect(() => {
         const loadFFmpeg = async () => {
             try {
-                const ffmpeg = ffmpegRef.current
+                const ffmpeg = getFfmpeg()
                 if (!ffmpeg.loaded) {
                     const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm"
                     await ffmpeg.load({
@@ -198,7 +202,7 @@ export const CreateWizard = ({ onClose, variant = 'modal' }: CreateWizardProps) 
     }
 
     const compressVideoFile = async (file: File): Promise<File> => {
-        const ffmpeg = ffmpegRef.current
+        const ffmpeg = getFfmpeg()
 
         if (!ffmpeg.loaded) {
             const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm"
