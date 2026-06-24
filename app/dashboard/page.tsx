@@ -31,7 +31,7 @@ export default function FeedList() {
             // Aktiv efirlar
             const { data: active } = await supabase
                 .from('live_rooms')
-                .select('id, host_id, title, game, thumbnail_url, viewer_count, peak_viewers, is_live, created_at, ended_at')
+                .select('id, host_id, title, game, thumbnail_url, video_url, viewer_count, peak_viewers, is_live, created_at, ended_at')
                 .eq('is_live', true)
                 .order('viewer_count', { ascending: false })
                 .limit(5)
@@ -39,7 +39,7 @@ export default function FeedList() {
             // So'nggi 24 soatda tugagan efirlar
             const { data: ended } = await supabase
                 .from('live_rooms')
-                .select('id, host_id, title, game, thumbnail_url, viewer_count, peak_viewers, is_live, created_at, ended_at')
+                .select('id, host_id, title, game, thumbnail_url, video_url, viewer_count, peak_viewers, is_live, created_at, ended_at')
                 .eq('is_live', false)
                 .gte('ended_at', since24h)
                 .order('ended_at', { ascending: false })

@@ -21,6 +21,7 @@ create table if not exists public.live_rooms (
     game          text,
     -- thumbnail_url: keyingi versiyada host screenshot berishi uchun
     thumbnail_url text,
+    video_url     text,       -- Saqlangan video yozuv URL manzili
     is_live       boolean     not null default true,
     viewer_count  integer     not null default 0 check (viewer_count >= 0),
     -- peak_viewers: efirdagi maksimal tomoshabinlar soni
@@ -30,6 +31,17 @@ create table if not exists public.live_rooms (
     -- updated_at: viewer_count o'zgarganda yangilanadi (feed refresh uchun)
     updated_at    timestamptz not null default now()
 );
+
+-- video_url ustunini mavjud jadvalga qo'shish (agar jadval oldindan bor bo'lsa)
+do $$
+begin
+    if not exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'live_rooms' and column_name = 'video_url'
+    ) then
+        alter table public.live_rooms add column video_url text;
+    end if;
+end $$;
 
 -- updated_at ni avtomatik yangilash trigger
 create or replace function public.live_rooms_set_updated_at()
@@ -55,9 +67,27 @@ create index if not exists live_rooms_host_idx        on public.live_rooms (host
 create index if not exists live_rooms_updated_at_idx  on public.live_rooms (updated_at desc);
 
 -- ──────────────────────────────────────────────
+-- 1b. JADVAL: live_chat_messages
+-- Efir paytida yozilgan chat xabarlarini saqlash uchun
+-- ──────────────────────────────────────────────
+create table if not exists public.live_chat_messages (
+    id            uuid        primary key default gen_random_uuid(),
+    room_id       uuid        not null references public.live_rooms(id) on delete cascade,
+    user_id       uuid        references auth.users(id) on delete cascade,
+    user_name     text        not null,
+    user_avatar   text,
+    message       text        not null,
+    created_at    timestamptz not null default now()
+);
+
+-- Indekslar
+create index if not exists live_chat_messages_room_idx on public.live_chat_messages (room_id, created_at asc);
+
+-- ──────────────────────────────────────────────
 -- 2. ROW LEVEL SECURITY (RLS)
 -- ──────────────────────────────────────────────
 alter table public.live_rooms enable row level security;
+alter table public.live_chat_messages enable row level security;
 
 -- Hamma (login bo'lmagan ham) jonli efirlarni ko'ra oladi
 drop policy if exists "live_rooms_select" on public.live_rooms;
@@ -71,7 +101,7 @@ create policy "live_rooms_insert"
     on public.live_rooms for insert
     with check (auth.uid() = host_id);
 
--- Faqat egasi yangilaydi (viewer_count, is_live, ended_at, thumbnail_url)
+-- Faqat egasi yangilaydi (viewer_count, is_live, ended_at, thumbnail_url, video_url)
 drop policy if exists "live_rooms_update" on public.live_rooms;
 create policy "live_rooms_update"
     on public.live_rooms for update
@@ -84,11 +114,19 @@ create policy "live_rooms_delete"
     on public.live_rooms for delete
     using (auth.uid() = host_id);
 
+-- Chat RLS
+drop policy if exists "live_chat_messages_select" on public.live_chat_messages;
+create policy "live_chat_messages_select"
+    on public.live_chat_messages for select
+    using (true);
+
+drop policy if exists "live_chat_messages_insert" on public.live_chat_messages;
+create policy "live_chat_messages_insert"
+    on public.live_chat_messages for insert
+    with check (auth.uid() = user_id or user_id is null);
+
 -- ──────────────────────────────────────────────
 -- 3. SUPABASE REALTIME — postgres_changes
--- Feed da kartochkalar real-time yangilanishi uchun:
--- live_rooms jadvaliga har o'zgarish (INSERT/UPDATE/DELETE)
--- client dagi supabase.channel().on('postgres_changes') ga yetadi.
 -- ──────────────────────────────────────────────
 do $$
 begin
@@ -100,56 +138,42 @@ begin
     ) then
         alter publication supabase_realtime add table public.live_rooms;
     end if;
-exception when others then
-    null; -- publication mavjud bo'lmasa jim o'tamiz
+end $$;
+
+do $$
+begin
+    if not exists (
+        select 1 from pg_publication_tables
+        where pubname    = 'supabase_realtime'
+          and schemaname = 'public'
+          and tablename  = 'live_chat_messages'
+    ) then
+        alter publication supabase_realtime add table public.live_chat_messages;
+    end if;
 end $$;
 
 -- ──────────────────────────────────────────────
 -- 4. SUPABASE REALTIME — Broadcast (WebRTC Signaling)
--- Socket.io yoki maxsus WebSocket serveri kerak emas!
--- Supabase Realtime Broadcast kanali orqali P2P signaling:
---
---   Client kodi (TypeScript):
---
---   const channel = supabase.channel(`live:${roomId}`, {
---       config: { broadcast: { self: false } }
---   })
---
---   // Host -> Viewer: SDP Offer
---   channel.send({ type: 'broadcast', event: 'offer',       payload: { to: viewerId, sdp: offer } })
---   // Viewer -> Host: SDP Answer
---   channel.send({ type: 'broadcast', event: 'answer',      payload: { from: viewerId, sdp: answer } })
---   // ICE candidates (har ikki tomonga)
---   channel.send({ type: 'broadcast', event: 'ice-to-viewer', payload: { to: viewerId, candidate } })
---   channel.send({ type: 'broadcast', event: 'ice-to-host',   payload: { from: viewerId, candidate } })
---
---   // Presence — tomoshabinlar soni
---   channel.on('presence', { event: 'sync' }, () => {
---       const count = Object.keys(channel.presenceState()).length
---       // DB ga yozish (faqat host):
---       supabase.from('live_rooms').update({ viewer_count: count }).eq('id', roomId)
---   })
---
--- Bu SQL migratsiyada hech narsa sozlash shart emas —
--- Broadcast va Presence Supabase loyihasida default yoqilgan bo'ladi.
 -- ──────────────────────────────────────────────
 
 -- ──────────────────────────────────────────────
--- 5. Eskirgan (ended) efirlarni tozalash (ixtiyoriy)
--- Har kuni yarim tunda 7 kundan eski ended efirlarni o'chiradi.
--- Supabase Edge Function yoki pg_cron bilan ishlatiladi.
+-- 5. Eskirgan efirlarni tozalash funksiyasi
 -- ──────────────────────────────────────────────
--- create or replace function public.cleanup_old_live_rooms()
--- returns void language sql as $$
---     delete from public.live_rooms
---     where is_live = false
---       and ended_at < now() - interval '7 days';
--- $$;
+create or replace function public.cleanup_old_live_rooms()
+returns integer language plpgsql as $$
+declare
+    deleted_count integer;
+begin
+    delete from public.live_rooms
+    where is_live = false
+      and ended_at < now() - interval '7 days';
+    get diagnostics deleted_count = row_count;
+    return deleted_count;
+end;
+$$;
 
 -- ──────────────────────────────────────────────
 -- 6. VIEW: jonli efirlar + so'nggi 24 soatda tugagan efirlar
--- Feed da ham aktiv, ham tugagan efirlar ko'rinadi.
--- Aktiv efirlar birinchi (is_live = true), keyin tugaganlar.
 -- ──────────────────────────────────────────────
 create or replace view public.live_rooms_with_host as
     select
@@ -158,6 +182,7 @@ create or replace view public.live_rooms_with_host as
         r.title,
         r.game,
         r.thumbnail_url,
+        r.video_url,
         r.is_live,
         r.viewer_count,
         r.peak_viewers,
@@ -175,6 +200,14 @@ create or replace view public.live_rooms_with_host as
         or
         -- So'nggi 24 soatda tugagan efirlar
         (r.is_live = false and r.ended_at >= now() - interval '24 hours')
+    order by
+        -- Aktiv efirlar birinchi
+        r.is_live desc,
+        -- Aktiv: tomoshabinlar soni bo'yicha
+        case when r.is_live then r.viewer_count end desc nulls last,
+        -- Tugagan: eng so'nggi birinchi
+        case when not r.is_live then r.ended_at end desc nulls last;
+ - interval '24 hours')
     order by
         -- Aktiv efirlar birinchi
         r.is_live desc,

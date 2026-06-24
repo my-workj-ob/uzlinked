@@ -17,6 +17,7 @@ export interface LiveRoomFeed {
     is_live: boolean
     created_at: string
     ended_at: string | null
+    video_url: string | null
     host_username: string | null
     host_avatar_url: string | null
     host_nickname: string | null
@@ -90,7 +91,7 @@ export function LivePostCard({ room, index = 0 }: { room: LiveRoomFeed; index?: 
     const displayName = room.host_nickname || room.host_username || 'Anonim'
 
     const handleClick = () => {
-        if (isEnded) return // Tugagan efirga kirish mumkin emas
+        if (isEnded && !room.video_url) return // Tugagan va video yo'q bo'lsa kirib bo'lmaydi
         router.push(`/dashboard/live/${room.id}`)
     }
 
@@ -101,7 +102,7 @@ export function LivePostCard({ room, index = 0 }: { room: LiveRoomFeed; index?: 
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ type: 'spring', stiffness: 200, damping: 20, delay: index * 0.06 }}
             onClick={handleClick}
-            className={`relative rounded-3xl overflow-hidden select-none group ${isEnded ? 'cursor-default' : 'cursor-pointer'}`}
+            className={`relative rounded-3xl overflow-hidden select-none group ${isEnded && !room.video_url ? 'cursor-default' : 'cursor-pointer'}`}
             style={{ isolation: 'isolate' }}
         >
             {/* Tashqi glow — faqat aktiv efirda */}
@@ -207,10 +208,16 @@ export function LivePostCard({ room, index = 0 }: { room: LiveRoomFeed; index?: 
                     {/* Bottom: CTA yoki davomiylik */}
                     <div className="absolute bottom-3 right-3">
                         {isEnded ? (
-                            room.ended_at && (
-                                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-700/80 text-slate-400 text-xs font-semibold">
-                                    Davomiyligi: {formatDuration(room.created_at, room.ended_at)}
+                            room.video_url ? (
+                                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white text-xs font-extrabold shadow transition-colors">
+                                    ▶ Yozuvni ko&apos;rish
                                 </span>
+                            ) : (
+                                room.ended_at && (
+                                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-700/80 text-slate-400 text-xs font-semibold">
+                                        Davomiyligi: {formatDuration(room.created_at, room.ended_at)}
+                                    </span>
+                                )
                             )
                         ) : (
                             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-extrabold shadow-lg transition-colors">
