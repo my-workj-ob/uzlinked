@@ -299,8 +299,8 @@ export default function FeedList() {
                         </div>
                     </div>
 
-                    {/* QADAM 1 — Desktop Vibe Vector qatori (mobil header ichida ko'rsatiladi) */}
-                    <div className="hidden md:block sticky top-0 z-30 -mx-1 px-1 py-2 mb-1 bg-[#F8FAFC]/80 dark:bg-slate-950/80 backdrop-blur-xl">
+                    {/* QADAM 1 — Desktop Vibe Vector qatori (xl'da o'ng panelga ko'chadi) */}
+                    <div className="hidden md:block xl:hidden sticky top-0 z-30 -mx-1 px-1 py-2 mb-1 bg-[#F8FAFC]/80 dark:bg-slate-950/80 backdrop-blur-xl">
                         <VibeBar />
                     </div>
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   HiHome, HiOutlineHome,
@@ -18,10 +19,106 @@ import {
 import { CreateWizard } from '@/components/create-wizard'
 import { createClient } from '@/utils/supabase/client'
 import { Loader2 } from 'lucide-react'
-import { VibeProvider, VibeBar } from '@/components/vibe-bar'
+import { VibeProvider, VibeBar, VIBES, useVibe } from '@/components/vibe-bar'
 
 interface LayoutProps {
   children: React.ReactNode
+}
+
+/* DESKTOP RIGHT RAIL — katta monitorlarda bo'sh joyni to'ldiradi (xl+). */
+function RightRail({
+  isHomePage,
+  user,
+  onCreate,
+}: {
+  isHomePage: boolean
+  user: unknown
+  onCreate: () => void
+}) {
+  const router = useRouter()
+  const { activeVibe, setActiveVibe } = useVibe()
+
+  return (
+    <aside className="sticky top-0 h-screen hidden xl:flex w-80 2xl:w-96 flex-shrink-0 flex-col gap-4 overflow-y-auto no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-l border-slate-100 dark:border-white/5 bg-white/40 dark:bg-slate-900/30 p-5 z-20 transition-colors duration-300">
+      {/* Search */}
+      <button
+        onClick={() => router.push('/dashboard/explore?focus=true')}
+        className="flex items-center gap-3 w-full px-4 py-3 rounded-2xl bg-slate-100/80 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-white/10 transition-colors text-sm font-medium active:scale-[0.98]"
+      >
+        <HiOutlineMagnifyingGlass className="w-5 h-5 shrink-0" />
+        <span>Qidiruv…</span>
+      </button>
+
+      {/* Vibe panel — faqat bosh sahifada */}
+      {isHomePage && (
+        <div className="rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-white/5 p-4">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3 px-1">
+            Kayfiyatni tanlang
+          </h3>
+          <div className="flex flex-col gap-1">
+            {VIBES.map((vibe) => {
+              const isActive = vibe.id === activeVibe
+              return (
+                <button
+                  key={vibe.id}
+                  onClick={() => setActiveVibe(vibe.id)}
+                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors active:scale-[0.98] text-left ${isActive
+                    ? 'text-white'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
+                    }`}
+                >
+                  {isActive && (
+                    <motion.span
+                      layoutId="vibe-rail-active"
+                      transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 shadow-sm shadow-blue-600/30"
+                    />
+                  )}
+                  <span className="relative z-10 text-base leading-none">{vibe.emoji}</span>
+                  <span className="relative z-10">{vibe.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Premium card */}
+      {!!user && (
+        <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white relative overflow-hidden group">
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
+          <h4 className="font-bold text-sm mb-0.5 relative z-10">Premiumga o&apos;ting</h4>
+          <p className="text-[11px] text-blue-100 mb-3 leading-relaxed relative z-10">20 tagacha rasm, 1 daqiqalik video va boshqa imkoniyatlar.</p>
+          <button
+            onClick={() => router.push('/dashboard/pricing')}
+            className="w-full py-2 bg-white text-blue-600 font-bold text-xs rounded-xl hover:bg-blue-50 active:scale-95 transition-all relative z-10"
+          >
+            Batafsil
+          </button>
+        </div>
+      )}
+
+      {/* Yangi qo'shish (CTA) */}
+      <button
+        onClick={onCreate}
+        className="flex items-center justify-center gap-2 w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all"
+      >
+        <HiPlus className="w-5 h-5" />
+        <span>Yangi post yaratish</span>
+      </button>
+
+      {/* Footer links */}
+      <div className="mt-auto pt-2">
+        <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+          <Link href="/dashboard/explore" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Kashfiyot</Link>
+          <Link href="/dashboard/market" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Marketplace</Link>
+          <Link href="/dashboard/reels" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Reels</Link>
+          <Link href="/dashboard/settings" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Sozlamalar</Link>
+        </div>
+        <p className="mt-2 text-[10px] text-slate-300 dark:text-slate-600 font-medium">© 2026 VibeGrid</p>
+      </div>
+    </aside>
+  )
 }
 
 const DashboardLayout = ({ children }: LayoutProps) => {
@@ -724,9 +821,9 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="flex w-full max-w-[1440px] mx-auto h-full relative"
+        className="flex w-full h-full relative"
       >
-        <aside className="sticky top-0 h-screen hidden w-64 p-6 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-white/5 md:flex flex-col z-30 flex-shrink-0 transition-colors duration-300">
+        <aside className="sticky top-0 h-screen hidden w-64 2xl:w-72 p-6 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-white/5 md:flex flex-col z-30 flex-shrink-0 transition-colors duration-300">
           <Link href="/dashboard" className="mb-10 text-2xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent block">
             VibeGrid
           </Link>
@@ -877,7 +974,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
           <div className={`mx-auto ${isReelsPage || isMessagesPage
             ? 'w-full h-full max-w-none px-0'
-            : 'w-full max-w-2xl px-4 md:px-6'
+            : 'w-full max-w-2xl 2xl:max-w-3xl px-4 md:px-6 xl:px-8'
             }`}>
             <div
               key={pathname}
@@ -892,6 +989,11 @@ const DashboardLayout = ({ children }: LayoutProps) => {
             </div>
           </div>
         </main>
+
+        {/* DESKTOP RIGHT RAIL (xl+) — reels/messages'dan tashqari sahifalarda */}
+        {!isReelsPage && !isMessagesPage && (
+          <RightRail isHomePage={isHomePage} user={user} onCreate={handleCreateClick} />
+        )}
       </div>
 
       {/* UPDATE AVAILABLE BOTTOM SHEET
