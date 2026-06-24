@@ -6,7 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { HiMiniSquares2X2, HiOutlineShare, HiOutlineChatBubbleLeftRight, HiOutlineShoppingBag } from 'react-icons/hi2'
 import { VerifiedBadge } from '@/components/verified-badge'
 import { BsFilm, BsStar, BsCameraFill } from 'react-icons/bs'
-import { FiUserPlus, FiUserCheck } from 'react-icons/fi'
+import { FiUserPlus, FiUserCheck, FiLogOut } from 'react-icons/fi'
 import { FaHeart, FaBriefcase, FaTelegram, FaGithub, FaGlobe, FaHandshake } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
 import { useUploadThing } from '@/utils/uploadthing/uploadthing';
@@ -832,7 +832,14 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                         )}
 
                         <button
-                            onClick={() => setIsOptionsOpen(true)}
+                            onClick={() => {
+                                // Desktopda to'g'ridan-to'g'ri sozlamalar sahifasiga, mobilda modal
+                                if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+                                    router.push('/dashboard/settings')
+                                } else {
+                                    setIsOptionsOpen(true)
+                                }
+                            }}
                             className="px-4 bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl active:scale-[0.99] transition-all flex items-center justify-center cursor-pointer border border-transparent dark:border-white/5 font-bold text-sm tracking-widest"
                         >
                             •••
@@ -938,6 +945,17 @@ export default function ProfilePage({ userId: viewedUserId }: ProfilePageProps) 
                                 className="w-full py-3.5 px-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-850 dark:text-slate-250 font-bold text-xs rounded-xl text-left border border-slate-100 dark:border-white/5"
                             >
                                 Profil havolasini ulashish
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setIsOptionsOpen(false)
+                                    await supabase.auth.signOut()
+                                    router.push('/login')
+                                }}
+                                className="w-full py-3.5 px-4 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 font-bold text-xs rounded-xl text-left border border-red-100 dark:border-red-900/20 flex items-center gap-2"
+                            >
+                                <FiLogOut className="w-4 h-4" />
+                                <span>Tizimdan chiqish</span>
                             </button>
                         </div>
                     </div>

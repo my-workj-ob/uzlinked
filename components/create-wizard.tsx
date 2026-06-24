@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react'
-import { HiOutlineCamera, HiOutlineDocumentText, HiOutlineShoppingBag, HiArrowLeft, HiXMark } from 'react-icons/hi2'
+import { HiOutlineCamera, HiOutlineDocumentText, HiArrowLeft, HiXMark } from 'react-icons/hi2'
 import { LuInfinity, LuTimer, LuImagePlus, LuVideo, LuGripVertical, LuStar } from 'react-icons/lu'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { toast } from 'sonner'
@@ -39,16 +39,16 @@ const getVideoDuration = (file: File): Promise<number> =>
 
 interface CreateWizardProps {
     onClose: () => void
+    variant?: 'modal' | 'page'
 }
 
 const stepTitles: Record<string, string> = {
     post: "Post yaratish",
     reel: "Reels yuklash",
-    market: "Marketga e'lon qo'shish",
 }
 
-export const CreateWizard = ({ onClose }: CreateWizardProps) => {
-    const [step, setStep] = useState<'menu' | 'post' | 'market' | 'reel'>('menu')
+export const CreateWizard = ({ onClose, variant = 'modal' }: CreateWizardProps) => {
+    const [step, setStep] = useState<'menu' | 'post' | 'reel'>('menu')
     const router = useRouter()
     const queryClient = useQueryClient()
 
@@ -59,9 +59,6 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
     const [postMedia, setPostMedia] = useState<PostMediaItem[]>([])
     const [isPremium, setIsPremium] = useState(false)
     const postMediaInputRef = useRef<HTMLInputElement>(null)
-    const [marketTitle, setMarketTitle] = useState('')
-    const [marketPrice, setMarketPrice] = useState('')
-    const [marketCategory, setMarketCategory] = useState('digital')
 
     // Reel holatlari
     const [reelTitle, setReelTitle] = useState('')
@@ -70,8 +67,6 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
     const [selectedVideo, setSelectedVideo] = useState<File | null>(null)
 
     // Rasm va yuklash holatlari
-    const [imagePreview, setImagePreview] = useState<string | null>(null)
-    const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Video siqish progressi
@@ -189,25 +184,12 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
         })
     }
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (file) {
-            setSelectedFile(file)
-            setImagePreview(URL.createObjectURL(file))
-        }
-    }
-
     const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
             setSelectedVideo(file)
             setVideoPreview(URL.createObjectURL(file))
         }
-    }
-
-    const removeImage = () => {
-        setSelectedFile(null)
-        setImagePreview(null)
     }
 
     const removeVideo = () => {
@@ -305,7 +287,6 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
             setPostEphemeral(false)
             postMedia.forEach((m) => URL.revokeObjectURL(m.previewUrl))
             setPostMedia([])
-            removeImage()
             queryClient.invalidateQueries({ queryKey: ['posts'] })
             onClose()
         } catch (error: any) {
@@ -367,55 +348,13 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
         }
     }
 
-    // 3. MARKET E'LONI
-    const handleMarketSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!marketTitle.trim() || !marketPrice.trim() || !selectedFile || isSubmitting) return
-
-        setIsSubmitting(true)
-        const toastId = toast.loading("Rasm yuklanmoqda...")
-
-        try {
-            const [res] = await uploadFiles('mediaUploader', { files: [selectedFile] })
-
-            toast.loading("E'lon yaratilmoqda...", { id: toastId })
-            const response = await fetch('/api/listings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: marketTitle,
-                    price: marketPrice,
-                    category: marketCategory,
-                    imageUrl: res.url,
-                    imageKey: res.key
-                }),
-            })
-
-            if (!response.ok) {
-                const errData = await response.json()
-                throw new Error(errData.error || 'E\'lon yaratishda xatolik')
-            }
-
-            toast.success("E'lon muvaffaqiyatli joylandi!", { id: toastId })
-
-            setMarketTitle('')
-            setMarketPrice('')
-            removeImage()
-            closeAndRefresh()
-        } catch (error: any) {
-            toast.error(error.message || "E'lon yaratishda xatolik yuz berdi", { id: toastId })
-        } finally {
-            setIsSubmitting(false)
-        }
-    }
-
     const handleBack = () => {
         if (isSubmitting) return
         setStep('menu')
     }
 
     return (
-        <div className="w-full max-w-md mx-auto bg-transparent overflow-hidden pb-4 px-0">
+        <div className={`w-full mx-auto bg-transparent overflow-hidden pb-4 px-0 ${variant === 'page' ? 'max-w-2xl' : 'max-w-md'}`}>
             <AnimatePresence mode="wait">
                 <motion.div
                     key={step}
@@ -454,15 +393,6 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                                 </div>
                             </motion.button>
 
-                            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('market')} className="w-full p-3.5 flex items-center gap-3.5 bg-slate-50/80 dark:bg-slate-900/40 hover:bg-amber-50/60 dark:hover:bg-amber-950/30 border border-slate-100/50 dark:border-slate-800/80 rounded-2xl text-left transition-colors group">
-                                <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-all shrink-0">
-                                    <HiOutlineShoppingBag className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">E'lon joylashtirish (Market)</h4>
-                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Mahsulot yoki xizmatlarni sotuvga qo'ying</p>
-                                </div>
-                            </motion.button>
                         </div>
                     )}
 
@@ -746,85 +676,6 @@ export const CreateWizard = ({ onClose }: CreateWizardProps) => {
                                 {isSubmitting
                                     ? (compressionProgress !== null ? `Siqilmoqda: ${compressionProgress}%` : "Yuklanmoqda...")
                                     : "Ulashish"}
-                            </button>
-                        </form>
-                    )}
-
-                    {/* Step: Market */}
-                    {step === 'market' && (
-                        <form onSubmit={handleMarketSubmit} className="space-y-3 p-2">
-                            <div className="flex items-center justify-between text-slate-800 dark:text-slate-200 pb-2 border-b border-slate-100 dark:border-slate-800/80">
-                                <div className="flex items-center gap-2.5">
-                                    <button type="button" disabled={isSubmitting} onClick={handleBack} className="p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl disabled:opacity-50 active:scale-90 transition-all">
-                                        <HiArrowLeft className="w-5 h-5" />
-                                    </button>
-                                    <span className="text-sm font-black">{stepTitles.market}</span>
-                                </div>
-                                <button type="button" disabled={isSubmitting} onClick={onClose} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-xl active:scale-90 transition-all disabled:opacity-50">
-                                    <HiXMark className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            <div className="relative">
-                                <label className="relative aspect-video w-full bg-slate-50/80 dark:bg-slate-900/30 border border-dashed border-slate-200 dark:border-slate-800/80 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden hover:bg-slate-100/70 dark:hover:bg-slate-800/40 transition-all group">
-                                    {imagePreview ? (
-                                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <>
-                                            <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:scale-110 transition-transform">
-                                                <HiOutlineCamera className="w-4 h-4" />
-                                            </div>
-                                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-1.5">Mahsulot rasmini yuklang *</span>
-                                        </>
-                                    )}
-                                    <input type="file" accept="image/*" required disabled={isSubmitting} onChange={handleImageChange} className="hidden" />
-                                </label>
-                                {imagePreview && (
-                                    <button type="button" onClick={removeImage} disabled={isSubmitting} className="absolute top-2 right-2 w-7 h-7 bg-slate-900/70 hover:bg-slate-900 text-white rounded-full flex items-center justify-center active:scale-90 transition-all">
-                                        <HiXMark className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-
-                            <input
-                                type="text"
-                                placeholder="Sarlavha"
-                                required
-                                value={marketTitle}
-                                disabled={isSubmitting}
-                                onChange={(e) => setMarketTitle(e.target.value)}
-                                className="w-full bg-slate-50/80 dark:bg-slate-900/40 text-slate-900 dark:text-slate-100 text-xs font-semibold p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900/80 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                            />
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="Narxi"
-                                    required
-                                    value={marketPrice}
-                                    disabled={isSubmitting}
-                                    onChange={(e) => setMarketPrice(e.target.value)}
-                                    className="w-full bg-slate-50/80 dark:bg-slate-900/40 text-slate-900 dark:text-slate-100 text-xs font-semibold p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900/80 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                                />
-                                <select
-                                    value={marketCategory}
-                                    disabled={isSubmitting}
-                                    onChange={(e) => setMarketCategory(e.target.value)}
-                                    className="w-full bg-slate-50/80 dark:bg-slate-900/40 text-slate-800 dark:text-slate-200 text-xs font-bold p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 outline-none cursor-pointer appearance-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-[right_14px_center] bg-no-repeat"
-                                >
-                                    <option value="digital" className="bg-white dark:bg-slate-900 dark:text-white">Raqamli</option>
-                                    <option value="physical" className="bg-white dark:bg-slate-900 dark:text-white">Jismoniy</option>
-                                    <option value="service" className="bg-white dark:bg-slate-900 dark:text-white">Xizmatlar</option>
-                                </select>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={!marketTitle || !marketPrice || !imagePreview || isSubmitting}
-                                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-100 dark:disabled:bg-slate-900/60 text-white disabled:text-slate-400 dark:disabled:text-slate-600 font-bold text-xs rounded-2xl transition-all active:scale-[0.99] mt-2 flex items-center justify-center gap-2 border border-transparent"
-                            >
-                                {isSubmitting && <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
-                                {isSubmitting ? "Yuklanmoqda..." : "E'lonni joylashtirish"}
                             </button>
                         </form>
                     )}

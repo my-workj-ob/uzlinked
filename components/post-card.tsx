@@ -122,7 +122,8 @@ function PostMediaCarousel({
 
   return (
     <div
-      className={`relative w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950 select-none group/img ${isDetailPage ? 'max-h-[70vh]' : 'aspect-4/3'}`}
+      onContextMenu={(e) => e.preventDefault()}
+      className={`no-media-save relative w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-950 select-none group/img ${isDetailPage ? 'max-h-[70vh]' : 'aspect-4/3'}`}
     >
       <div
         ref={scrollRef}
@@ -136,8 +137,11 @@ function PostMediaCarousel({
               <video
                 src={m.url}
                 controls
+                controlsList="nodownload noplaybackrate"
+                disablePictureInPicture
                 playsInline
                 preload="metadata"
+                onContextMenu={(e) => e.preventDefault()}
                 onClick={(e) => e.stopPropagation()}
                 className={`w-full h-full bg-black ${isDetailPage ? 'object-contain max-h-[70vh]' : 'object-cover'}`}
               />
@@ -574,6 +578,16 @@ const [isSheetReady, setIsSheetReady] = useState(false)
     navigateToProfile()
   }
 
+  // Postni ochish: desktopda (md+) alohida sahifa, mobilda bottom-sheet modal
+  const openDetail = () => {
+    if (isDetailPage) return
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+      router.push(`/post/${post.id}`)
+    } else {
+      setIsDetailModalOpen(true)
+    }
+  }
+
   const handleImageClick = (e: React.MouseEvent) => {
     e.stopPropagation()
 
@@ -589,17 +603,13 @@ const [isSheetReady, setIsSheetReady] = useState(false)
     } else {
       clickTimeoutRef.current = setTimeout(() => {
         clickTimeoutRef.current = null
-        if (!isDetailPage) {
-          setIsDetailModalOpen(true)
-        }
+        openDetail()
       }, 250)
     }
   }
 
   const handleCardClick = () => {
-    if (!isDetailPage) {
-      setIsDetailModalOpen(true)
-    }
+    openDetail()
   }
 
   // Ko'rsatiladigan media: yangi `media` galereyasi bo'lsa o'shani, aks holda
@@ -781,7 +791,7 @@ const [isSheetReady, setIsSheetReady] = useState(false)
                 if (isDetailPage) {
                   document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' })
                 } else {
-                  setIsDetailModalOpen(true)
+                  openDetail()
                 }
               }}
               className={`flex items-center gap-1.5 transition active:scale-90 ${isDetailPage || showComments ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400'}`}
@@ -838,7 +848,7 @@ const [isSheetReady, setIsSheetReady] = useState(false)
 
         {!isDetailPage && (
           <div
-            onClick={(e) => { e.stopPropagation(); setIsDetailModalOpen(true); }}
+            onClick={(e) => { e.stopPropagation(); openDetail(); }}
             className="p-3.5 bg-slate-50/50 dark:bg-slate-900/10 border-t border-slate-50 dark:border-white/5 flex items-center justify-between cursor-pointer text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors relative z-10"
           >
             <span>Fikr bildiring...</span>

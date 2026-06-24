@@ -14,9 +14,9 @@ import {
   HiSun, HiMoon,
   HiUser, HiOutlineUser,
   HiBolt,
+  HiSignal, HiOutlineSignal,
   HiMagnifyingGlass, HiOutlineMagnifyingGlass
 } from 'react-icons/hi2'
-import { CreateWizard } from '@/components/create-wizard'
 import { createClient } from '@/utils/supabase/client'
 import { Loader2 } from 'lucide-react'
 import { VibeProvider, VibeBar, VIBES, useVibe } from '@/components/vibe-bar'
@@ -111,7 +111,6 @@ function RightRail({
       <div className="mt-auto pt-2">
         <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
           <Link href="/dashboard/explore" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Kashfiyot</Link>
-          <Link href="/dashboard/market" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Marketplace</Link>
           <Link href="/dashboard/reels" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Reels</Link>
           <Link href="/dashboard/settings" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">Sozlamalar</Link>
         </div>
@@ -130,6 +129,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     { id: 'home', path: '/dashboard', label: 'Bosh sahifa', IconActive: HiHome, IconOutline: HiOutlineHome },
     { id: 'explore', path: '/dashboard/explore', label: 'Qidiruv', IconActive: HiMagnifyingGlass, IconOutline: HiOutlineMagnifyingGlass },
     { id: 'reels', path: '/dashboard/reels', label: 'Reels', IconActive: HiVideoCamera, IconOutline: HiOutlineVideoCamera },
+    { id: 'live', path: '/dashboard/live', label: 'Live Share', IconActive: HiSignal, IconOutline: HiOutlineSignal },
     { id: 'messages', path: '/dashboard/messages', label: 'Xabarlar', IconActive: HiChatBubbleLeftRight, IconOutline: HiOutlineChatBubbleLeftRight },
     { id: 'notifications', path: '/dashboard/notifications', label: 'Bildirishnomalar', IconActive: HiBell, IconOutline: HiOutlineBell },
     { id: 'profile', path: '/dashboard/profile', label: 'Profil', IconActive: HiCog6Tooth, IconOutline: HiOutlineCog6Tooth },
@@ -154,13 +154,12 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     if (path.startsWith('/dashboard/notifications')) return 'Bildirishnomalar'
     if (path.startsWith('/dashboard/profile')) return 'Profil'
     if (path.startsWith('/dashboard/settings')) return 'Sozlamalar'
-    if (path.startsWith('/dashboard/market')) return "E'lonlar"
+    if (path.startsWith('/dashboard/create')) return "Yangi yaratish"
     return 'VibeGrid'
   }
 
   const [user, setUser] = useState<any>(null)
   const [avatarUrl, setAvatarUrl] = useState<string>('')
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isNotifOpen, setIsNotifOpen] = useState(false)
   const [isMsgOpen, setIsMsgOpen] = useState(false)
   const [isDark, setIsDark] = useState(false)
@@ -722,7 +721,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
     if (!user) {
       router.push('/login')
     } else {
-      setIsCreateOpen(true)
+      router.push('/dashboard/create')
     }
   }
 
@@ -1105,56 +1104,24 @@ const DashboardLayout = ({ children }: LayoutProps) => {
         </nav>
       )}
 
-      {/* CREATE MODAL / DRAWER */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-65 flex items-end md:items-center justify-center p-0 md:p-4 animate-fade-in">
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300"
-            onClick={() => setIsCreateOpen(false)}
-          />
-
-          <div
-            style={{
-              animation: 'androidSlideUp 0.35s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards'
-            }}
-            className="bg-white dark:bg-slate-900 w-full md:max-w-md rounded-t-[28px] md:rounded-2xl px-4 py-6 pb-8 md:p-6 md:pb-8 relative z-10 border border-neutral-100 dark:border-white/5 max-h-[85vh] overflow-y-auto select-none"
-          >
-            <div
-              className="absolute top-3 left-0 right-0 flex justify-center md:hidden cursor-grab active:cursor-grabbing py-2"
-              onClick={() => setIsCreateOpen(false)}
-            >
-              <div className="w-10 h-1.5 bg-neutral-200 dark:bg-slate-800 rounded-full" />
-            </div>
-
-            <div className="pt-3 md:pt-0">
-              <CreateWizard onClose={() => setIsCreateOpen(false)} />
-            </div>
-          </div>
-
-          <style jsx global>{`
-            @keyframes androidSlideUp {
-              from { transform: translateY(100%); }
-              to { transform: translateY(0); }
-            }
-            @keyframes slideFromRight {
-              from { transform: translateX(100%); opacity: 0.95; }
-              to { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes slideFromLeft {
-              from { transform: translateX(-100%); opacity: 0.95; }
-              to { transform: translateX(0); opacity: 1; }
-            }
-            .animate-slide-from-right {
-              animation: slideFromRight 0.32s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
-              will-change: transform, opacity;
-            }
-            .animate-slide-from-left {
-              animation: slideFromLeft 0.32s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
-              will-change: transform, opacity;
-            }
-          `}</style>
-        </div>
-      )}
+      <style jsx global>{`
+        @keyframes slideFromRight {
+          from { transform: translateX(100%); opacity: 0.95; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideFromLeft {
+          from { transform: translateX(-100%); opacity: 0.95; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-from-right {
+          animation: slideFromRight 0.32s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
+          will-change: transform, opacity;
+        }
+        .animate-slide-from-left {
+          animation: slideFromLeft 0.32s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
+          will-change: transform, opacity;
+        }
+      `}</style>
     </div>
     </VibeProvider>
   )

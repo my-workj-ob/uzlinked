@@ -74,6 +74,16 @@ export default function FeedList() {
     const [showStories, setShowStories] = useState(false)
     const [pullOffset, setPullOffset] = useState(0)
     const [isDragging, setIsDragging] = useState(false)
+    // Desktopda (md+) stories doim ochiq turadi (yashirilmaydi)
+    const [isDesktop, setIsDesktop] = useState(false)
+
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 768px)')
+        const update = () => setIsDesktop(mq.matches)
+        update()
+        mq.addEventListener('change', update)
+        return () => mq.removeEventListener('change', update)
+    }, [])
 
     const startY = useRef(0)
     const activeDrag = useRef(false)
@@ -259,7 +269,7 @@ export default function FeedList() {
             ? Math.max(0, 1 + pullOffset / 45)
             : Math.min(pullOffset / 75, 1))
         : (showStories ? 1 : 0)
-    const progress = Math.max(0, Math.min(rawProgress, 1))
+    const progress = isDesktop ? 1 : Math.max(0, Math.min(rawProgress, 1))
 
     return (
         <div
@@ -283,13 +293,15 @@ export default function FeedList() {
                     {/* Collapsible Stories Tray */}
                     <div
                         style={{
-                            height: isDragging
-                                ? (showStories
-                                    ? `${Math.max(104 + pullOffset, 0)}px`
-                                    : `${Math.max(pullOffset, 0)}px`)
-                                : (showStories ? '104px' : '0px'),
-                            opacity: showStories || (isDragging && (showStories ? (104 + pullOffset > 15) : (pullOffset > 15))) ? 1 : 0,
-                            overflow: showStories || isDragging ? 'visible' : 'hidden',
+                            height: isDesktop
+                                ? '104px'
+                                : (isDragging
+                                    ? (showStories
+                                        ? `${Math.max(104 + pullOffset, 0)}px`
+                                        : `${Math.max(pullOffset, 0)}px`)
+                                    : (showStories ? '104px' : '0px')),
+                            opacity: isDesktop || showStories || (isDragging && (showStories ? (104 + pullOffset > 15) : (pullOffset > 15))) ? 1 : 0,
+                            overflow: isDesktop || showStories || isDragging ? 'visible' : 'hidden',
                             transition: isDragging ? 'none' : 'height 0.4s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.3s ease-in-out'
                         }}
                         className="w-full"

@@ -36,6 +36,43 @@ body {
   overscroll-behavior-y: contain;
 }
 
+/* DESKTOP: barcha bosiladigan elementlarga cursor pointer (Tailwind v4 preflight buni olib tashlagan) */
+@media (hover: hover) and (pointer: fine) {
+
+  button:not(:disabled),
+  a[href],
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="switch"],
+  [role="option"],
+  label[for],
+  summary,
+  select,
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
+/* MEDIA HIMOYASI: rasm/videolarni ko'chirib/yuklab olishni cheklash */
+.no-media-save img,
+.no-media-save video {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
@@ -151,6 +188,23 @@ html {
 
 .animate-drawer-slide-up {
   animation: drawer-slide-up 0.35s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
+}
+
+@keyframes slideFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0.95;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-from-right {
+  animation: slideFromRight 0.32s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes drawer-slide-down {

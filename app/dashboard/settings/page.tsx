@@ -36,6 +36,7 @@ import {
   Images,
   Video,
   Infinity as InfinityIcon,
+  LogOut,
 } from "lucide-react";
 import { useUploadThing } from "@/utils/uploadthing/uploadthing";
 import { createClient } from "@/utils/supabase/client";
@@ -494,6 +495,18 @@ export default function SettingsPage() {
               </button>
             );
           })}
+
+          {/* Logout */}
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push("/login");
+            }}
+            className="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all shrink-0 md:w-full whitespace-nowrap text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 md:mt-2"
+          >
+            <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
+            <span>Tizimdan chiqish</span>
+          </button>
         </aside>
 
         {/* Content Section */}

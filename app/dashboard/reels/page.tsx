@@ -154,12 +154,12 @@ function CommentsDrawer({
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-60 flex items-end justify-center">
-            {/* Backdrop */}
-            <div className="fixed inset-0 bg-black/60 animate-overlay-in" onClick={onClose} />
+        <div className="fixed inset-0 z-60 flex items-end justify-center md:items-stretch md:justify-end">
+            {/* Backdrop — desktopda yengilroq (yon panel, modal emas) */}
+            <div className="fixed inset-0 bg-black/60 md:bg-black/20 animate-overlay-in" onClick={onClose} />
 
-            {/* Drawer */}
-            <div className="relative z-10 bg-white dark:bg-slate-900 w-full md:max-w-[420px] rounded-t-2xl max-h-[70vh] flex flex-col animate-drawer-slide-up">
+            {/* Drawer — mobilda pastdan, desktopda o'ng yondan chiqadi */}
+            <div className="relative z-10 bg-white dark:bg-slate-900 w-full md:w-[400px] rounded-t-2xl md:rounded-none max-h-[70vh] md:max-h-none md:h-full flex flex-col animate-drawer-slide-up md:animate-slide-from-right border-slate-200 dark:border-white/10 md:border-l shadow-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-white/10">
                     <span className="text-slate-900 dark:text-white font-bold text-sm">Izohlar ({commentsCount})</span>
@@ -751,8 +751,11 @@ function ReelCard({
                     playsInline
                     muted={isMuted}
                     preload={preloadAttr}
+                    controlsList="nodownload noplaybackrate"
+                    disablePictureInPicture
+                    onContextMenu={(e) => e.preventDefault()}
                     onClick={handleVideoClick}
-                    className="absolute inset-0 w-full h-full object-contain bg-black cursor-pointer"
+                    className="no-media-save absolute inset-0 w-full h-full object-contain bg-black cursor-pointer"
                 />
 
                 {/* Double-tap Heart (No shadows!) */}
