@@ -397,3 +397,47 @@ html {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+/* ============================================================
+   LANDING PAGE — ambient glow + float + shine animations
+   ============================================================ */
+@keyframes landing-glow-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.9; }
+  50% { transform: translate(6%, 8%) scale(1.15); opacity: 1; }
+}
+
+@keyframes landing-glow-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(-8%, -6%) scale(1.2); opacity: 1; }
+}
+
+.animate-landing-glow-1 { animation: landing-glow-1 14s ease-in-out infinite; }
+.animate-landing-glow-2 { animation: landing-glow-2 16s ease-in-out infinite; }
+
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+
+.animate-landing-float { animation: landing-float 6s ease-in-out infinite; }
+
+@keyframes landing-float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(-1.5deg); }
+}
+
+.animate-landing-float-slow { animation: landing-float-slow 8s ease-in-out infinite; }
+
+@keyframes landing-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-landing-marquee { animation: landing-marquee 24s linear infinite; }
+
+@keyframes landing-pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { opacity: 0; }
+}
+
+.animate-landing-pulse-ring { animation: landing-pulse-ring 2.4s ease-out infinite; }
