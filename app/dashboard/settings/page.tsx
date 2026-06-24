@@ -31,11 +31,16 @@ import {
   Trash2,
   X,
   Check,
+  Crown,
+  Sparkles,
+  Images,
+  Video,
+  Infinity as InfinityIcon,
 } from "lucide-react";
 import { useUploadThing } from "@/utils/uploadthing/uploadthing";
 import { createClient } from "@/utils/supabase/client";
 
-type SettingsTab = "profile" | "security" | "logs" | "danger" | "chat" | "groups" | "notifications";
+type SettingsTab = "profile" | "subscription" | "security" | "logs" | "danger" | "chat" | "groups" | "notifications";
 
 const NAV_ITEMS: {
   id: SettingsTab;
@@ -44,6 +49,7 @@ const NAV_ITEMS: {
   danger?: boolean;
 }[] = [
     { id: "profile", label: "Profil sozlamalari", icon: User },
+    { id: "subscription", label: "Obuna (Plan)", icon: Crown },
     { id: "security", label: "Xavfsizlik va maxfiylik", icon: ShieldCheck },
     { id: "logs", label: "Faollik tarixi", icon: History },
     { id: "notifications", label: "Bildirishnomalar", icon: Bell },
@@ -605,6 +611,110 @@ export default function SettingsPage() {
               </form>
             </Card>
           )}
+
+          {/* 1.5 Subscription / Obuna Tab */}
+          {activeTab === "subscription" && (() => {
+            const isPremium = !!settingsData?.profile?.is_premium;
+            const plans = [
+              {
+                key: "free",
+                name: "Bepul",
+                icon: Sparkles,
+                price: "0 so'm",
+                accent: "slate",
+                features: [
+                  { icon: Images, text: "Bitta postga 4 tagacha rasm" },
+                  { icon: Video, text: "Video yo'q", muted: true },
+                  { icon: Check, text: "Like, izoh, saqlash — to'liq" },
+                ],
+              },
+              {
+                key: "pro",
+                name: "PRO",
+                icon: Crown,
+                price: "Premium",
+                accent: "blue",
+                features: [
+                  { icon: Images, text: "Bitta postga 20 tagacha rasm" },
+                  { icon: Video, text: "1 daqiqalik video qo'shish" },
+                  { icon: InfinityIcon, text: "Barcha imkoniyatlar cheksiz" },
+                ],
+              },
+            ];
+            return (
+              <Card
+                icon={Crown}
+                iconColor="bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400"
+                title="Obuna rejasi"
+                subtitle="Joriy rejangiz va media yuklash imkoniyatlari"
+              >
+                <div className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 px-4 py-3.5">
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isPremium ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
+                    {isPremium ? <Crown className="h-5 w-5" strokeWidth={2.25} /> : <Sparkles className="h-5 w-5" strokeWidth={2.25} />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Joriy reja</p>
+                    <p className="text-[15px] font-extrabold text-slate-900 dark:text-slate-100">
+                      {isPremium ? "PRO" : "Bepul"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {plans.map((plan) => {
+                    const current = plan.key === (isPremium ? "pro" : "free");
+                    const PlanIcon = plan.icon;
+                    return (
+                      <div
+                        key={plan.key}
+                        className={`relative rounded-2xl border p-5 transition-all ${current
+                            ? "border-blue-500 dark:border-blue-400 ring-4 ring-blue-500/10 bg-blue-50/40 dark:bg-blue-500/[0.06]"
+                            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                          }`}
+                      >
+                        {current && (
+                          <span className="absolute -top-2.5 right-4 inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white shadow">
+                            <Check className="h-3 w-3" strokeWidth={3} /> Sizning rejangiz
+                          </span>
+                        )}
+                        <div className="flex items-center gap-2.5">
+                          <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${plan.key === "pro" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
+                            <PlanIcon className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                          </span>
+                          <div>
+                            <h3 className="text-[15px] font-extrabold text-slate-900 dark:text-slate-100">{plan.name}</h3>
+                            <p className="text-[12px] font-semibold text-slate-400 dark:text-slate-500">{plan.price}</p>
+                          </div>
+                        </div>
+                        <ul className="mt-4 space-y-2.5">
+                          {plan.features.map((f, i) => {
+                            const FIcon = f.icon;
+                            return (
+                              <li key={i} className={`flex items-center gap-2.5 text-[12.5px] font-medium ${f.muted ? "text-slate-400 dark:text-slate-600 line-through" : "text-slate-700 dark:text-slate-300"}`}>
+                                <FIcon className={`h-4 w-4 shrink-0 ${plan.key === "pro" ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"}`} strokeWidth={2.25} />
+                                {f.text}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {!isPremium && (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard/pricing")}
+                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-[13px] font-bold text-white shadow-sm shadow-blue-600/20 transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    <Crown className="h-4 w-4" strokeWidth={2.25} />
+                    PRO ga o'tish
+                  </button>
+                )}
+              </Card>
+            );
+          })()}
 
           {/* 2. Security & Privacy Tab */}
           {activeTab === "security" && (

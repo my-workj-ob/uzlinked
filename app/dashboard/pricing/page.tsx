@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { HiArrowLeft, HiCheck } from 'react-icons/hi2'
+import { HiArrowLeft, HiCheck, HiXMark as HiX } from 'react-icons/hi2'
 import { VerifiedBadge } from '@/components/verified-badge'
 import { FaRocket, FaBriefcase, FaStar } from 'react-icons/fa'
 import { createClient } from '@/utils/supabase/client'
@@ -107,6 +107,14 @@ export default function PricingPage() {
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <HiCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <span>Bitta postga <b className="font-bold">4 tagacha</b> rasm</span>
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <HiX className="w-4 h-4 text-slate-400 shrink-0" />
+                                    <span className="text-slate-400 dark:text-slate-500">Video qo'shish mavjud emas</span>
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <HiCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                                     <span>Asosiy qidiruv tizimi</span>
                                 </li>
                             </ul>
@@ -153,7 +161,7 @@ export default function PricingPage() {
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <HiCheck className="w-4 h-4 text-blue-500 shrink-0" />
-                                    <span>Cheksiz media yuklash imkoniyati</span>
+                                    <span>Bitta postga <b className="font-bold">20 tagacha</b> rasm + <b className="font-bold">1 daqiqalik</b> video</span>
                                 </li>
                                 <li className="flex items-center gap-2">
                                     <HiCheck className="w-4 h-4 text-blue-500 shrink-0" />

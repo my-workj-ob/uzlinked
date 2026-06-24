@@ -203,6 +203,7 @@ export interface SettingsProfile {
   chat_who_can_message?: 'everyone' | 'following' | 'nobody'
   chat_notifications_enabled?: boolean
   notification_settings?: any
+  is_premium?: boolean
 }
 
 export interface SettingsData {
