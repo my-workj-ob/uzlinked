@@ -222,6 +222,7 @@ export default function GroupDetailPage() {
             toast.error("Guruh topilmadi")
             router.push('/dashboard/messages')
             return
+        }
         setGroup(data)
         setEditName(data.name)
         setEditUsername(data.username || "")
@@ -574,7 +575,7 @@ export default function GroupDetailPage() {
     }
 
     return (
-        <div 
+        <div
             onTouchStart={handlePageTouchStart}
             onTouchMove={handlePageTouchMove}
             onTouchEnd={handlePageTouchEnd}
@@ -838,8 +839,8 @@ export default function GroupDetailPage() {
                                         initial={isFresh ? 'hidden' : undefined}
                                         animate={isFresh ? 'visible' : undefined}
                                         className={`text-[15px] font-medium leading-relaxed relative select-none cursor-default z-10 
-                                            ${isMe 
-                                                ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 rounded-2xl rounded-tr-sm' 
+                                            ${isMe
+                                                ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20 rounded-2xl rounded-tr-sm'
                                                 : 'bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-white/5 text-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-sm'} 
                                             ${msg._pending ? 'opacity-60' : ''}`}
                                     >
