@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { FiHeart, FiMessageSquare, FiShare2, FiFlag, FiLink, FiSend, FiEdit3 } from 'react-icons/fi'
 import { FaHeart, FaTelegram, FaBookmark, FaRegBookmark } from 'react-icons/fa'
 import { HiSpeakerWave, HiSpeakerXMark, HiPlay, HiPause, HiXMark, HiChevronDown } from 'react-icons/hi2'
@@ -83,6 +84,11 @@ function CommentsDrawer({
     const inputRef = useRef<HTMLInputElement>(null)
     const listRef = useRef<HTMLDivElement>(null)
 
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
     useEffect(() => {
         if (isOpen) {
             setLoading(true)
@@ -151,10 +157,10 @@ function CommentsDrawer({
         } catch { }
     }
 
-    if (!isOpen) return null
+    if (!isOpen || !mounted) return null
 
-    return (
-        <div className="fixed inset-0 z-60 flex items-end justify-center md:items-stretch md:justify-end">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center md:items-stretch md:justify-end">
             {/* Backdrop — desktopda yengilroq (yon panel, modal emas) */}
             <div className="fixed inset-0 bg-black/60 md:bg-black/20 animate-overlay-in" onClick={onClose} />
 
@@ -250,7 +256,7 @@ function CommentsDrawer({
                 </div>
 
                 {/* Input */}
-                <form onSubmit={handleSubmit} className="p-3 border-t border-slate-200 dark:border-white/10 flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
+                <form onSubmit={handleSubmit} className="p-3 border-t border-slate-200 dark:border-white/10 flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm pb-[calc(0.5rem+env(safe-area-inset-bottom))] relative">
                     {replyTo && (
                         <div className="absolute -top-7 left-3 right-3 bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-1 flex items-center justify-between">
                             <span className="text-slate-500 dark:text-white/50 text-[10px]">↳ {replyTo.username} ga javob</span>
@@ -276,7 +282,8 @@ function CommentsDrawer({
                     </button>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
 
@@ -292,6 +299,10 @@ function ShareSheet({
     onClose: () => void
 }) {
     const [copied, setCopied] = useState(false)
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const reelUrl = typeof window !== 'undefined'
         ? `${window.location.origin}/dashboard/reels?id=${reelId}`
@@ -335,10 +346,12 @@ function ShareSheet({
         }
     }
 
-    return (
-        <div className="fixed inset-0 z-60 flex items-end justify-center">
+    if (!mounted) return null
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center">
             <div className="fixed inset-0 bg-black/60 animate-overlay-in" onClick={onClose} />
-            <div className="relative z-10 bg-white dark:bg-slate-900 w-full md:max-w-[420px] rounded-t-2xl p-5 animate-share-fade-in">
+            <div className="relative z-10 bg-white dark:bg-slate-900 w-full md:max-w-[420px] rounded-t-2xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] animate-share-fade-in">
                 <div className="flex items-center justify-between mb-5">
                     <span className="text-slate-900 dark:text-white font-bold text-sm">Ulashish</span>
                     <button onClick={onClose} className="p-1.5 text-slate-400 dark:text-white/60 hover:text-slate-700 dark:hover:text-white transition-colors">
@@ -354,7 +367,7 @@ function ShareSheet({
                         <div className="w-12 h-12 bg-slate-200 dark:bg-white/10 rounded-full flex items-center justify-center">
                             <FiLink className="w-5 h-5 text-slate-700 dark:text-white" />
                         </div>
-                        <span className="text-slate-600 dark:text-white/70 text-[10px] font-bold">
+                        <span className="text-slate-700 dark:text-slate-200 text-[11px] font-extrabold tracking-wide">
                             {copied ? '✓ Nusxalandi' : 'Havola'}
                         </span>
                     </button>
@@ -366,7 +379,7 @@ function ShareSheet({
                         <div className="w-12 h-12 bg-sky-500/20 rounded-full flex items-center justify-center">
                             <FaTelegram className="w-6 h-6 text-sky-400" />
                         </div>
-                        <span className="text-slate-600 dark:text-white/70 text-[10px] font-bold">Telegram</span>
+                        <span className="text-slate-700 dark:text-slate-200 text-[11px] font-extrabold tracking-wide">Telegram</span>
                     </button>
 
                     {'share' in navigator && (
@@ -377,12 +390,13 @@ function ShareSheet({
                             <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
                                 <FiShare2 className="w-5 h-5 text-green-400" />
                             </div>
-                            <span className="text-slate-600 dark:text-white/70 text-[10px] font-bold">Boshqa</span>
+                            <span className="text-slate-700 dark:text-slate-200 text-[11px] font-extrabold tracking-wide">Boshqa</span>
                         </button>
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
 
@@ -398,6 +412,10 @@ function ReportModal({
     const [selectedReason, setSelectedReason] = useState('')
     const [sending, setSending] = useState(false)
     const [sent, setSent] = useState(false)
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const reasons = [
         'Noqonuniy kontent',
@@ -428,8 +446,10 @@ function ReportModal({
         setSending(false)
     }
 
-    return (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+    if (!mounted) return null
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/70 animate-overlay-in" onClick={onClose} />
             <div className="relative z-10 bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-5 animate-share-fade-in border border-slate-200 dark:border-white/10">
                 {sent ? (
@@ -473,7 +493,8 @@ function ReportModal({
                     </>
                 )}
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
 
@@ -492,6 +513,10 @@ function EditReelModal({
     const [description, setDescription] = useState(reel.description || '')
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const handleSave = async () => {
         if (saving) return
@@ -518,8 +543,10 @@ function EditReelModal({
         }
     }
 
-    return (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+    if (!mounted) return null
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/70 animate-overlay-in" onClick={onClose} />
             <div className="relative z-10 bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl p-5 animate-share-fade-in border border-slate-200 dark:border-white/10">
                 <div className="flex items-center justify-between mb-4">
@@ -558,7 +585,8 @@ function EditReelModal({
                     {saving ? 'Saqlanmoqda...' : 'Saqlash'}
                 </button>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }
 

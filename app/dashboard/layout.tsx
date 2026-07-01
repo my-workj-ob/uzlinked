@@ -39,7 +39,7 @@ function RightRail({
   const { activeVibe, setActiveVibe } = useVibe()
 
   return (
-    <aside className="sticky top-0 h-screen hidden xl:flex w-80 2xl:w-96 flex-shrink-0 flex-col gap-4 overflow-y-auto no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-l border-slate-100 dark:border-white/5 bg-white/40 dark:bg-slate-900/30 p-5 z-20 transition-colors duration-300">
+    <aside className="sticky top-0 h-screen hidden xl:flex w-72 2xl:w-80 flex-shrink-0 flex-col gap-4 overflow-y-auto no-scrollbar [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-l border-slate-100 dark:border-white/5 bg-white/40 dark:bg-slate-900/30 p-4 2xl:p-5 z-20 transition-colors duration-300">
       {/* Search */}
       <button
         onClick={() => router.push('/dashboard/explore?focus=true')}
@@ -822,9 +822,14 @@ const DashboardLayout = ({ children }: LayoutProps) => {
           onTouchEnd={handleTouchEnd}
           className="flex w-full h-full relative"
         >
-          <aside className="sticky top-0 h-screen hidden w-64 2xl:w-72 p-6 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-white/5 md:flex flex-col z-30 flex-shrink-0 transition-colors duration-300">
-            <Link href="/dashboard" className="mb-10 text-2xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent block">
-              VibeGrid
+          <aside className="sticky top-0 h-screen hidden w-20 lg:w-64 2xl:w-72 p-4 lg:p-6 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-white/5 md:flex flex-col z-30 flex-shrink-0 transition-colors duration-300 animate-in fade-in duration-300">
+            <Link href="/dashboard" className="mb-10 flex items-center justify-center lg:justify-start gap-2 shrink-0 active:scale-95 transition-transform">
+              <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-600/30 shrink-0">
+                <HiBolt className="w-5 h-5" />
+              </span>
+              <span className="text-xl font-black tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hidden lg:block">
+                VibeGrid
+              </span>
             </Link>
 
             <nav className="flex flex-col gap-1.5 flex-1">
@@ -843,18 +848,18 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                   <Link
                     key={item.id}
                     href={item.path}
-                    className={`flex items-center justify-between px-4 py-3.5 rounded-xl font-medium transition-all duration-200 active:scale-[0.98] text-left ${isActive
+                    className={`flex items-center justify-center lg:justify-between px-3 lg:px-4 py-3.5 rounded-xl font-medium transition-all duration-200 active:scale-[0.98] text-left relative ${isActive
                       ? 'text-blue-600 dark:text-blue-400 bg-blue-50/80 dark:bg-blue-950/40 font-bold'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                       }`}
                   >
                     <div className="flex items-center gap-4">
-                      <Icon className={`w-6 h-6 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
-                      <span className="text-sm">{item.label}</span>
+                      <Icon className={`w-6 h-6 shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`} />
+                      <span className="text-sm hidden lg:block">{item.label}</span>
                     </div>
                     {badgeCount > 0 && (
-                      <span className={`min-w-[18px] h-4.5 px-1.5 flex items-center justify-center text-[10px] font-black rounded-full text-white ${item.id === 'messages' ? 'bg-blue-600' : 'bg-rose-500'
-                        }`}>
+                      <span className={`min-w-[18px] h-4.5 px-1.5 flex items-center justify-center text-[10px] font-black rounded-full text-white lg:static ${item.id === 'messages' ? 'bg-blue-600' : 'bg-rose-500'
+                        } absolute -top-1 -right-1 lg:top-auto lg:right-auto ring-2 ring-white dark:ring-slate-900 lg:ring-0`}>
                         {badgeCount}
                       </span>
                     )}
@@ -865,43 +870,61 @@ const DashboardLayout = ({ children }: LayoutProps) => {
               {/* Desktop Theme Toggle */}
               <button
                 onClick={toggleTheme}
-                className="flex items-center gap-4 px-4 py-3.5 rounded-xl font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 active:scale-[0.98] text-left w-full cursor-pointer"
+                className="flex items-center justify-center lg:justify-start gap-4 px-3 lg:px-4 py-3.5 rounded-xl font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 active:scale-[0.98] text-left w-full cursor-pointer"
               >
                 {isDark ? (
                   <>
-                    <HiSun className="w-6 h-6 text-amber-500" />
-                    <span className="text-sm">Yorug' rejim</span>
+                    <HiSun className="w-6 h-6 text-amber-500 shrink-0" />
+                    <span className="text-sm hidden lg:block">Yorug' rejim</span>
                   </>
                 ) : (
                   <>
-                    <HiMoon className="w-6 h-6 text-indigo-600" />
-                    <span className="text-sm">Tungi rejim</span>
+                    <HiMoon className="w-6 h-6 text-indigo-600 shrink-0" />
+                    <span className="text-sm hidden lg:block">Tungi rejim</span>
                   </>
                 )}
               </button>
 
               {user ? (
-                <button
-                  onClick={handleCreateClick}
-                  className="mt-4 flex items-center justify-center gap-2 w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98]"
-                >
-                  <HiPlus className="w-5 h-5" />
-                  <span>Yangi qo'shish</span>
-                </button>
+                <>
+                  <button
+                    onClick={handleCreateClick}
+                    className="mt-4 hidden lg:flex items-center justify-center gap-2 w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98]"
+                  >
+                    <HiPlus className="w-5 h-5" />
+                    <span>Yangi qo'shish</span>
+                  </button>
+                  <button
+                    onClick={handleCreateClick}
+                    className="mt-4 flex lg:hidden items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full transition-all active:scale-[0.98] mx-auto shadow-md shadow-blue-500/20"
+                    title="Yangi qo'shish"
+                  >
+                    <HiPlus className="w-6 h-6" />
+                  </button>
+                </>
               ) : (
-                <Link
-                  href="/login"
-                  className="mt-4 flex items-center justify-center gap-2 w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98]"
-                >
-                  <span>Tizimga kirish</span>
-                </Link>
+                <>
+                  <Link
+                    href="/login"
+                    className="mt-4 hidden lg:flex items-center justify-center gap-2 w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all active:scale-[0.98]"
+                  >
+                    <span>Tizimga kirish</span>
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="mt-4 flex lg:hidden items-center justify-center w-12 h-12 bg-blue-600 text-white rounded-full transition-all active:scale-[0.98] mx-auto"
+                    title="Tizimga kirish"
+                  >
+                    <HiUser className="w-6 h-6" />
+                  </Link>
+                </>
               )}
             </nav>
 
             {/* DESKTOP USER SECTION & PREMIUM CARD */}
             {user && (
               <div className="mt-auto flex flex-col gap-4">
-                <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white relative overflow-hidden group">
+                <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white relative overflow-hidden group hidden lg:block">
                   <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
                   <h4 className="font-bold text-sm mb-0.5">Premiumga o'ting</h4>
                   <p className="text-[11px] text-blue-100 mb-3 leading-relaxed">Cheksiz video va darsliklar yuklash imkoniyati.</p>
@@ -910,20 +933,29 @@ const DashboardLayout = ({ children }: LayoutProps) => {
                   </button>
                 </div>
 
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-100 dark:border-white/5">
+                <div className="flex flex-col lg:flex-row items-center gap-3 p-2 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-100 dark:border-white/5">
                   <div className="w-9 h-9 overflow-hidden rounded-full ring-2 ring-slate-200 dark:ring-slate-800 flex-shrink-0">
                     {avatarUrl && <img src={avatarUrl} alt="Avatar" className="object-cover w-full h-full" />}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 hidden lg:block">
                     <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{user.user_metadata?.full_name || 'Foydalanuvchi'}</p>
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user.email}</p>
                   </div>
                   <button
                     onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
-                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition-colors text-xs font-semibold"
+                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition-colors text-xs font-semibold hidden lg:block"
                     title="Chiqish"
                   >
                     Chiqish
+                  </button>
+                  <button
+                    onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
+                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition-colors block lg:hidden"
+                    title="Chiqish"
+                  >
+                    <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -973,7 +1005,7 @@ const DashboardLayout = ({ children }: LayoutProps) => {
 
             <div className={`mx-auto ${isReelsPage || isMessagesPage
               ? 'w-full h-full max-w-none px-0'
-              : 'w-full max-w-2xl 2xl:max-w-3xl px-4 md:px-6 xl:px-8'
+              : 'w-full max-w-2xl xl:max-w-xl 2xl:max-w-3xl px-4 md:px-6 xl:px-8'
               }`}>
               <div
                 key={pathname}

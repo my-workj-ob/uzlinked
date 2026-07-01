@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { HiOutlineCamera, HiOutlineVideoCamera, HiXMark } from 'react-icons/hi2'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -14,6 +15,11 @@ interface StoryUploadModalProps {
 }
 
 export const StoryUploadModal = ({ onClose, onUploaded }: StoryUploadModalProps) => {
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
     const [preview, setPreview] = useState<string | null>(null)
     const [selectedFile, setSelectedFile] = useState<File | null>(null)
     const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null)
@@ -85,7 +91,7 @@ export const StoryUploadModal = ({ onClose, onUploaded }: StoryUploadModalProps)
             "-vcodec", "libx264",
             "-crf", "28",
             "-preset", "ultrafast",
-            "-t", "30", // story uchun videoni 30 soniyagacha cheklash
+            "-t", "30",
             "output.mp4"
         ])
 
@@ -142,8 +148,10 @@ export const StoryUploadModal = ({ onClose, onUploaded }: StoryUploadModalProps)
         }
     }
 
-    return (
-        <div className="fixed inset-0 z-70 bg-black/60 flex items-center justify-center p-4">
+    if (!mounted) return null
+
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] bg-black/60 flex items-center justify-center p-4">
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -220,6 +228,7 @@ export const StoryUploadModal = ({ onClose, onUploaded }: StoryUploadModalProps)
                         : "Story sifatida joylash"}
                 </button>
             </motion.div>
-        </div>
+        </div>,
+        document.body
     )
 }
