@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { HiXMark, HiChevronLeft, HiChevronRight } from 'react-icons/hi2'
 
 interface StoryMedia {
@@ -25,6 +26,11 @@ interface StoryViewerProps {
 const IMAGE_DURATION_MS = 5000 // rasm uchun 5 soniya
 
 export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextUser, onPrevUser }) => {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const [currentIndex, setCurrentIndex] = useState(0)
   const [progress, setProgress] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
@@ -115,9 +121,9 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextU
     }
   }, [isPaused, currentStory?.type])
 
-  if (!currentStory) return null
+  if (!currentStory || !mounted) return null
 
-  return (
+  return createPortal(
     <div
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
@@ -126,7 +132,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextU
       onTouchStart={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
       onTouchEnd={(e) => e.stopPropagation()}
-      className="fixed inset-0 z-70 bg-black/95 md:bg-neutral-950 flex items-center justify-center select-none"
+      className="fixed inset-0 z-[999999] bg-black/95 md:bg-neutral-950 flex items-center justify-center select-none"
     >
       <button onClick={handlePrev} className="hidden md:flex absolute left-8 z-30 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all">
         <HiChevronLeft className="w-6 h-6" />
@@ -197,6 +203,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({ user, onClose, onNextU
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
