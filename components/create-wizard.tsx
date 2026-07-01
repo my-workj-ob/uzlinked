@@ -370,12 +370,7 @@ export const CreateWizard = ({ onClose, variant = 'modal' }: CreateWizardProps) 
                     {/* Step: Menu */}
                     {step === 'menu' && (
                         <div className="flex flex-col gap-2.5 p-0.5">
-                            <div className="flex items-center justify-between px-1 pb-1">
-                                <span className="text-sm font-black text-slate-900 dark:text-white">Yangi yaratish</span>
-                                <button onClick={onClose} className="p-1.5 -mr-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-lg active:scale-90 transition-all">
-                                    <HiXMark className="w-5 h-5" />
-                                </button>
-                            </div>
+
 
                             <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep('post')} className="w-full p-3.5 flex items-center gap-3.5 bg-slate-50/80 dark:bg-slate-900/40 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 border border-slate-100/50 dark:border-slate-800/80 rounded-2xl text-left transition-colors group">
                                 <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
@@ -444,77 +439,77 @@ export const CreateWizard = ({ onClose, variant = 'modal' }: CreateWizardProps) 
                                     </button>
                                 ) : (
                                     <>
-                                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                                        <Reorder.Group
-                                            axis="x"
-                                            values={postMedia}
-                                            onReorder={setPostMedia}
-                                            className="flex gap-2"
-                                            as="div"
-                                        >
-                                            <AnimatePresence>
-                                                {postMedia.map((m, idx) => (
-                                                    <Reorder.Item
-                                                        key={m.id}
-                                                        value={m}
-                                                        as="div"
-                                                        layout
-                                                        initial={{ opacity: 0, scale: 0.85 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        exit={{ opacity: 0, scale: 0.85 }}
-                                                        whileDrag={{ scale: 1.06, zIndex: 50, boxShadow: '0 12px 30px rgba(0,0,0,0.25)' }}
-                                                        transition={{ type: 'spring', stiffness: 600, damping: 38 }}
-                                                        className="relative shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 cursor-grab active:cursor-grabbing touch-none select-none"
-                                                    >
-                                                        {m.type === 'video' ? (
-                                                            <video src={m.previewUrl} muted playsInline className="w-full h-full object-cover pointer-events-none" />
-                                                        ) : (
-                                                            <img src={m.previewUrl} alt="" className="w-full h-full object-cover pointer-events-none" draggable={false} />
-                                                        )}
-
-                                                        {/* Birinchi element = muqova */}
-                                                        {idx === 0 && (
-                                                            <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-extrabold shadow">
-                                                                <LuStar className="w-2.5 h-2.5" /> Muqova
-                                                            </span>
-                                                        )}
-
-                                                        {m.type === 'video' && (
-                                                            <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-900/75 text-white text-[9px] font-bold">
-                                                                <LuVideo className="w-2.5 h-2.5" /> {Math.round(m.duration ?? 0)}s
-                                                            </span>
-                                                        )}
-
-                                                        <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-md bg-slate-900/55 text-white/90 flex items-center justify-center pointer-events-none">
-                                                            <LuGripVertical className="w-3 h-3" />
-                                                        </span>
-
-                                                        <button
-                                                            type="button"
-                                                            onPointerDownCapture={(e) => e.stopPropagation()}
-                                                            onClick={() => removePostMedia(m.id)}
-                                                            disabled={isSubmitting}
-                                                            className="absolute top-1.5 right-1.5 w-5 h-5 bg-slate-900/70 hover:bg-rose-600 text-white rounded-md flex items-center justify-center active:scale-90 transition-all"
-                                                        >
-                                                            <HiXMark className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </Reorder.Item>
-                                                ))}
-                                            </AnimatePresence>
-                                        </Reorder.Group>
-
-                                        {(imageCount < imageLimit || (isPremium && !hasVideo)) && (
-                                            <button
-                                                type="button"
-                                                disabled={isSubmitting}
-                                                onClick={() => postMediaInputRef.current?.click()}
-                                                className="shrink-0 w-24 h-24 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                                            <Reorder.Group
+                                                axis="x"
+                                                values={postMedia}
+                                                onReorder={setPostMedia}
+                                                className="flex gap-2"
+                                                as="div"
                                             >
-                                                <LuImagePlus className="w-5 h-5" />
-                                                <span className="text-[9px] font-bold mt-1">Qo'shish</span>
-                                            </button>
-                                        )}
-                                      </div>
+                                                <AnimatePresence>
+                                                    {postMedia.map((m, idx) => (
+                                                        <Reorder.Item
+                                                            key={m.id}
+                                                            value={m}
+                                                            as="div"
+                                                            layout
+                                                            initial={{ opacity: 0, scale: 0.85 }}
+                                                            animate={{ opacity: 1, scale: 1 }}
+                                                            exit={{ opacity: 0, scale: 0.85 }}
+                                                            whileDrag={{ scale: 1.06, zIndex: 50, boxShadow: '0 12px 30px rgba(0,0,0,0.25)' }}
+                                                            transition={{ type: 'spring', stiffness: 600, damping: 38 }}
+                                                            className="relative shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 cursor-grab active:cursor-grabbing touch-none select-none"
+                                                        >
+                                                            {m.type === 'video' ? (
+                                                                <video src={m.previewUrl} muted playsInline className="w-full h-full object-cover pointer-events-none" />
+                                                            ) : (
+                                                                <img src={m.previewUrl} alt="" className="w-full h-full object-cover pointer-events-none" draggable={false} />
+                                                            )}
+
+                                                            {/* Birinchi element = muqova */}
+                                                            {idx === 0 && (
+                                                                <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-extrabold shadow">
+                                                                    <LuStar className="w-2.5 h-2.5" /> Muqova
+                                                                </span>
+                                                            )}
+
+                                                            {m.type === 'video' && (
+                                                                <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-900/75 text-white text-[9px] font-bold">
+                                                                    <LuVideo className="w-2.5 h-2.5" /> {Math.round(m.duration ?? 0)}s
+                                                                </span>
+                                                            )}
+
+                                                            <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-md bg-slate-900/55 text-white/90 flex items-center justify-center pointer-events-none">
+                                                                <LuGripVertical className="w-3 h-3" />
+                                                            </span>
+
+                                                            <button
+                                                                type="button"
+                                                                onPointerDownCapture={(e) => e.stopPropagation()}
+                                                                onClick={() => removePostMedia(m.id)}
+                                                                disabled={isSubmitting}
+                                                                className="absolute top-1.5 right-1.5 w-5 h-5 bg-slate-900/70 hover:bg-rose-600 text-white rounded-md flex items-center justify-center active:scale-90 transition-all"
+                                                            >
+                                                                <HiXMark className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </Reorder.Item>
+                                                    ))}
+                                                </AnimatePresence>
+                                            </Reorder.Group>
+
+                                            {(imageCount < imageLimit || (isPremium && !hasVideo)) && (
+                                                <button
+                                                    type="button"
+                                                    disabled={isSubmitting}
+                                                    onClick={() => postMediaInputRef.current?.click()}
+                                                    className="shrink-0 w-24 h-24 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/40 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                                                >
+                                                    <LuImagePlus className="w-5 h-5" />
+                                                    <span className="text-[9px] font-bold mt-1">Qo'shish</span>
+                                                </button>
+                                            )}
+                                        </div>
 
                                         <div className="flex items-center justify-between px-1">
                                             <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">

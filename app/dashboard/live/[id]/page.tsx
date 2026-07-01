@@ -24,6 +24,8 @@ interface RoomInfo {
     game: string | null
     is_live: boolean
     video_url: string | null
+    thumbnail_url: string
+    peak_viewers: any;
 }
 
 interface ChatMsg {
@@ -345,7 +347,7 @@ export default function LiveRoomPage() {
 
     const stopSharing = () => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            try { mediaRecorderRef.current.stop() } catch {}
+            try { mediaRecorderRef.current.stop() } catch { }
         }
         mediaRecorderRef.current = null
 
